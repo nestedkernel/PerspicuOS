@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/bsnmpd 180564 2008-07-16 19:50:29Z dougb $
+#
+
+# PROVIDE: bsnmpd
+# REQUIRE: NETWORKING syslogd
+# KEYWORD: nojail shutdown
+
+. /etc/rc.subr
+
+name="bsnmpd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+pidfile="/var/run/snmpd.pid"
+
+load_rc_config $name
+run_rc_command "$1"

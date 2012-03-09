@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/inetd 174438 2007-12-08 07:20:23Z dougb $
+#
+
+# PROVIDE: inetd
+# REQUIRE: DAEMON LOGIN cleanvar
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="inetd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+required_files="/etc/${name}.conf"
+extra_commands="reload"
+
+load_rc_config $name
+run_rc_command "$1"

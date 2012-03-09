@@ -1,0 +1,19 @@
+#	@(#)Makefile	8.1 (Berkeley) 6/9/93
+# $FreeBSD: release/9.0.0/sbin/md5/Makefile 198236 2009-10-19 16:00:24Z ru $
+
+PROG=	md5
+
+LINKS=	${BINDIR}/md5 ${BINDIR}/rmd160 \
+	${BINDIR}/md5 ${BINDIR}/sha1 \
+	${BINDIR}/md5 ${BINDIR}/sha256
+
+MLINKS=	md5.1 rmd160.1 \
+	md5.1 sha1.1 \
+	md5.1 sha256.1
+
+WFORMAT?=	1
+
+DPADD=	${LIBMD}
+LDADD=	-lmd
+
+.include <bsd.prog.mk>

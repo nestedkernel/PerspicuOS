@@ -1,0 +1,6 @@
+$FreeBSD: release/9.0.0/usr.sbin/kbdmap/TODO 65807 2000-09-13 09:16:57Z dwmalone $
+
+o remember some hackers to translate Languages.phrases into
+  Norwegian, Russian, Danish, Swedish
+
+95/04/03 Wolfram

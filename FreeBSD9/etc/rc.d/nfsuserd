@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/nfsuserd 193354 2009-06-02 22:15:47Z rmacklem $
+#
+
+# PROVIDE: nfsuserd
+# REQUIRE: NETWORKING
+# KEYWORD: nojail shutdown
+
+. /etc/rc.subr
+
+name="nfsuserd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+sig_stop="USR1"
+
+load_rc_config $name
+
+run_rc_command "$1"

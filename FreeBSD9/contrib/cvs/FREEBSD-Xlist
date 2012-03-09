@@ -1,0 +1,22 @@
+$FreeBSD: release/9.0.0/contrib/cvs/FREEBSD-Xlist 175264 2008-01-13 05:50:33Z obrien $
+*/*.com
+*/*.dep
+*/*.dsp
+*/*.mak
+*/.cvsignore
+.cvsignore
+README.VMS
+build.com
+cvs.spec*
+cvsnt.*
+doc/*.info*
+doc/*.pdf
+doc/*.ps
+doc/texinfo.tex
+emx
+lib/getdate.c
+os2
+vms
+windows-NT
+ylwrap
+zlib

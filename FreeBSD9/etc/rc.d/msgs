@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/msgs 180563 2008-07-16 19:22:48Z dougb $
+#
+
+# PROVIDE: msgs
+# REQUIRE: LOGIN
+
+# Make a bounds file for msgs(1) if there isn't one already
+#
+if [ -d /var/msgs -a ! -f /var/msgs/bounds -a ! -L /var/msgs/bounds ]; then
+	echo 0 > /var/msgs/bounds
+fi

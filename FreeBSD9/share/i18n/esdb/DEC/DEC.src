@@ -1,0 +1,6 @@
+# $FreeBSD: release/9.0.0/share/i18n/esdb/DEC/DEC.src 219019 2011-02-25 00:04:39Z gabor $ 
+# $NetBSD: DEC.src,v 1.1 2007/04/01 18:52:30 tnozaki Exp $
+
+NAME		"DECx"
+ENCODING	"NONE"
+DEFCSID		"DECx"	0

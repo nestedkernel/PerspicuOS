@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/securelevel 220153 2011-03-30 01:19:00Z emaste $
+#
+
+# PROVIDE: securelevel
+
+. /etc/rc.subr
+
+name="securelevel"
+rcvar='kern_securelevel_enable'
+start_cmd="securelevel_start"
+stop_cmd=":"
+
+# Last chance to set sysctl variables that failed the first time.
+#
+/etc/rc.d/sysctl lastload
+
+securelevel_start()
+{
+	if [ ${kern_securelevel} -ge 0 ]; then
+		echo 'Raising kernel security level: '
+		${SYSCTL} kern.securelevel=${kern_securelevel}
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

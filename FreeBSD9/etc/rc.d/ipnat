@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/ipnat 193198 2009-06-01 05:35:03Z dougb $
+#
+
+# PROVIDE: ipnat
+# REQUIRE: ipfilter
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+name="ipnat"
+rcvar=`set_rcvar`
+load_rc_config $name
+start_cmd="ipnat_start"
+stop_cmd="${ipnat_program} -F -C"
+reload_cmd="${ipnat_program} -F -C -f ${ipnat_rules}"
+extra_commands="reload"
+required_files="${ipnat_rules}"
+required_modules="ipl:ipfilter"
+
+ipnat_start()
+{
+	echo "Installing NAT rules."
+	${ipnat_program} -CF -f ${ipnat_rules} ${ipnat_flags}
+}
+
+run_rc_command "$1"

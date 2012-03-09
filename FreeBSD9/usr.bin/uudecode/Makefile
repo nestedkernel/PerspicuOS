@@ -1,0 +1,8 @@
+#	@(#)Makefile	8.1 (Berkeley) 6/6/93
+# $FreeBSD: release/9.0.0/usr.bin/uudecode/Makefile 201386 2010-01-02 10:27:05Z ed $
+
+PROG=	uudecode
+LINKS=	${BINDIR}/uudecode ${BINDIR}/b64decode
+NO_MAN=
+
+.include <bsd.prog.mk>

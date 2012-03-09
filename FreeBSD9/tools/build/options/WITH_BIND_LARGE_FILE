@@ -1,0 +1,2 @@
+.\" $FreeBSD: release/9.0.0/tools/build/options/WITH_BIND_LARGE_FILE 193280 2009-06-01 21:58:59Z dougb $
+Set to enable 64-bit file support.

@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/hcsecd 180564 2008-07-16 19:50:29Z dougb $
+#
+
+# PROVIDE: hcsecd
+# REQUIRE: DAEMON
+# BEFORE: LOGIN
+# KEYWORD: nojail shutdown
+
+. /etc/rc.subr
+
+name="hcsecd"
+command="/usr/sbin/${name}"
+pidfile="/var/run/${name}.pid"
+rcvar=`set_rcvar`
+required_modules="ng_btsocket"
+
+load_rc_config $name
+config="${hcsecd_config:-/etc/bluetooth/${name}.conf}"
+command_args="-f ${config}"
+required_files="${config}"
+
+run_rc_command "$1"
