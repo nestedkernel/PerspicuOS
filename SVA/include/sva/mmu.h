@@ -21,6 +21,8 @@ typedef unsigned long pde_t;
 typedef unsigned long pdp_t;
 typedef unsigned long pme_t;
 
+extern unsigned getPhysicalPage (void * v);
+
 /*
  * Function: sva_mm_save_pgtable()
  *
