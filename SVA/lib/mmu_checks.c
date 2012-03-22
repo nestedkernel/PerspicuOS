@@ -6,11 +6,32 @@
  * the University of Illinois Open Source License. See LICENSE.TXT for details.
  * 
  *===----------------------------------------------------------------------===
+ *
+ * Note: We try to use the term "frame" to refer to a page of physical memory
+ *       and a "page" to refer to the virtual addresses mapped to the page of
+ *       physical memory.
+ *
+ *===----------------------------------------------------------------------===
  */
 
 #include <sys/types.h>
 
 #include "sva/mmu.h"
+
+/*
+ * Frame usage constants
+ */
+const unsigned char PG_UNUSED = 0x0;
+const unsigned char PG_TKDATA = 0x1;
+const unsigned char PG_TUDATA = 0x2;
+const unsigned char PG_CODE   = 0x3;
+const unsigned char PG_STACK  = 0x4;
+const unsigned char PG_IO     = 0x5;
+const unsigned char PG_SVA    = 0x6;
+const unsigned char PG_L1     = 0x7;
+const unsigned char PG_L2     = 0x8;
+const unsigned char PG_L3     = 0x9;
+const unsigned char PG_L4     = 0xA;
 
 /*
  * Struct: page_desc_t
@@ -21,28 +42,8 @@
  *  data stored within it) that SVA needs to perform its MMU safety checks.
  */
 typedef struct page_desc_t {
-  /* Page belonging to a type-known pool? */
-  unsigned typed : 1;
-
-  /* Page belonging to a type-unknown pool? This makes
-     sure that the page is correctly set. We can merge
-     untyped and typed if everything's OK */
-  unsigned untyped : 1;
-
-  /* Is this a SVA page? */
-  unsigned sva   : 1;
-
-  /* Is this a level1 (ie pte) page? */
-  unsigned l1    : 1;
-
-  /* Is this a level2 (ie pmd) page? */
-  unsigned l2    : 1;
-
-  /* Is this a level3 (ie pgd) page? */
-  unsigned l3    : 1;
-
-  /* Is this a page containing kernel code? */
-  unsigned code  : 1;
+  /* Type of frame */
+  const unsigned char type;
 
   /* Number of times a page is mapped */
   unsigned count : 12;
@@ -52,12 +53,6 @@ typedef struct page_desc_t {
 
   /* Number of times a page is used as a l2 page (unused in non-PAE) */
   unsigned l2_count : 2;
-
-  /* Is this page a stack page? */
-  unsigned stack : 1;
-
-  /* Is this a page of IO objects? */
-  unsigned io : 1;
 
   /* Is this page a L1 in user-space? */
   unsigned l1_user : 1;
@@ -260,29 +255,35 @@ void llva_check_pagetable(pgd_t* pgd) {
 
   return;
 }
+#endif
 
 /*
- * Sets a physical page as a level 1 page for pagetables.
+ * Intrinsic: sva_declare_l1_page()
+ *
+ * Description:
+ *  This intrinsic marks the specified physical frame as a Level 1 page table
+ *  frame.  It will zero out the contents of the page frame so that stale
+ *  mappings within the frame are not used by the MMU.
+ *
+ * Inputs:
+ *  frame - The frame number of the physical page frame that will be used as a
+ *          Level 1 page frame.
  */
-void llva_declare_l1_page(pte_t * pteptr) {
-  
-  void* pagetable = get_pagetable();
+void
+sva_declare_l1_page (unsigned frame) {
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned eflags;
+  __asm__ __volatile__ ("pushf; popl %0; cli\n" : "=r" (eflags));
 
-  pte_t* pte = get_pte((unsigned long)pteptr, pagetable);
-  
-  /* Make the page read-only */
-  pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
-  unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
-
-  /* Set the l1 flag */
-  page_desc[index].l1 = 1;
+  /* Set the L1 flag for this page frame */
+  page_desc[frame].l1 = 1;
 
   /* The data contained in the page is set to 0 */
-  llva_memset(pteptr, 0, PAGE_SIZE);
+  memset (getVirtual (frame), 0, PAGE_SIZE);
  
   /* Update the page table entry with the new RO flag */ 
-  unsigned eflags;
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
   (*pte) = new_val;
   llva_protect_pte();
@@ -290,6 +291,7 @@ void llva_declare_l1_page(pte_t * pteptr) {
     __asm__ __volatile__ ("sti":::"memory");
 }
 
+#if 0
 /*
  * Removes the l1 flag of the page ands sets the page writable.
  */
