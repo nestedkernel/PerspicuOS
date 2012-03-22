@@ -10,7 +10,7 @@
 
 #include <sys/types.h>
 
-#include "mmu.h"
+#include "sva/mmu.h"
 
 /*
  * Struct: page_desc_t
