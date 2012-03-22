@@ -12,6 +12,16 @@
 #define MMU_H
 
 /*
+ *****************************************************************************
+ * Define structures used in the SVA MMU interface.
+ *****************************************************************************
+ */
+typedef unsigned long pte_t ;
+typedef unsigned long pde_t;
+typedef unsigned long pdp_t;
+typedef unsigned long pme_t;
+
+/*
  * Function: sva_mm_save_pgtable()
  *
  * Description:
@@ -25,5 +35,5 @@ sva_mm_save_pgtable (void)
   return p;
 }
 
-#endif MMU_H
+#endif
 

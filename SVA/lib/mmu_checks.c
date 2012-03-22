@@ -8,8 +8,9 @@
  *===----------------------------------------------------------------------===
  */
 
-#ifndef MMU_H
-#define MMU_H
+#include <sys/types.h>
+
+#include "mmu.h"
 
 /*
  * Struct: page_desc_t
@@ -81,6 +82,9 @@ const unsigned PTE_PRESENT  = 0x0001u;
 const unsigned PTE_CANWRITE = 0x0002u;
 const unsigned PTE_CANUSER  = 0x0004u;
 
+/* Number of bits to shift to get the page number out of a PTE entry */
+const unsigned PAGESHIFT = 12;
+
 /*
  * Function: get_pagetable()
  *
@@ -89,7 +93,7 @@ const unsigned PTE_CANUSER  = 0x0004u;
  */
 static inline void *
 get_pagetable (void) {
-  unsigned long p;
+  uintptr_t p;
 
   /* Get the page table value out of CR3 */
   __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (p));
@@ -99,7 +103,7 @@ get_pagetable (void) {
    * pointer are assumed to be zero, and so they are reserved or used by the
    * hardware.
    */
-  return ((void *)(p >> 12));
+  return ((void *)(p >> PAGESHIFT));
 }
 
 /*
@@ -114,7 +118,7 @@ static inline void
 protect_pte(void) {
   /* The flag value for enabling page protection */
   const unsigned flag = 0x00010000;
-  unsigned long value = 0;
+  uintptr_t value = 0;
   __asm__ __volatile ("movq %%cr0,%0\n": "=r" (value));
   value |= flag;
   __asm__ __volatile ("movq %0,%%cr0\n": :"r" (value));
@@ -133,20 +137,45 @@ static inline void
 unprotect_pte(void) {
   /* The flag value for enabling page protection */
   unsigned flag = 0xfffeffff;
-  unsigned long value;
+  uintptr_t value;
   __asm__ __volatile("movl %%cr0,%0\n": "=r"(value));
   value &= flag;
   __asm__ __volatile("movl %0,%%cr0\n": : "r"(value));
 }
 
 /*
- * Function: convertToPhysical()
+ * Function: getPhysicalPage()
  *
  * Description:
- *  Convert a virtual address to a physical address.
+ *  Find the physical page number of the specified virtual address.
  */
-static inline void *
-convertToPhysical (void * v) {
+static inline unsigned
+getPhysicalPage (void * v) {
+  /*
+   * Get the currently active page table.
+   */
+  pme_t * pme = get_pagetable();
+
+  /*
+   * Look up the next level in the hierarchy.
+   */
+  uintptr_t vi = (uintptr_t) v;
+  pdp_t * pdp = pme[(vi >> 39) & 0x1ffu];
+
+  /*
+   * Go to the next level in the hierarchy.
+   */
+  pde_t * pde = pdp[(vi >> 30) & 0x1ffu];
+
+  /*
+   * Go to the next level in the hierarchy.
+   */
+  pte_t * pte = pde[(vi >> 21) & 0x1ffu];
+
+  /*
+   * Get the last entry.
+   */
+  return (*pte >> PAGESHIFT);
 }
 
 #if 0
@@ -816,7 +845,3 @@ sva_get_physical (void * virtual) {
   return ((void *)(paddr));
 }
 #endif
-
-
-#endif MMU_H
-
