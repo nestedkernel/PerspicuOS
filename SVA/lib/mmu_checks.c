@@ -181,12 +181,12 @@ getPhysicalPage (void * v) {
 #if 0
 static unsigned int
 is_l1_user_page (pte_t* virtual) {
-	void* pagetable = get_pagetable();
+  void* pagetable = get_pagetable();
   unsigned long pa;
-	
-	pte_t* pte = get_pte((unsigned long)virtual, pagetable);
-	pa = pte_val(*pte) >> PAGE_SHIFT;
-	return (page_desc[pa].l1_user);
+  
+  pte_t* pte = get_pte((unsigned long)virtual, pagetable);
+  pa = pte_val(*pte) >> PAGE_SHIFT;
+  return (page_desc[pa].l1_user);
 }
 
 static unsigned int
@@ -194,9 +194,9 @@ is_user_page (pte_t* virtual) {
   void* pagetable = get_pagetable();
   unsigned long pa;
 
-	pte_t* pte = get_pte((unsigned long)virtual, pagetable);
-	pa = pte_val(*pte) >> PAGE_SHIFT;
-	return (page_desc[pa].user);
+  pte_t* pte = get_pte((unsigned long)virtual, pagetable);
+  pa = pte_val(*pte) >> PAGE_SHIFT;
+  return (page_desc[pa].user);
 }
 
 /*
@@ -216,12 +216,12 @@ is_user_page (pte_t* virtual) {
  */
 unsigned int
 is_l1_kernel_page (pte_t* virtual) {
-	void* pagetable = get_pagetable();
+  void* pagetable = get_pagetable();
   unsigned long pa;
 
-	pte_t* pte = get_pte((unsigned long)virtual, pagetable);
-	pa = pte_val(*pte) >> PAGE_SHIFT;
-	return (page_desc[pa].l1_kernel);
+  pte_t* pte = get_pte((unsigned long)virtual, pagetable);
+  pa = pte_val(*pte) >> PAGE_SHIFT;
+  return (page_desc[pa].l1_kernel);
 }
 
 
@@ -233,10 +233,10 @@ void llva_check_pagetable_write(unsigned long address, void* pagetable) {
   pte_t* pte = get_pte(address, pagetable);
   if (pte && page_desc) {
     pte_t val = *pte;
-		unsigned long index = pte_val(val) >> PAGE_SHIFT; 
+    unsigned long index = pte_val(val) >> PAGE_SHIFT; 
     if (likely(page_desc[index].l1 || page_desc[index].l2)) {
       poolcheckfail("MMU: The kernel tried to write directly on a pagetable: %x",
-										__builtin_return_address(0));
+                    __builtin_return_address(0));
     }
   }
 }
@@ -245,15 +245,15 @@ void llva_check_pagetable_write(unsigned long address, void* pagetable) {
  * Checks that the pagetable has correct flags and loads it.
  */
 void llva_check_pagetable(pgd_t* pgd) {
-	
+  
   void* pagetable = get_pagetable();
   pte_t* pte = get_pte((unsigned long)pgd, pagetable);
-	unsigned long index = pte_val(*pte) >> PAGE_SHIFT; 
+  unsigned long index = pte_val(*pte) >> PAGE_SHIFT; 
   if (unlikely(!page_desc[index].l2)) {
     poolcheckfail("MMU: Try to load a non L2 page table: %x", 
-									__builtin_return_address(0));
+                  __builtin_return_address(0));
   }
-	
+  
   __asm__ __volatile__ ("movl %0, %%cr3\n"
                         :
                         : "r" (__pa(pgd)));
@@ -262,53 +262,25 @@ void llva_check_pagetable(pgd_t* pgd) {
 }
 
 /*
- * Protects the page table entry. This disables the flag in cr0 which bypasses
- * the RW flag in pagetables. After this call, it is safe to re-enable
- * interrupts. These are defined inline in include/asm/pgtable.h.
- */
-
-inline void
-llva_protect_pte(void) {
-  unsigned value = 0;
-  unsigned flag = 0x00010000;
-  __asm__ __volatile("movl %%cr0,%0\n": "=r"(value));
-  value |= flag;
-  __asm__ __volatile("movl %0,%%cr0\n": :"r"(value));
-}
-
-/*
- * Bypass the RW flag in pagetables. Caller should have disabled interrupts at
- * this point.
- */
-inline void
-llva_unprotect_pte(void) {
-  unsigned value;
-  unsigned flag = 0xfffeffff;
-  __asm__ __volatile("movl %%cr0,%0\n": "=r"(value));
-  value &= flag;
-  __asm__ __volatile("movl %0,%%cr0\n": : "r"(value));
-}
-
-/*
  * Sets a physical page as a level 1 page for pagetables.
  */
 void llva_declare_l1_page(pte_t * pteptr) {
   
-	void* pagetable = get_pagetable();
+  void* pagetable = get_pagetable();
 
   pte_t* pte = get_pte((unsigned long)pteptr, pagetable);
   
-	/* Make the page read-only */
-	pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
+  /* Make the page read-only */
+  pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
   unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
 
-	/* Set the l1 flag */
+  /* Set the l1 flag */
   page_desc[index].l1 = 1;
 
-	/* The data contained in the page is set to 0 */
+  /* The data contained in the page is set to 0 */
   llva_memset(pteptr, 0, PAGE_SIZE);
  
-	/* Update the page table entry with the new RO flag */ 
+  /* Update the page table entry with the new RO flag */ 
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
@@ -316,29 +288,28 @@ void llva_declare_l1_page(pte_t * pteptr) {
   llva_protect_pte();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
-
 }
 
 /*
  * Removes the l1 flag of the page ands sets the page writable.
  */
 void llva_remove_l1_page(pte_t * pteptr) {
-	void* pagetable = get_pagetable();
+  void* pagetable = get_pagetable();
   
-	pte_t* pte = get_pte((unsigned long) pteptr, pagetable);
+  pte_t* pte = get_pte((unsigned long) pteptr, pagetable);
   pte_t new_val = __pte(pte_val(*pte) | _PAGE_RW);
   unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
 
   if (page_desc[index].l1_count != 0) {
-		poolcheckfail("MMU: removing an L1 page still referenced: %d %x",
-									page_desc[index].l1_count, __builtin_return_address(0));
-	}
+    poolcheckfail("MMU: removing an L1 page still referenced: %d %x",
+                  page_desc[index].l1_count, __builtin_return_address(0));
+  }
 
   page_desc[index].l1 = 0;
   page_desc[index].l1_user = 0;
   page_desc[index].l1_kernel = 0;
 
-	unsigned eflags;
+  unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
   (*pte) = new_val;
@@ -352,9 +323,9 @@ void llva_remove_l1_page(pte_t * pteptr) {
  */
 void llva_declare_l2_page(pgd_t * pgdptr) {
 
-	void* pagetable = get_pagetable();
+  void* pagetable = get_pagetable();
 
-	memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
+  memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
   memcpy(pgdptr + USER_PTRS_PER_PGD,
       swapper_pg_dir + USER_PTRS_PER_PGD,
       (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
@@ -379,7 +350,7 @@ void llva_declare_l2_page(pgd_t * pgdptr) {
 void llva_remove_l2_page(pgd_t * pgdptr) {
   void* pagetable = get_pagetable();
 
-	pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
+  pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
   pte_t new_val = __pte(pte_val(*pte) | _PAGE_RW);
   unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
 
@@ -388,7 +359,7 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
    */
   page_desc[index].l2 = 0;
 
-	unsigned eflags;
+  unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
 
   /*
@@ -413,32 +384,32 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
  */
 
 void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn, 
-											 alloc_boot_t allocator) {
+                       alloc_boot_t allocator) {
   unsigned long codesize = &_etext - &_text;
   unsigned long i = 0, j = 0;
   void* pagetable = pgdptr;
 
-	/* (1) Allocate the page_desc array */
-	unsigned long desc_size = max_pfn * sizeof(page_desc_t);
-	/*desc_size = desc_size + PAGE_SIZE - (desc_size % PAGE_SIZE);*/
+  /* (1) Allocate the page_desc array */
+  unsigned long desc_size = max_pfn * sizeof(page_desc_t);
+  /*desc_size = desc_size + PAGE_SIZE - (desc_size % PAGE_SIZE);*/
   page_desc = (page_desc_t*)allocator(desc_size);
-	memset(page_desc, 0, desc_size);
-	/* Set the page_desc as sva pages */
-	for (i = (unsigned)page_desc/PAGE_SIZE; 
-			 i < ((unsigned)page_desc + desc_size)/PAGE_SIZE; 
-			 ++i) {
+  memset(page_desc, 0, desc_size);
+  /* Set the page_desc as sva pages */
+  for (i = (unsigned)page_desc/PAGE_SIZE; 
+       i < ((unsigned)page_desc + desc_size)/PAGE_SIZE; 
+       ++i) {
     pte_t* pte = get_pte(i, pagetable);
-		unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
-		page_desc[page_index].sva = 1;
-	}
+    unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
+    page_desc[page_index].sva = 1;
+  }
 
-	/* (2) Set the root pagetable as read-only and level2 page */
+  /* (2) Set the root pagetable as read-only and level2 page */
   pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
   pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
-	unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
+  unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
   page_desc[index].l2 = 1;
  
-	unsigned eflags;
+  unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
   (*pte) = new_val;
@@ -448,20 +419,20 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
     if (!pmd_none(__pmd(pgd_val(pgdptr[i])))) {
       unsigned long tmp = pmd_page(((pmd_t*)pgdptr)[i]);
       pte = get_pte((unsigned long)tmp, pagetable);
-			index = pte_val(*pte) >> PAGE_SHIFT;
-  		page_desc[index].l1 = 1;
-  		page_desc[index].l1_count = 1;
-  		page_desc[index].l1_kernel = 1;
+      index = pte_val(*pte) >> PAGE_SHIFT;
+      page_desc[index].l1 = 1;
+      page_desc[index].l1_count = 1;
+      page_desc[index].l1_kernel = 1;
       (*pte) = __pte(pte_val(*pte) & ~_PAGE_RW);
-			/*
-			for (j = 0; j < PTRS_PER_PTE; j++) {
-      	unsigned long val = pte_val(((pte_t*)tmp)[i]);
-				if (val) page_desc[val].count = 1;
-			}*/
+      /*
+      for (j = 0; j < PTRS_PER_PTE; j++) {
+        unsigned long val = pte_val(((pte_t*)tmp)[i]);
+        if (val) page_desc[val].count = 1;
+      }*/
     }
   }
 
-	/* (4) Set the kernel/sva code pages as read-only */
+  /* (4) Set the kernel/sva code pages as read-only */
 
   /* Verify that _text is page aligned */
   if (!(((unsigned long)&_text) % PAGE_SIZE == 0)) {
@@ -472,8 +443,8 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
   for (i = (unsigned long) &_text; i < codesize; i += PAGE_SIZE) {
     pte_t* pte = get_pte(i, pagetable);
     (*pte) = __pte(pte_val((*pte)) & ~_PAGE_RW);
-		unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
-		page_desc[page_index].code = 1;
+    unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
+    page_desc[page_index].code = 1;
   }
 
   //llva_protect_pte();
@@ -519,14 +490,14 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
    * SVA virtual machine.
    */
   if (unlikely(page_desc[new_index].sva))
-  	poolcheckfail("MMU: try to map a sva pag: %x", __builtin_return_address(0));
+    poolcheckfail("MMU: try to map a sva pag: %x", __builtin_return_address(0));
 
   /*
    * Get the virtual to physical page mapping that is already within the
    * page table.
    */
-	pte_t old_mapping = *pteptr;
-	unsigned long old_index = pte_val(old_mapping) >> PAGE_SHIFT;
+  pte_t old_mapping = *pteptr;
+  unsigned long old_index = pte_val(old_mapping) >> PAGE_SHIFT;
 
   if (new_index) {
     /*
@@ -543,7 +514,7 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
      */
     if (page_desc[new_index].stack) {
       poolcheckfail("MMU: try to double map a stack page: %x", __builtin_return_address(0));
-		}
+    }
 
     /*
      * If we're creating a virtual mapping that is accessible only in
@@ -553,14 +524,14 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
 #if 0
     if (((pte_val(val)) & PTE_CANUSER) == 0) {
       if (page_desc[new_index].user) {
-      	poolcheckfail("Mapping user-accessible page into the kernel",
+        poolcheckfail("Mapping user-accessible page into the kernel",
                       new_index, __builtin_return_address(0));
-			}
-		} else {
+      }
+    } else {
       if (page_desc[new_index].kernel) {
-      	poolcheckfail("Mapping kernel-accessible page into user-space",
+        poolcheckfail("Mapping kernel-accessible page into user-space",
                       new_index, __builtin_return_address(0));
-			}
+      }
     }
 #endif
     /*
@@ -569,11 +540,11 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
      * caller is trying to make kernel memory objects accessible to user-space
      * programs.  Do not permit such treachery!
      */
-		if ((((pte_val(val)) & PTE_CANUSER) == 1) &&
+    if ((((pte_val(val)) & PTE_CANUSER) == 1) &&
          (page_desc[new_index].typed || page_desc[new_index].untyped)) {
-    	poolcheckfail("MMU: Mapping kernel page into user-space: ",
+      poolcheckfail("MMU: Mapping kernel page into user-space: ",
                     new_index, __builtin_return_address(0));
-		}
+    }
 
     /*
      * If the frame is currently accessible by user-space code and the new
@@ -584,46 +555,46 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
       pte_t* kpte = get_pte((unsigned long)pteptr, get_pagetable());
       unsigned long kpa;
       kpa = pte_val(*kpte) >> PAGE_SHIFT;
-    	poolcheckfail("MMU: Mapping user-accessible page into kernel-space: ",
+      poolcheckfail("MMU: Mapping user-accessible page into kernel-space: ",
                     new_index, kpa);
     }
   }
 
-	if (old_index) {
-		if (unlikely(page_desc[old_index].stack)) {
-  		poolcheckfail("MMU: try to modify the mapping of a stack: %x", __builtin_return_address(0));
-		}
-		if (unlikely(page_desc[old_index].sva))
-  		poolcheckfail("MMU: try to modify the mapping of a sva page: %x", __builtin_return_address(0));
-		if (unlikely(page_desc[old_index].code))
-  		poolcheckfail("MMU: try to modify the mapping of kernel code: %x", __builtin_return_address(0));
+  if (old_index) {
+    if (unlikely(page_desc[old_index].stack)) {
+      poolcheckfail("MMU: try to modify the mapping of a stack: %x", __builtin_return_address(0));
+    }
+    if (unlikely(page_desc[old_index].sva))
+      poolcheckfail("MMU: try to modify the mapping of a sva page: %x", __builtin_return_address(0));
+    if (unlikely(page_desc[old_index].code))
+      poolcheckfail("MMU: try to modify the mapping of kernel code: %x", __builtin_return_address(0));
   }
- 	
-	/* Update the mapping count of the old and new mapped physical pages */
-	if (old_index) {	
-		page_desc[old_index].count--;
-		/* If there is no mapping of the page, we can remove the untyped flag,
-		 	 so that the page can be used by users. */
-		if (page_desc[old_index].count == 0) {
-			page_desc[old_index].untyped = 0;
-			page_desc[old_index].user = 0;
-		}
-	}
-	if (new_index) {
+   
+  /* Update the mapping count of the old and new mapped physical pages */
+  if (old_index) {  
+    page_desc[old_index].count--;
+    /* If there is no mapping of the page, we can remove the untyped flag,
+        so that the page can be used by users. */
+    if (page_desc[old_index].count == 0) {
+      page_desc[old_index].untyped = 0;
+      page_desc[old_index].user = 0;
+    }
+  }
+  if (new_index) {
     if (page_desc[new_index].count < ((1 << 12) - 1)) {
-			page_desc[new_index].count++;
+      page_desc[new_index].count++;
     } else {
       poolcheckfail("MMU: overflow for mapping count %x", __builtin_return_address(0));
-		}
+    }
 
     /*
      * If the new translation makes the page accessible to user-space programs,
      * mark the physical page frame as accessible from user-space.
      */
-		if (((pte_val(val)) & PTE_CANUSER) == 1) {
-			page_desc[new_index].user = 1;
-		}
-	}
+    if (((pte_val(val)) & PTE_CANUSER) == 1) {
+      page_desc[new_index].user = 1;
+    }
+  }
 
 #if 0
   /*
@@ -635,8 +606,8 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
     page_desc[new_index].kernel = 1;
   }
 #endif
-	
-	/* Perform the pagetable mapping update */
+  
+  /* Perform the pagetable mapping update */
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
@@ -658,29 +629,29 @@ llva_update_l2_mapping(pmd_t* pmdptr, pmd_t val) {
   void* pagetable = get_pagetable();
 
   if (pmd_val(val)) {
-		pte_t* pte = get_pte((unsigned long)pmdptr, pagetable);
-		
-		/* Verify that pmdptr points to a level2 page */
-		unsigned long index = pte_val(*pte) >> PAGE_SHIFT;
+    pte_t* pte = get_pte((unsigned long)pmdptr, pagetable);
+    
+    /* Verify that pmdptr points to a level2 page */
+    unsigned long index = pte_val(*pte) >> PAGE_SHIFT;
     if (unlikely(!page_desc[index].l2)) {
       poolcheckfail("MMU: Try to put a L1 in a non-L: %x", __builtin_return_address(0));
     }
-	
-		
-		/* Verify that val contains a level1 page */
+  
+    
+    /* Verify that val contains a level1 page */
     unsigned long addr = pmd_page(val);
     pte_t* l1 = get_pte(addr, pagetable);
-		index = pte_val(*l1) >> PAGE_SHIFT;
-		if (unlikely(!page_desc[index].l1)) {
+    index = pte_val(*l1) >> PAGE_SHIFT;
+    if (unlikely(!page_desc[index].l1)) {
       poolcheckfail("MMU: Try to put a non-L1 in a L2: %x", __builtin_return_address(0));
     } else {
       if (page_desc[index].l1_count < ((1 << 5) - 1)) {
-				page_desc[index].l1_count++;
+        page_desc[index].l1_count++;
       } else
         poolcheckfail("MMU: Overflow in the L1 count: %x", __builtin_return_address(0));
     }
 
-		/*
+    /*
      * Determine if the L1 page will be mapping values into user-space virtual
      * address or kernel-space virtual address.  We do this by finding the
      * offset from the beginning of the page table (which is the address of
@@ -689,23 +660,23 @@ llva_update_l2_mapping(pmd_t* pmdptr, pmd_t val) {
      * in length).
      */
     unsigned int pmdbase = ((unsigned)(pmdptr)) & PAGE_MASK;
- 		if (pmdptr < (((pgd_t*)pmdbase) + USER_PTRS_PER_PGD))
-  		page_desc[index].l1_user = 1;
-		else
-  		page_desc[index].l1_kernel = 1;
+     if (pmdptr < (((pgd_t*)pmdbase) + USER_PTRS_PER_PGD))
+      page_desc[index].l1_user = 1;
+    else
+      page_desc[index].l1_kernel = 1;
   } 
 
   if (pmd_val(*pmdptr)) {
-		unsigned long old_addr = pmd_page(*pmdptr);
+    unsigned long old_addr = pmd_page(*pmdptr);
     pte_t* old_pte = get_pte(old_addr, pagetable);
-		unsigned long old_index = pte_val(*old_pte) >> PAGE_SHIFT;
-		if (page_desc[old_index].l1_count <= 0)
-    	poolcheckfail("MMU: Page in L1 was not a L1: %x!", __builtin_return_address(0));
+    unsigned long old_index = pte_val(*old_pte) >> PAGE_SHIFT;
+    if (page_desc[old_index].l1_count <= 0)
+      poolcheckfail("MMU: Page in L1 was not a L1: %x!", __builtin_return_address(0));
 
     page_desc[old_index].l1_count--;
-	}
+  }
 
-	/* Perform the pagetable mapping update */
+  /* Perform the pagetable mapping update */
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
   llva_unprotect_pte();
@@ -721,7 +692,7 @@ llva_update_l2_mapping(pmd_t* pmdptr, pmd_t val) {
 void llva_update_l3_mapping(pgd_t* pgdptr, pgd_t val) {
   /* In x86, there are only 2 levels of pagetables. The level 3
    * is folded in the level 2. */
-	llva_update_l2_mapping((pmd_t*)pgdptr, __pmd(pgd_val(val)));
+  llva_update_l2_mapping((pmd_t*)pgdptr, __pmd(pgd_val(val)));
 }
 
 /*
@@ -740,10 +711,10 @@ pte_t llva_pte_get_and_clear(pte_t *xp) {
  * flag.
  */
 void llva_reg_obj(void* obj, void* MP, unsigned typed, void * eip) {
-	void* pagetable = get_pagetable();
-	
-	pte_t* pte = get_pte((unsigned long)obj, pagetable);
-	
+  void* pagetable = get_pagetable();
+  
+  pte_t* pte = get_pte((unsigned long)obj, pagetable);
+  
   /*
    * Ensure that physical pages exist for the object.
    */
@@ -751,37 +722,37 @@ void llva_reg_obj(void* obj, void* MP, unsigned typed, void * eip) {
     poolcheckfail ("MMU: Kernel object has no page frame: ", eip);
   }
 
-	unsigned long pa = pte_val(*pte) >> PAGE_SHIFT;
-	
-	if (page_desc[pa].user) {
-		poolcheckfail("MMU: A kernel object is allocated in a User page: %x.", __builtin_return_address(0));
-	}
+  unsigned long pa = pte_val(*pte) >> PAGE_SHIFT;
+  
+  if (page_desc[pa].user) {
+    poolcheckfail("MMU: A kernel object is allocated in a User page: %x.", __builtin_return_address(0));
+  }
 
-	if (page_desc[pa].sva) {
-		poolcheckfail("MMU: A kernel object is allocated in a SVA page: %x.", __builtin_return_address(0));
-	}	
+  if (page_desc[pa].sva) {
+    poolcheckfail("MMU: A kernel object is allocated in a SVA page: %x.", __builtin_return_address(0));
+  }  
 
-	if (page_desc[pa].io) {
-		poolcheckfail("MMU: A kernel object is allocated in an I/O page: %x.", __builtin_return_address(0));
-	}	
+  if (page_desc[pa].io) {
+    poolcheckfail("MMU: A kernel object is allocated in an I/O page: %x.", __builtin_return_address(0));
+  }  
 
   if (typed) {
-		if (page_desc[pa].count) {
+    if (page_desc[pa].count) {
       poolcheckfail("MMU: TK object uses a TU virtual address: ", 
-										(pa * 4096), eip);
+                    (pa * 4096), eip);
       poolcheckfail("MMU: TK object uses a TU virtual address: ", 
-										page_desc[pa].count, eip);
-		} else {
-    	page_desc[pa].typed = 1;
-		}
+                    page_desc[pa].count, eip);
+    } else {
+      page_desc[pa].typed = 1;
+    }
   } else {
 #if 0
-		if (page_desc[pa].untyped == 0) {
-			printk("OK, I've just allocated a new untyped object in %d (%p)\n", pa, __builtin_return_address(0));
-		}
+    if (page_desc[pa].untyped == 0) {
+      printk("OK, I've just allocated a new untyped object in %d (%p)\n", pa, __builtin_return_address(0));
+    }
 #endif
-		page_desc[pa].untyped = 1;
-	}
+    page_desc[pa].untyped = 1;
+  }
 }
 
 /*
@@ -790,22 +761,22 @@ void llva_reg_obj(void* obj, void* MP, unsigned typed, void * eip) {
  */
 void llva_reg_sva_page(void* addr) {
   void* pagetable = get_pagetable();
-	
-	pte_t* pte = get_pte((unsigned long)addr, pagetable);
-	
-	unsigned long pa = pte_val(*pte) >> PAGE_SHIFT;
-	
-	if (page_desc[pa].count || page_desc[pa].typed) {
-		poolcheckfail("MMU: Registering an already used sva page: %x!", __builtin_return_address(0));
-	}
-	
-	page_desc[pa].sva = 1; 
+  
+  pte_t* pte = get_pte((unsigned long)addr, pagetable);
+  
+  unsigned long pa = pte_val(*pte) >> PAGE_SHIFT;
+  
+  if (page_desc[pa].count || page_desc[pa].typed) {
+    poolcheckfail("MMU: Registering an already used sva page: %x!", __builtin_return_address(0));
+  }
+  
+  page_desc[pa].sva = 1; 
 }
 
 void *
 llva_virt_to_phys (void * virtual) {
   void* pagetable = get_pagetable();
-	pte_t* pte = get_pte((unsigned long)virtual, pagetable);
+  pte_t* pte = get_pte((unsigned long)virtual, pagetable);
   return (pte_val(*pte) & PAGE_MASK);
 }
 
@@ -837,7 +808,7 @@ sva_get_physical (void * virtual) {
   /*
    * Get the physical page associated with the virtual address.
    */
-	pte_t* pte = get_pte((unsigned long)virtual, pagetable);
+  pte_t* pte = get_pte((unsigned long)virtual, pagetable);
   unsigned long paddr = (pte_val(*pte) & PAGE_MASK);
   paddr += (((unsigned long)(virtual)) & 0x000000FFF);
   if (pchk_ready)
