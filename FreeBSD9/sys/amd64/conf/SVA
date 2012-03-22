@@ -66,6 +66,7 @@ options 	MAC			# TrustedBSD MAC Framework
 options 	INCLUDE_CONFIG_FILE     # Include this file in kernel
 options 	KDB			# Kernel debugger related code
 options 	KDB_TRACE		# Print a stack trace for a panic
+options		DDB
 
 # Make an SMP-capable kernel by default
 options 	SMP			# Symmetric MultiProcessor Kernel
