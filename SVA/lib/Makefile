@@ -5,7 +5,7 @@
 CFLAGS := -I../include
 
 libsva.a: mmu_checks.o
-	$(AR) -r $@ $<
+	$(AR) -r $@ mmu_checks.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $< $(LDFLAGS)
