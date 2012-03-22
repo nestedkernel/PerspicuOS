@@ -149,7 +149,7 @@ unprotect_pte(void) {
  * Description:
  *  Find the physical page number of the specified virtual address.
  */
-static inline unsigned
+unsigned
 getPhysicalPage (void * v) {
   /*
    * Get the currently active page table.
@@ -160,17 +160,17 @@ getPhysicalPage (void * v) {
    * Look up the next level in the hierarchy.
    */
   uintptr_t vi = (uintptr_t) v;
-  pdp_t * pdp = pme[(vi >> 39) & 0x1ffu];
+  pdp_t * pdp = (pdp_t *) pme[(vi >> 39) & 0x1ffu];
 
   /*
    * Go to the next level in the hierarchy.
    */
-  pde_t * pde = pdp[(vi >> 30) & 0x1ffu];
+  pde_t * pde = (pde_t *) pdp[(vi >> 30) & 0x1ffu];
 
   /*
    * Go to the next level in the hierarchy.
    */
-  pte_t * pte = pde[(vi >> 21) & 0x1ffu];
+  pte_t * pte = (pte_t *) pde[(vi >> 21) & 0x1ffu];
 
   /*
    * Get the last entry.
