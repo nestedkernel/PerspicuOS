@@ -93,7 +93,7 @@ gdbinit:
 ${FULLKERNEL}: ${SYSTEM_DEP} vers.o
 	@rm -f ${.TARGET}
 	@echo linking ${.TARGET}
-	${SYSTEM_LD}
+	${SYSTEM_LD} -L/usr/home/criswell/src/sva/SVA/lib -lsva
 	@${SYSTEM_CTFMERGE}
 .if !defined(DEBUG)
 	${OBJCOPY} --strip-debug ${.TARGET}
