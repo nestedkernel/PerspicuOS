@@ -178,17 +178,17 @@ getPhysicalPage (void * v) {
    * Look up the next level in the hierarchy.
    */
   uintptr_t vi = (uintptr_t) v;
-  l3_t * pdp = getVirtual (pme[(vi >> 39) & 0x1ffu]);
+  l3_t * pdp = ((uintptr_t)pme & 0x80) ? getVirtual (pme[((vi >> 39) & 0x1ffu) << 2]) : 0;
 
   /*
    * Go to the next level in the hierarchy.
    */
-  l2_t * pde = getVirtual (pdp[(vi >> 30) & 0x1ffu]);
+  l2_t * pde = ((uintptr_t)pdp & 0x80) ?  getVirtual (pdp[((vi >> 30) & 0x1ffu) << 2]) : 0;
 
   /*
    * Go to the next level in the hierarchy.
    */
-  l1_t * pte = getVirtual (pde[(vi >> 21) & 0x1ffu]);
+  l1_t * pte = ((uintptr_t)pde & 0x80) ? getVirtual (pde[((vi >> 21) & 0x1ffu) << 2]) : 0;
 
   /*
    * Get the last entry.
