@@ -11,15 +11,17 @@
 #ifndef MMU_H
 #define MMU_H
 
+#include <sys/types.h>
+
 /*
  *****************************************************************************
  * Define structures used in the SVA MMU interface.
  *****************************************************************************
  */
-typedef unsigned long pte_t ;
-typedef unsigned long pde_t;
-typedef unsigned long pdp_t;
-typedef unsigned long pme_t;
+typedef uintptr_t l1_t;
+typedef uintptr_t l2_t;
+typedef uintptr_t l3_t;
+typedef uintptr_t l4_t;
 
 extern unsigned getPhysicalPage (void * v);
 
@@ -34,8 +36,10 @@ sva_mm_save_pgtable (void)
 {
   void * p;
   __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (p));
+  
   return p;
 }
 
+unsigned getPhysicalPage (void * v);
 #endif
 

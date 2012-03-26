@@ -14,6 +14,7 @@
  *===----------------------------------------------------------------------===
  */
 
+#include <string.h>
 #include <sys/types.h>
 
 #include "sva/mmu.h"
@@ -43,7 +44,7 @@ const unsigned char PG_L4     = 0xA;
  */
 typedef struct page_desc_t {
   /* Type of frame */
-  const unsigned char type;
+  unsigned char type;
 
   /* Number of times a page is mapped */
   unsigned count : 12;
@@ -80,25 +81,47 @@ const unsigned PTE_CANUSER  = 0x0004u;
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
 
+/* Size of a physical page frame */
+const unsigned PAGE_SIZE = 4096;
+
+/*
+ * Function: getVirtual()
+ *
+ * Description:
+ *  This function takes a physical address and converts it into a virtual
+ *  address that the SVA VM can access.
+ *
+ *  In a real system, this is done by having the SVA VM create its own
+ *  virtual-to-physical mapping of all of physical memory within its own
+ *  reserved portion of the virtual address space.  However, for now, we'll
+ *  take advantage of FreeBSD's direct map of physical memory so that we don't
+ *  have to set one up.
+ */
+static inline void *
+getVirtual (uintptr_t physical) {
+  return (void *)(physical | 0xfffffe0000000000u);
+}
+
 /*
  * Function: get_pagetable()
  *
  * Description:
- *  Get the current page table.
+ *  Return a virtual address that can be used to access the current page table.
  */
 static inline void *
 get_pagetable (void) {
-  uintptr_t p;
+  /* Value of the CR3 register */
+  uintptr_t cr3;
 
   /* Get the page table value out of CR3 */
-  __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (p));
+  __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (cr3));
 
   /*
    * Shift the value over 12 bits.  The lower-order 12 bits of the page table
    * pointer are assumed to be zero, and so they are reserved or used by the
    * hardware.
    */
-  return ((void *)(p >> PAGESHIFT));
+  return (getVirtual (cr3 & 0xfffffffffffff000u));
 }
 
 /*
@@ -112,7 +135,7 @@ get_pagetable (void) {
 static inline void
 protect_pte(void) {
   /* The flag value for enabling page protection */
-  const unsigned flag = 0x00010000;
+  const uintptr_t flag = 0x00010000;
   uintptr_t value = 0;
   __asm__ __volatile ("movq %%cr0,%0\n": "=r" (value));
   value |= flag;
@@ -131,11 +154,11 @@ protect_pte(void) {
 static inline void
 unprotect_pte(void) {
   /* The flag value for enabling page protection */
-  unsigned flag = 0xfffeffff;
+  const uintptr_t flag = 0xfffffffffffeffff;
   uintptr_t value;
-  __asm__ __volatile("movl %%cr0,%0\n": "=r"(value));
+  __asm__ __volatile("movq %%cr0,%0\n": "=r"(value));
   value &= flag;
-  __asm__ __volatile("movl %0,%%cr0\n": : "r"(value));
+  __asm__ __volatile("movq %0,%%cr0\n": : "r"(value));
 }
 
 /*
@@ -149,23 +172,23 @@ getPhysicalPage (void * v) {
   /*
    * Get the currently active page table.
    */
-  pme_t * pme = get_pagetable();
+  l4_t * pme = get_pagetable();
 
   /*
    * Look up the next level in the hierarchy.
    */
   uintptr_t vi = (uintptr_t) v;
-  pdp_t * pdp = (pdp_t *) pme[(vi >> 39) & 0x1ffu];
+  l3_t * pdp = getVirtual (pme[(vi >> 39) & 0x1ffu]);
 
   /*
    * Go to the next level in the hierarchy.
    */
-  pde_t * pde = (pde_t *) pdp[(vi >> 30) & 0x1ffu];
+  l2_t * pde = getVirtual (pdp[(vi >> 30) & 0x1ffu]);
 
   /*
    * Go to the next level in the hierarchy.
    */
-  pte_t * pte = (pte_t *) pde[(vi >> 21) & 0x1ffu];
+  l1_t * pte = getVirtual (pde[(vi >> 21) & 0x1ffu]);
 
   /*
    * Get the last entry.
@@ -257,6 +280,7 @@ void llva_check_pagetable(pgd_t* pgd) {
 }
 #endif
 
+#if 0
 /*
  * Intrinsic: sva_declare_l1_page()
  *
@@ -277,19 +301,22 @@ sva_declare_l1_page (unsigned frame) {
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0; cli\n" : "=r" (eflags));
 
-  /* Set the L1 flag for this page frame */
-  page_desc[frame].l1 = 1;
+  /*
+   * Mark this page frame as an L1 page frame.
+   */
+  page_desc[frame].type = PG_L1;
 
   /* The data contained in the page is set to 0 */
   memset (getVirtual (frame), 0, PAGE_SIZE);
  
   /* Update the page table entry with the new RO flag */ 
-  llva_unprotect_pte();
+  unprotect_pte();
   (*pte) = new_val;
-  llva_protect_pte();
+  protect_pte();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
+#endif
 
 #if 0
 /*
