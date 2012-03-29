@@ -18,10 +18,11 @@
  * Define structures used in the SVA MMU interface.
  *****************************************************************************
  */
-typedef uintptr_t l1_t;
-typedef uintptr_t l2_t;
-typedef uintptr_t l3_t;
-typedef uintptr_t l4_t;
+typedef uintptr_t cr3_t;
+typedef uintptr_t pml4e_t;
+typedef uintptr_t pdpte_t;
+typedef uintptr_t pde_t;
+typedef uintptr_t pte_t;
 
 extern unsigned getPhysicalPage (void * v);
 

@@ -8,7 +8,7 @@ libsva.a: mmu_checks.o
 	$(AR) -r $@ mmu_checks.o
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) -O2 -c -o $@ $< $(LDFLAGS)
 
 clean:
 	rm -f *.a *.o

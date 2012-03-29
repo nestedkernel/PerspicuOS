@@ -77,6 +77,7 @@ static page_desc_t page_desc[memSize / 4096];
 const unsigned PTE_PRESENT  = 0x0001u;
 const unsigned PTE_CANWRITE = 0x0002u;
 const unsigned PTE_CANUSER  = 0x0004u;
+const unsigned PTE_PS       = 0x0080u;
 
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
@@ -97,9 +98,9 @@ const unsigned PAGE_SIZE = 4096;
  *  take advantage of FreeBSD's direct map of physical memory so that we don't
  *  have to set one up.
  */
-static inline void *
+static inline unsigned char *
 getVirtual (uintptr_t physical) {
-  return (void *)(physical | 0xfffffe0000000000u);
+  return (unsigned char *)(physical | 0xfffffe0000000000u);
 }
 
 /*
@@ -108,7 +109,7 @@ getVirtual (uintptr_t physical) {
  * Description:
  *  Return a virtual address that can be used to access the current page table.
  */
-static inline void *
+static inline unsigned char *
 get_pagetable (void) {
   /* Value of the CR3 register */
   uintptr_t cr3;
@@ -169,31 +170,57 @@ unprotect_pte(void) {
  */
 unsigned
 getPhysicalPage (void * v) {
+  extern int printf(const char *, ...);
+
+  /*
+   * Mask off the upper bits of the virtual address.  Part of it just isn't
+   * used by the hardware.
+   */
+  uintptr_t vi = ((uintptr_t) v) & 0x0000ffffffffffffu;
+  printf ("v   = %p\n", v);
+  printf ("vi  = %lx\n", vi);
+
   /*
    * Get the currently active page table.
    */
-  l4_t * pme = get_pagetable();
+  unsigned char * cr3 = get_pagetable();
+  printf ("cr3 = %p\n", cr3);
 
   /*
-   * Look up the next level in the hierarchy.
+   * Get the address of the PML4e.
    */
-  uintptr_t vi = (uintptr_t) v;
-  l3_t * pdp = ((uintptr_t)pme & 0x80) ? getVirtual (pme[((vi >> 39) & 0x1ffu) << 2]) : 0;
+  unsigned char * p = cr3 + (vi >> 37);
+  pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
+  printf ("pml4e  = %p %lx\n", pml4e, *pml4e);
+
+  /*
+   * Use the PML4E to get the address of the PDPTE.
+   */
+  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e & 0xfffffffffffff000u) +  (vi >> 28);
+  printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
+  return 0;
+
+#if 0
+  /*
+   * Go to the next level in the hierarchy.
+   */
+  l2_t * pde = 0;
+  if ((*pdp) & PTE_PS) {
+    return 0;
+    /* return (pde[((vi >> 29u)) << 2] >> PAGESHIFT); */
+  }
 
   /*
    * Go to the next level in the hierarchy.
    */
-  l2_t * pde = ((uintptr_t)pdp & 0x80) ?  getVirtual (pdp[((vi >> 30) & 0x1ffu) << 2]) : 0;
+  pde = getVirtual (pdp[((vi >> 30) & 0x1ffu) << 2]);
+  if (*pde & PTE_PS) {
+    return 1;
+  }
 
-  /*
-   * Go to the next level in the hierarchy.
-   */
-  l1_t * pte = ((uintptr_t)pde & 0x80) ? getVirtual (pde[((vi >> 21) & 0x1ffu) << 2]) : 0;
-
-  /*
-   * Get the last entry.
-   */
+  l1_t * pte = getVirtual (pde[((vi >> 21) & 0x1ffu) << 2]);
   return (*pte >> PAGESHIFT);
+#endif
 }
 
 #if 0
