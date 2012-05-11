@@ -1,3 +1,5 @@
 all:
-	cd lib; make
+	cd lib; $(MAKE)
 
+clean:
+	cd lib; $(MAKE) clean
