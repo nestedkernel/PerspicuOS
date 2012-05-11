@@ -21,6 +21,8 @@
 /* Kernel callback function for allocating memory */
 extern void * provideSVAMemory (uintptr_t size);
 
+static char buffer[4096];
+
 /*
  * Function: allocSecureMemory()
  *
@@ -42,7 +44,7 @@ allocSecureMemory (uintptr_t size) {
   /*
    * Get the memory from the operating system.
    */
-  if (sp = provideSVAMemory (size)) {
+  if ((sp = provideSVAMemory (size)) == 0) {
     /*
      * Zero out the memory.
      */
