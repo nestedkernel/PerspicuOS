@@ -20,15 +20,14 @@
 
 /* Kernel callback function for allocating memory */
 extern void * provideSVAMemory (uintptr_t size);
-
-static char buffer[4096];
+extern void releaseSVAMemory (void * p, uintptr_t size);
 
 /*
  * Function: allocSecureMemory()
  *
  * Description:
- *  Allocate a single page of secure memory.  Fetch it from the operating
- *  system kernel if necessary.
+ *  Allocate secure memory.  Fetch it from the operating system kernel if
+ *  necessary.
  *
  * Inputs:
  *  size - The amount of secure memory to allocate measured in bytes.
@@ -60,4 +59,28 @@ allocSecureMemory (uintptr_t size) {
    * Return the memory to the caller.
    */
   return sp;
+}
+
+/*
+ * Function: freeSecureMemory()
+ *
+ * Description:
+ *  Free a single page of secure memory.
+ *
+ * Inputs:
+ *  p    - The first virtual address of the secure memory to free.
+ *  size - The amount of secure memory to allocate measured in bytes.
+ */
+void
+freeSecureMemory (unsigned char * p, uintptr_t size) {
+  /*
+   * Zero out the memory.
+   */
+  memset (p, 0, size);
+
+  /*
+   * Release the memory to the operating system.
+   */
+  releaseSVAMemory (p, size);
+  return;
 }
