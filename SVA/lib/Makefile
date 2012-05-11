@@ -3,9 +3,10 @@
 #
 
 CFLAGS := -I../include
+OFILES = secmem.o
 
-libsva.a: mmu_checks.o
-	$(AR) -r $@ mmu_checks.o
+libsva.a: $(OFILES)
+	$(AR) -r $@ $(OFILES)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -O2 -c -o $@ $< $(LDFLAGS)

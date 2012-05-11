@@ -13,6 +13,9 @@
 
 #include <sys/types.h>
 
+/* Size of the smallest page frame in bytes */
+const uintptr_t PAGE_SIZE = 4096;
+
 /*
  *****************************************************************************
  * Define structures used in the SVA MMU interface.
