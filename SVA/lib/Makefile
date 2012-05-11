@@ -3,7 +3,7 @@
 #
 
 CFLAGS := -I../include
-OFILES = secmem.o
+OFILES = init.o secmem.o
 
 libsva.a: $(OFILES)
 	$(AR) -r $@ $(OFILES)
