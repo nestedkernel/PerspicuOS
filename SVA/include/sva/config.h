@@ -21,6 +21,12 @@
 /* Total number of processors supported by this SVA Execution Engine */
 static const unsigned int numProcessors=4;
 
+/* Structure for describing processors */
+struct procMap {
+  unsigned char allocated : 1;
+  unsigned int apicID;
+};
+
 /*
  * Function: getProcessorID()
  *
@@ -37,7 +43,7 @@ static const unsigned int numProcessors=4;
 static unsigned int
 getProcessorID() {
   /* Map logical processor ID to an array in the SVA data structures */
-  extern unsigned int svaProcMap[numProcessors];
+  extern struct procMap svaProcMap[numProcessors];
 
   /*
    * Use the CPUID instruction to get a local APIC2 ID for the processor.
@@ -49,16 +55,19 @@ getProcessorID() {
    * Convert the APIC2 ID into an SVA logical processor ID.
    */
   for (unsigned index = 0; index < numProcessors; ++index) {
-    if (svaProcMap[index] == apicID)
+    if ((svaProcMap[index].apicID == apicID) && (svaProcMap[index].allocated))
       return index;
   }
 
   /*
    * If we did not find it, then add it to the table.
+   *
+   * TODO: Fix the race condition here.
    */
   for (unsigned index = 0; index < numProcessors; ++index) {
-    if (svaProcMap[index] == UINT_MAX) {
-      svaProcMap[index] = apicID;
+    if (!(svaProcMap[index].allocated)) {
+      svaProcMap[index].allocated = 1;
+      svaProcMap[index].apicID = apicID;
       return index;
     }
   }

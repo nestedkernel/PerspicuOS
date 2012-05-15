@@ -110,7 +110,7 @@ unsigned char llva_fp_used = 0;
 extern void default_interrupt (unsigned int number, void * icontext);
 
 /* Map logical processor ID to an array in the SVA data structures */
-unsigned int svaProcMap[numProcessors] = {[0 ... numProcessors - 1] = UINT_MAX};
+struct procMap svaProcMap[numProcessors];
 
 /*
  * Structure: interrupt_table
@@ -256,11 +256,19 @@ init_idt (void) {
   /*
    * Find the current interrupt descriptor table (IDT).
    */
+#if 0
   __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
+#endif
 
+#if 0
   printf ("SVA: %x: %x %lx\n", getProcessorID(),
                                sva_idtreg.rd_limit,
                                sva_idtreg.rd_base);
+#else
+  printf ("SVA: %x: %x %lx\n", 0,
+                               sva_idtreg.rd_limit,
+                               sva_idtreg.rd_base);
+#endif
 
 #if 0
   /*
@@ -280,6 +288,8 @@ init_idt (void) {
   sva_idtreg.rd_base = (uintptr_t) sva_idt;
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
 #endif
+
+  printf ("SVA: Done with init_idt\n");
   return;
 }
 
@@ -394,7 +404,9 @@ sva_init ()
   init_segs ();
   init_debug ();
 #endif
+#if 1
   init_idt ();
+#endif
 #if 0
   init_dispatcher ();
   init_mmu ();
