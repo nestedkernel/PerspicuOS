@@ -16,6 +16,54 @@
 #ifndef _SVA_CONFIG_H
 #define _SVA_CONFIG_H
 
+#include <limits.h>
+
 /* Total number of processors supported by this SVA Execution Engine */
-const unsigned char numProcessors=4;
+static const unsigned int numProcessors=4;
+
+/*
+ * Function: getProcessorID()
+ *
+ * Description:
+ *  Determine the processor ID of the current processor.
+ *
+ * Inputs:
+ *  None.
+ *
+ * Return value:
+ *  An index value less than numProcessors that can be used to index into
+ *  per-CPU SVA data structures.
+ */
+static unsigned int
+getProcessorID() {
+  /* Map logical processor ID to an array in the SVA data structures */
+  extern unsigned int svaProcMap[numProcessors];
+
+  /*
+   * Use the CPUID instruction to get a local APIC2 ID for the processor.
+   */
+  unsigned int apicID;
+  __asm__ __volatile__ ("movl $0xB, %%eax\ncpuid" : "=d" (apicID));
+
+  /*
+   * Convert the APIC2 ID into an SVA logical processor ID.
+   */
+  for (unsigned index = 0; index < numProcessors; ++index) {
+    if (svaProcMap[index] == apicID)
+      return index;
+  }
+
+  /*
+   * If we did not find it, then add it to the table.
+   */
+  for (unsigned index = 0; index < numProcessors; ++index) {
+    if (svaProcMap[index] == UINT_MAX) {
+      svaProcMap[index] = apicID;
+      return index;
+    }
+  }
+
+  return UINT_MAX;
+}
+
 #endif

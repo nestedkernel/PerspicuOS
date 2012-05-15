@@ -81,11 +81,10 @@
  * $FreeBSD: release/9.0.0/sys/amd64/include/cpufunc.h 223796 2011-07-05 18:42:10Z jkim $
  */
 
-#if 0
-#include "sva/interrupt.h"
-#endif
+#include "sva/config.h"
 
 #include <string.h>
+#include <limits.h>
 
 #include <sys/types.h>
 
@@ -110,6 +109,9 @@ unsigned char llva_fp_used = 0;
 /* Default LLVA interrupt, exception, and system call handlers */
 extern void default_interrupt (unsigned int number, void * icontext);
 
+/* Map logical processor ID to an array in the SVA data structures */
+unsigned int svaProcMap[numProcessors] = {[0 ... numProcessors - 1] = UINT_MAX};
+
 /*
  * Structure: interrupt_table
  *
@@ -117,8 +119,10 @@ extern void default_interrupt (unsigned int number, void * icontext);
  *  This is a table that contains the list of interrupt functions registered
  *  with the Execution Engine.  Whenever an interrupt occurs, one of these
  *  functions will be dispatched.
+ *
+ *  Note that we need one of these per processor.
  */
-void * interrupt_table[256];
+void * interrupt_table[256][numProcessors];
 
 /*
  * Structure: sva_idt
@@ -126,8 +130,10 @@ void * interrupt_table[256];
  * Description:
  *  This is the x86 interrupt descriptor table.  We use it to hold all of the
  *  interrupt vectors internally within the Execution Engine.
+ *
+ *  Note that we need one of these per processor.
  */
-static unsigned long sva_idt[2*256];
+static unsigned long sva_idt[2*256][numProcessors];
 
 #if 0
 /*
@@ -252,19 +258,25 @@ init_idt (void) {
    */
   __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
 
-  printf ("SVA: %x %lx\n", sva_idtreg.rd_limit, sva_idtreg.rd_base);
+  printf ("SVA: %x: %x %lx\n", getProcessorID(),
+                               sva_idtreg.rd_limit,
+                               sva_idtreg.rd_base);
 
+#if 0
   /*
    * Copy the contents of the old IDT into the SVA IDT.
    */
   unsigned short copySize = sva_idtreg.rd_limit + 1;
-  memcpy (sva_idt, (unsigned char *) sva_idtreg.rd_base, copySize);
+  memcpy (&(sva_idt[0][getProcessorID()]),
+          (unsigned char *) sva_idtreg.rd_base,
+          copySize);
+#endif
 
   /*
    * Load our descriptor table on to the processor.
    */
-#if 1
-  sva_idtreg.rd_limit = sizeof (sva_idt);
+#if 0
+  sva_idtreg.rd_limit = sizeof (&(sva_idt[0][getProcessorID()]));
   sva_idtreg.rd_base = (uintptr_t) sva_idt;
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
 #endif
