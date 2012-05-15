@@ -256,21 +256,15 @@ init_idt (void) {
   /*
    * Find the current interrupt descriptor table (IDT).
    */
-#if 0
   __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
-#endif
 
-#if 0
-  printf ("SVA: %x: %x %lx\n", getProcessorID(),
+  printf ("SVA: About to get ID\n");
+  unsigned int id = getProcessorID();
+  printf ("SVA: Got ID\n");
+  printf ("SVA: %x: %x %lx\n", id,
                                sva_idtreg.rd_limit,
                                sva_idtreg.rd_base);
-#else
-  printf ("SVA: %x: %x %lx\n", 0,
-                               sva_idtreg.rd_limit,
-                               sva_idtreg.rd_base);
-#endif
 
-#if 0
   /*
    * Copy the contents of the old IDT into the SVA IDT.
    */
@@ -278,7 +272,6 @@ init_idt (void) {
   memcpy (&(sva_idt[0][getProcessorID()]),
           (unsigned char *) sva_idtreg.rd_base,
           copySize);
-#endif
 
   /*
    * Load our descriptor table on to the processor.
