@@ -246,10 +246,13 @@ init_idt (void) {
     unsigned long rd_base :64 __attribute__ ((packed));  /* base address  */
   } __attribute__ ((packed)) sva_idtreg;
 
+  /* Kernel's idea of where the IDT is */
+  extern void * idt;
+
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popq %0\n" : "=r" (eflags));
+  __asm__ __volatile__ ("pushfq; popq %0\n" : "=r" (eflags));
 
 #if 0
   /*
@@ -272,12 +275,12 @@ init_idt (void) {
   printf ("SVA: IDT: %x: %x %lx %p\n", procID,
                                        sva_idtreg.rd_limit,
                                        sva_idtreg.rd_base,
-                                       &(sva_idt[0][getProcessorID()]));
+                                       &(sva_idt[0][procID]));
 
   /*
    * Copy the contents of the old IDT into the SVA IDT.
    */
-  memcpy (&(sva_idt[0][getProcessorID()]),
+  memcpy (&(sva_idt[0][procID]),
           (unsigned char *) sva_idtreg.rd_base,
           copySize);
 
@@ -288,6 +291,7 @@ init_idt (void) {
   sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][procID]);
   printf ("SVA: About to lidt: %x\n", sva_idtreg.rd_limit);
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
+  idt = (void *) sva_idtreg.rd_base;
 
   /*
    * Re-enable interrupts.
