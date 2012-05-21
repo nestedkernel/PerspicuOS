@@ -89,6 +89,7 @@
 #include <sys/types.h>
 
 extern int printf(const char *, ...);
+extern void panic(const char *, ...);
 
 #if 0
 void register_x86_interrupt (int number, void *interrupt, unsigned char priv);
@@ -236,11 +237,19 @@ fptrap (void)
  */
 static void
 init_idt (void) {
+  /* Old interrupt flags */
+  unsigned long eflags;
+
   /* Argument to lidt/sidt taken from FreeBSD. */
-  struct region_descriptor {
+  static struct region_descriptor {
     unsigned long rd_limit:16;    /* segment extent */
     unsigned long rd_base :64 __attribute__ ((packed));  /* base address  */
   } __attribute__ ((packed)) sva_idtreg;
+
+  /*
+   * Disable interrupts.
+   */
+  __asm__ __volatile__ ("pushf; popq %0\n" : "=r" (eflags));
 
 #if 0
   /*
@@ -258,17 +267,16 @@ init_idt (void) {
    */
   __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
 
-  printf ("SVA: About to get ID\n");
-  unsigned int id = getProcessorID();
-  printf ("SVA: Got ID\n");
-  printf ("SVA: %x: %x %lx\n", id,
-                               sva_idtreg.rd_limit,
-                               sva_idtreg.rd_base);
+  unsigned int procID = getProcessorID();
+  unsigned copySize = ((unsigned) sva_idtreg.rd_limit) + 1;
+  printf ("SVA: IDT: %x: %x %lx %p\n", procID,
+                                       sva_idtreg.rd_limit,
+                                       sva_idtreg.rd_base,
+                                       &(sva_idt[0][getProcessorID()]));
 
   /*
    * Copy the contents of the old IDT into the SVA IDT.
    */
-  unsigned short copySize = sva_idtreg.rd_limit + 1;
   memcpy (&(sva_idt[0][getProcessorID()]),
           (unsigned char *) sva_idtreg.rd_base,
           copySize);
@@ -276,11 +284,16 @@ init_idt (void) {
   /*
    * Load our descriptor table on to the processor.
    */
-#if 0
-  sva_idtreg.rd_limit = sizeof (&(sva_idt[0][getProcessorID()]));
-  sva_idtreg.rd_base = (uintptr_t) sva_idt;
+  sva_idtreg.rd_limit = sizeof (unsigned long[2*256]) - 1;
+  sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][procID]);
+  printf ("SVA: About to lidt: %x\n", sva_idtreg.rd_limit);
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
-#endif
+
+  /*
+   * Re-enable interrupts.
+   */
+  if (eflags & 0x00000200)
+    __asm__ __volatile__ ("sti":::"memory");
 
   printf ("SVA: Done with init_idt\n");
   return;
