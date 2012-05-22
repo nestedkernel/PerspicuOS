@@ -126,6 +126,30 @@ struct procMap svaProcMap[numProcessors];
 void * interrupt_table[256][numProcessors];
 
 /*
+ * Taken from FreeBSD: amd64/segments.h
+ *
+ * Gate descriptors (e.g. indirect descriptors, trap, interrupt etc. 128 bit)
+ * Only interrupt and trap gates have gd_ist.
+ */
+struct  gate_descriptor {
+  unsigned long gd_looffset:16; /* gate offset (lsb) */
+  unsigned long gd_selector:16; /* gate segment selector */
+  unsigned long gd_ist:3;   /* IST table index */
+  unsigned long gd_xx:5;    /* unused */
+  unsigned long gd_type:5;    /* segment type */
+  unsigned long gd_dpl:2;   /* segment descriptor priority level */
+  unsigned long gd_p:1;   /* segment descriptor present */
+  unsigned long gd_hioffset:48 __packed;  /* gate offset (msb) */
+  unsigned long sd_xx1:32;
+} __attribute__ ((packed));
+
+/* Taken from FreeBSD: amd64/segments.h */
+#define GSEL(s,r) (((s)<<3) | r)      /* a global selector */
+#define GCODE_SEL 4 /* Kernel Code Descriptor */
+
+
+
+/*
  * Structure: sva_idt
  *
  * Description:
@@ -134,9 +158,12 @@ void * interrupt_table[256][numProcessors];
  *
  *  Note that we need one of these per processor.
  */
-static unsigned long sva_idt[2*256][numProcessors];
+static struct gate_descriptor sva_idt[2*256][numProcessors];
 
-#if 0
+/* Taken from segments.h in FreeBSD */
+static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */
+static const unsigned int SDT_SYSTGT=15;  /* system 64 bit trap gate */
+
 /*
  * Function: register_x86_interrupt()
  *
@@ -147,24 +174,32 @@ static unsigned long sva_idt[2*256][numProcessors];
  * Inputs:
  *  number    - The interrupt number.
  *  interrupt - A pointer to the interrupt handler.
- *  priv      - The i386 privilege level which can access this interrupt.
+ *  priv      - The x86_64 privilege level which can access this interrupt.
+ *
+ * Notes:
+ *  This is based off of the amd64 setidt() code in FreeBSD.
  */
-void
-register_x86_interrupt (int number, void *interrupt, unsigned char priv)
-{
-  /* The two words for an individiual interrupt entry */
-  unsigned int v1;
-  unsigned int v2;
-
+static void
+register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   /*
-   * Install the new system call handler.
+   * First determine which interrupt table we should be modifying.
    */
-  v1 = 0x00100000 | ((unsigned)interrupt & 0x0000ffff);
-  v2 = ((unsigned)interrupt & 0xffff0000) | (0x8E00) | (priv << 13);
-  sva_idt[number*2]   = v1;
-  sva_idt[number*2+1] = v2;
+  unsigned int procID = getProcessorID();
+  struct gate_descriptor *ip = &sva_idt[number][procID];
+
+  ip->gd_looffset = (uintptr_t)interrupt;
+  ip->gd_selector = GSEL(GCODE_SEL, priv);
+  ip->gd_ist = 0;
+  ip->gd_xx = 0;
+  ip->gd_type = SDT_SYSIGT;
+  ip->gd_dpl = priv;
+  ip->gd_p = 1;
+  ip->gd_hioffset = ((uintptr_t)interrupt)>>16 ;
+
+  return;
 }
 
+#if 0
 /*
  * Function: register_x86_trap()
  *
