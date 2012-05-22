@@ -51,7 +51,7 @@ allocSecureMemory (uintptr_t size) {
 
     /*
      * TODO:
-     * Unmap the memory from the MMU.
+     * Map the memory into user-space.
      */
   }
 
