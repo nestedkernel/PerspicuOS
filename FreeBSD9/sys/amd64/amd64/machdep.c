@@ -141,6 +141,8 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include <isa/isareg.h>
 #include <isa/rtc.h>
 
+#include <sva/init.h>
+
 /* Sanity check for __curthread() */
 CTASSERT(offsetof(struct pcpu, pc_curthread) == 0);
 
@@ -1678,6 +1680,10 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Initialize the console before we print anything out.
 	 */
 	cninit();
+
+#if 1
+  sva_init();
+#endif
 
 #ifdef DEV_ISA
 #ifdef DEV_ATPIC

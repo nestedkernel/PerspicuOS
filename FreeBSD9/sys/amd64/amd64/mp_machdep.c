@@ -664,6 +664,9 @@ init_secondary(void)
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);	/* XXX User value while we're in the kernel */
 
+#if 1
+	r_idt.rd_base = (long) idt;
+#endif
 	lidt(&r_idt);
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
