@@ -101,8 +101,8 @@ static void init_idt (void);
 static void init_debug (void);
 static void init_mmu (void);
 static void init_fpu ();
-static int init_dispatcher ();
 #endif
+static void init_dispatcher ();
 
 /* Flags whether the FPU has been used */
 unsigned char llva_fp_used = 0;
@@ -179,7 +179,7 @@ static const unsigned int SDT_SYSTGT=15;  /* system 64 bit trap gate */
  * Notes:
  *  This is based off of the amd64 setidt() code in FreeBSD.
  */
-static void
+void
 register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   /*
    * First determine which interrupt table we should be modifying.
@@ -196,6 +196,12 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   ip->gd_p = 1;
   ip->gd_hioffset = ((uintptr_t)interrupt)>>16 ;
 
+  return;
+}
+
+void
+sva_debug (void) {
+  printf ("SVA: Debug!\n");
   return;
 }
 
@@ -449,11 +455,9 @@ sva_init ()
   init_segs ();
   init_debug ();
 #endif
-#if 1
   init_idt ();
-#endif
-#if 0
   init_dispatcher ();
+#if 0
   init_mmu ();
   init_fpu ();
   llva_reset_counters();
@@ -472,19 +476,14 @@ sva_init ()
 extern void mem_trap14(void);
 extern void mem_trap17(void);
 
-#if 0
-static int
+static void
 init_dispatcher ()
 {
-  /* System Call Trap */
-#if 0
-  register_x86_interrupt (0x7f, sc_trap,    3);
-  register_x86_interrupt (0x80, sc_trap,    3);
-#else
-  register_x86_trap (0x7f, sc_trap);
-  register_x86_trap (0x80, sc_trap);
-#endif
+  /* Register the secure memory allocation and deallocation traps */
+  extern void secmemtrap(void);
+  register_x86_interrupt (0x7f, secmemtrap, 3);
 
+#if 0
   /* Page Fault and Memory Alignment Trap, respectively */
   register_x86_interrupt (0x0e, mem_trap14, 0);
   register_x86_interrupt (0x11, mem_trap17, 0);
@@ -557,7 +556,7 @@ init_dispatcher ()
   REGISTER_INTERRUPT(253);
   REGISTER_INTERRUPT(254);
   REGISTER_INTERRUPT(255);
-  return 0;
-}
 #endif
+  return;
+}
 
