@@ -79,7 +79,8 @@ maxusers	10
 #
 # MODULES_OVERRIDE can be used to limit modules built to a specific list.
 #
-makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
+#makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
+makeoptions	CONF_CFLAGS=-fno-builtin  -I/usr/home/criswell/src/sva/SVA/include #Don't allow use of memcmp, etc.
 #makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 #makeoptions	KERNEL=foo		#Build kernel "foo" and install "/foo"
 # Only build ext2fs module plus those parts of the sound system I need.
