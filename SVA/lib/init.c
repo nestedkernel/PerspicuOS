@@ -91,13 +91,11 @@
 extern int printf(const char *, ...);
 extern void panic(const char *, ...);
 
-#if 0
 void register_x86_interrupt (int number, void *interrupt, unsigned char priv);
 void register_x86_trap (int number, void *trap);
-static void fptrap (void);
-#endif
 static void init_idt (void);
 #if 0
+static void fptrap (void);
 static void init_debug (void);
 static void init_mmu (void);
 static void init_fpu ();
@@ -147,8 +145,6 @@ struct  gate_descriptor {
 #define GSEL(s,r) (((s)<<3) | r)      /* a global selector */
 #define GCODE_SEL 4 /* Kernel Code Descriptor */
 
-
-
 /*
  * Structure: sva_idt
  *
@@ -163,6 +159,12 @@ static struct gate_descriptor sva_idt[2*256][numProcessors];
 /* Taken from segments.h in FreeBSD */
 static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */
 static const unsigned int SDT_SYSTGT=15;  /* system 64 bit trap gate */
+
+void
+sva_debug (void) {
+  printf ("SVA: Debug!\n");
+  return;
+}
 
 /*
  * Function: register_x86_interrupt()
@@ -187,6 +189,9 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   unsigned int procID = getProcessorID();
   struct gate_descriptor *ip = &sva_idt[number][procID];
 
+  /*
+   * Add the entry into the table.
+   */
   ip->gd_looffset = (uintptr_t)interrupt;
   ip->gd_selector = GSEL(GCODE_SEL, priv);
   ip->gd_ist = 0;
@@ -199,13 +204,6 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   return;
 }
 
-void
-sva_debug (void) {
-  printf ("SVA: Debug!\n");
-  return;
-}
-
-#if 0
 /*
  * Function: register_x86_trap()
  *
@@ -215,26 +213,31 @@ sva_debug (void) {
  *
  * Inputs:
  *  number  - The interrupt number.
- *  trap - A function pointer to the system call handler.
+ *  trap    - A function pointer to the system call handler.
  */
 void
-register_x86_trap (int number, void *trap)
-{
-  /* The two words for an individiual interrupt entry */
-  unsigned int v1;
-  unsigned int v2;
+register_x86_trap (int number, void *trap) {
+  /*
+   * First determine which interrupt table we should be modifying.
+   */
+  unsigned int procID = getProcessorID();
+  struct gate_descriptor *ip = &sva_idt[number][procID];
 
   /*
-   * Install the new system call handler.
-   *  v1: Segment selector 0x10 (kernel) + lower 16 bits of handler
-   *  v2: Upper 16 bits of handler + flags
+   * Add the entry into the table.
    */
-  v1 = 0x00100000 | ((unsigned)trap & 0x0000ffff);
-  v2 = ((unsigned)trap & 0xffff0000) | (0xEF00);
-  sva_idt[number*2]   = v1;
-  sva_idt[number*2+1] = v2;
+  ip->gd_looffset = (uintptr_t)trap;
+  ip->gd_selector = GSEL(GCODE_SEL, 3);
+  ip->gd_ist = 0;
+  ip->gd_xx = 0;
+  ip->gd_type = SDT_SYSIGT;
+  ip->gd_dpl = 3;
+  ip->gd_p = 1;
+  ip->gd_hioffset = ((uintptr_t)trap)>>16 ;
+  return;
 }
 
+#if 0
 /*
  * Function: fptrap()
  *
@@ -481,7 +484,8 @@ init_dispatcher ()
 {
   /* Register the secure memory allocation and deallocation traps */
   extern void secmemtrap(void);
-  register_x86_interrupt (0x7f, secmemtrap, 3);
+  register_x86_trap (0x7f, secmemtrap);
+  register_x86_trap (0x81, secmemtrap);
 
 #if 0
   /* Page Fault and Memory Alignment Trap, respectively */
