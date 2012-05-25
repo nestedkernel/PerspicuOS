@@ -67,6 +67,7 @@ options 	INCLUDE_CONFIG_FILE     # Include this file in kernel
 options 	KDB			# Kernel debugger related code
 options 	KDB_TRACE		# Print a stack trace for a panic
 options		DDB
+options		BREAK_TO_DEBUGGER # Break signal on console goes into debugger
 
 # Make an SMP-capable kernel by default
 options 	SMP			# Symmetric MultiProcessor Kernel

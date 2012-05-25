@@ -1640,6 +1640,13 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	mtx_init(&icu_lock, "icu", NULL, MTX_SPIN | MTX_NOWITNESS);
 	mtx_init(&dt_lock, "descriptor tables", NULL, MTX_DEF);
 
+#if 1
+  /*
+   * Initialize the SVA virtual machine on the primary processor.
+   */
+  sva_init_primary();
+#endif
+
 	/* exceptions */
 	for (x = 0; x < NIDT; x++)
 		setidt(x, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
@@ -1666,9 +1673,11 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt(IDT_DTRACE_RET, &IDTVEC(dtrace_ret), SDT_SYSIGT, SEL_UPL, 0);
 #endif
 
+#if 0
 	r_idt.rd_limit = sizeof(idt0) - 1;
 	r_idt.rd_base = (long) idt;
 	lidt(&r_idt);
+#endif
 
 	/*
 	 * Initialize the i8254 before the console so that console
@@ -1680,10 +1689,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Initialize the console before we print anything out.
 	 */
 	cninit();
-
-#if 1
-  sva_init();
-#endif
 
 #ifdef DEV_ISA
 #ifdef DEV_ATPIC

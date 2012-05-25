@@ -69,6 +69,10 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/mp_machdep.c 223758 2011-07-04
 #include <machine/specialreg.h>
 #include <machine/tss.h>
 
+#if 1
+#include <sva/init.h>
+#endif
+
 #define WARMBOOT_TARGET		0
 #define WARMBOOT_OFF		(KERNBASE + 0x0467)
 #define WARMBOOT_SEG		(KERNBASE + 0x0469)
@@ -664,10 +668,13 @@ init_secondary(void)
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);	/* XXX User value while we're in the kernel */
 
-#if 1
+#if 0
 	r_idt.rd_base = (long) idt;
-#endif
 	lidt(&r_idt);
+#else
+  /* Initialize SVA for this processor */
+  sva_init_secondary();
+#endif
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	ltr(gsel_tss);
