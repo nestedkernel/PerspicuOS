@@ -93,7 +93,6 @@ extern void panic(const char *, ...);
 
 void register_x86_interrupt (int number, void *interrupt, unsigned char priv);
 void register_x86_trap (int number, void *trap);
-static void init_idt (void);
 #if 0
 static void fptrap (void);
 static void init_debug (void);
@@ -270,20 +269,13 @@ fptrap (void)
  *
  * Description:
  *  Initialize the x86 Interrupt Descriptor Table (IDT) to some nice default
- *  values.
+ *  values for the specified processor.
  *
- * TODO:
- *  Currently, this function will take over the IDT from the OS kernel.  It
- *  will copy the current IDT to its own memory and then configure the IDT to
- *  use the internal SVA table.
- *
- *  Once the port is done, SVA should set up the entire IDT table itself.
+ * Inputs:
+ *  procID - The ID of the processor which should have its IDT initialized.
  */
 static void
-init_idt (void) {
-  /* Old interrupt flags */
-  unsigned long eflags;
-
+init_idt (unsigned int procID) {
   /* Argument to lidt/sidt taken from FreeBSD. */
   static struct region_descriptor {
     unsigned long rd_limit:16;    /* segment extent */
@@ -293,63 +285,23 @@ init_idt (void) {
   /* Kernel's idea of where the IDT is */
   extern void * idt;
 
-#if 0
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushfq; popq %0\n" : "=r" (eflags));
-#endif
-
-#if 0
   /*
    * Set up the table in memory.  Each entry will be an interrupt gate to
    * a dummy function.
    */
-  for (int index = 0; index < 256; index++)
-  {
-    interrupt_table[index] =  default_interrupt;
+#if 0
+  for (int index = 0; index < 256; index++) {
+    interrupt_table[index][procID] = default_interrupt;
   }
-#endif
-
-#if 0
-  /*
-   * Find the current interrupt descriptor table (IDT).
-   */
-  __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
-#endif
-
-#if 0
-  unsigned int procID = getProcessorID();
-  unsigned copySize = ((unsigned) sva_idtreg.rd_limit) + 1;
-
-  /*
-   * Copy the contents of the old IDT into the SVA IDT.
-   */
-  memcpy (&(sva_idt[0][procID]),
-          (unsigned char *) sva_idtreg.rd_base,
-          copySize);
 #endif
 
   /*
    * Load our descriptor table on to the processor.
    */
-  memset (sva_idt, 0, sizeof (sva_idt));
   sva_idtreg.rd_limit = sizeof (struct gate_descriptor[256]) - 1;
-#if 0
   sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][procID]);
-#else
-  sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][0]);
-#endif
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
   idt = (void *) sva_idtreg.rd_base;
-
-#if 0
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-#endif
 
   return;
 }
@@ -451,21 +403,22 @@ init_fpu ()
 #endif
 
 /*
- * Intrinsic: sva_init()
+ * Intrinsic: sva_init_primary()
  *
  * Description:
- *  This routine initializes all of the information needed by the LLVA
+ *  This routine initializes all of the information needed by the SVA
  *  Execution Engine.  We do things here like setting up the interrupt
- *  descriptor table.
+ *  descriptor table.  Note that this should be called by the primary processor
+ *  (the first one that starts execution on system boot).
  */
 void
-sva_init ()
-{
+sva_init_primary () {
 #if 0
   init_segs ();
   init_debug ();
 #endif
-  init_idt ();
+  /* Initialize the IDT of the primary processor */
+  init_idt (0);
 #if 0
   init_dispatcher ();
 #endif
@@ -476,6 +429,39 @@ sva_init ()
   llva_reset_local_counters();
 #endif
 }
+
+/*
+ * Intrinsic: sva_init_secondary()
+ *
+ * Description:
+ *  This routine initializes all of the information needed by the SVA
+ *  Execution Engine.  We do things here like setting up the interrupt
+ *  descriptor table.  Note that this should be called by secondary processors.
+ */
+void
+sva_init_secondary () {
+#if 0
+  init_segs ();
+  init_debug ();
+#endif
+  /*
+   * Initialize the IDT of the primary processor
+   * FIXME: For now, we use the primary processor's IDT.  When we can, we
+   * should have the kernel register whatever is in the primary IDT into the
+   * other processor's IDTs.
+   */
+  init_idt (0);
+#if 0
+  init_dispatcher ();
+#endif
+#if 0
+  init_mmu ();
+  init_fpu ();
+  llva_reset_counters();
+  llva_reset_local_counters();
+#endif
+}
+
 
 #define REGISTER_EXCEPTION(number) \
   extern void trap##number(void); \

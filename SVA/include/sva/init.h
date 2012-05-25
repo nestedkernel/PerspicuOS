@@ -11,6 +11,8 @@
 #ifndef SVA_INIT_H
 #define SVA_INIT_H
 
-extern void sva_init ();
+/* Initialization functions */
+extern void sva_init_primary ();
+extern void sva_init_secondary ();
 #endif
 
