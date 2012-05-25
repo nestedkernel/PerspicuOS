@@ -154,7 +154,7 @@ struct  gate_descriptor {
  *
  *  Note that we need one of these per processor.
  */
-static struct gate_descriptor sva_idt[2*256][numProcessors];
+static struct gate_descriptor sva_idt[256][numProcessors];
 
 /* Taken from segments.h in FreeBSD */
 static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */
@@ -293,10 +293,12 @@ init_idt (void) {
   /* Kernel's idea of where the IDT is */
   extern void * idt;
 
+#if 0
   /*
    * Disable interrupts.
    */
   __asm__ __volatile__ ("pushfq; popq %0\n" : "=r" (eflags));
+#endif
 
 #if 0
   /*
@@ -309,17 +311,16 @@ init_idt (void) {
   }
 #endif
 
+#if 0
   /*
    * Find the current interrupt descriptor table (IDT).
    */
   __asm__ __volatile__ ("sidt %0": "=m" (sva_idtreg));
+#endif
 
+#if 0
   unsigned int procID = getProcessorID();
   unsigned copySize = ((unsigned) sva_idtreg.rd_limit) + 1;
-  printf ("SVA: IDT: %x: %x %lx %p\n", procID,
-                                       sva_idtreg.rd_limit,
-                                       sva_idtreg.rd_base,
-                                       &(sva_idt[0][procID]));
 
   /*
    * Copy the contents of the old IDT into the SVA IDT.
@@ -327,23 +328,29 @@ init_idt (void) {
   memcpy (&(sva_idt[0][procID]),
           (unsigned char *) sva_idtreg.rd_base,
           copySize);
+#endif
 
   /*
    * Load our descriptor table on to the processor.
    */
-  sva_idtreg.rd_limit = sizeof (unsigned long[2*256]) - 1;
+  memset (sva_idt, 0, sizeof (sva_idt));
+  sva_idtreg.rd_limit = sizeof (struct gate_descriptor[256]) - 1;
+#if 0
   sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][procID]);
-  printf ("SVA: About to lidt: %x\n", sva_idtreg.rd_limit);
+#else
+  sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0][0]);
+#endif
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
   idt = (void *) sva_idtreg.rd_base;
 
+#if 0
   /*
    * Re-enable interrupts.
    */
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
+#endif
 
-  printf ("SVA: Done with init_idt\n");
   return;
 }
 
@@ -459,7 +466,9 @@ sva_init ()
   init_debug ();
 #endif
   init_idt ();
+#if 0
   init_dispatcher ();
+#endif
 #if 0
   init_mmu ();
   init_fpu ();
