@@ -185,7 +185,7 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   /*
    * First determine which interrupt table we should be modifying.
    */
-#if 1
+#if 0
   unsigned int procID = getProcessorID();
 #else
   unsigned int procID = 0;
