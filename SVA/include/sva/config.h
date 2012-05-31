@@ -59,19 +59,6 @@ getProcessorID() {
       return index;
   }
 
-  /*
-   * If we did not find it, then add it to the table.
-   *
-   * TODO: Fix the race condition here.
-   */
-  for (unsigned index = 0; index < numProcessors; ++index) {
-    if (!(svaProcMap[index].allocated)) {
-      svaProcMap[index].allocated = 1;
-      svaProcMap[index].apicID = apicID;
-      return index;
-    }
-  }
-
   return UINT_MAX;
 }
 
