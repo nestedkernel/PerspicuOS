@@ -23,7 +23,7 @@ static const unsigned int numProcessors=4;
 
 /* Structure for describing processors */
 struct procMap {
-  unsigned char allocated : 1;
+  unsigned char allocated;
   unsigned int apicID;
 };
 
