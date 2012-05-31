@@ -223,7 +223,11 @@ register_x86_trap (int number, void *trap) {
   /*
    * First determine which interrupt table we should be modifying.
    */
+#if 0
   unsigned int procID = getProcessorID();
+#else
+  unsigned int procID = 0;
+#endif
   struct gate_descriptor *ip = &sva_idt[procID][number];
 
   /*
@@ -267,6 +271,39 @@ fptrap (void)
                         "mov %0, %%cr0\n" : "=&r" (cr0) : "r" (~(ts)));
 }
 #endif
+
+/*
+ * Function: init_procID()
+ *
+ * Description:
+ *  Determine the APIC processor ID and map that to an available SVA logical
+ *  processor ID.
+ */
+static void
+init_procID (void) {
+  /*
+   * Use the CPUID instruction to get a local APIC2 ID for the processor.
+   */
+  unsigned int apicID;
+  __asm__ __volatile__ ("movl $0xB, %%eax\ncpuid" : "=d" (apicID));
+
+  /*
+   * Find an available processor ID and use that.
+   */
+  for (unsigned index = 0; index < numProcessors; ++index) {
+#if 1
+    if (__sync_bool_compare_and_swap (&(svaProcMap[index].allocated), 0, 1)) {
+#else
+    if (!(svaProcMap[index].allocated)) {
+#endif
+      svaProcMap[index].allocated = 1;
+      svaProcMap[index].apicID = apicID;
+      return;
+    }
+  }
+
+  return;
+}
 
 /*
  * Function: init_idt()
@@ -421,6 +458,9 @@ sva_init_primary () {
   init_segs ();
   init_debug ();
 #endif
+  /* Initialize the processor ID */
+  init_procID();
+
   /* Initialize the IDT of the primary processor */
   init_idt (0);
 #if 0
@@ -448,6 +488,7 @@ sva_init_secondary () {
   init_segs ();
   init_debug ();
 #endif
+
   /*
    * Initialize the IDT of the primary processor
    * FIXME: For now, we use the primary processor's IDT.  When we can, we
@@ -455,6 +496,7 @@ sva_init_secondary () {
    * other processor's IDTs.
    */
   init_idt (0);
+
 #if 0
   init_dispatcher ();
 #endif
