@@ -120,7 +120,7 @@ struct procMap svaProcMap[numProcessors];
  *
  *  Note that we need one of these per processor.
  */
-void * interrupt_table[256][numProcessors];
+void * interrupt_table[256];
 
 /*
  * Taken from FreeBSD: amd64/segments.h
@@ -153,7 +153,7 @@ struct  gate_descriptor {
  *
  *  Note that we need one of these per processor.
  */
-static struct gate_descriptor sva_idt[numProcessors][256];
+static struct gate_descriptor sva_idt[256];
 
 /* Taken from segments.h in FreeBSD */
 static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */
@@ -185,12 +185,7 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
   /*
    * First determine which interrupt table we should be modifying.
    */
-#if 0
-  unsigned int procID = getProcessorID();
-#else
-  unsigned int procID = 0;
-#endif
-  struct gate_descriptor *ip = &sva_idt[procID][number];
+  struct gate_descriptor *ip = &sva_idt[number];
 
   /*
    * Add the entry into the table.
@@ -223,12 +218,7 @@ register_x86_trap (int number, void *trap) {
   /*
    * First determine which interrupt table we should be modifying.
    */
-#if 0
-  unsigned int procID = getProcessorID();
-#else
-  unsigned int procID = 0;
-#endif
-  struct gate_descriptor *ip = &sva_idt[procID][number];
+  struct gate_descriptor *ip = &sva_idt[number];
 
   /*
    * Add the entry into the table.
@@ -332,7 +322,7 @@ init_idt (unsigned int procID) {
    */
 #if 0
   for (int index = 0; index < 256; index++) {
-    interrupt_table[index][procID] = default_interrupt;
+    interrupt_table[index] = default_interrupt;
   }
 #endif
 
@@ -340,7 +330,7 @@ init_idt (unsigned int procID) {
    * Load our descriptor table on to the processor.
    */
   sva_idtreg.rd_limit = sizeof (struct gate_descriptor[256]) - 1;
-  sva_idtreg.rd_base = (uintptr_t) &(sva_idt[procID][0]);
+  sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0]);
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
   idt = (void *) sva_idtreg.rd_base;
 
