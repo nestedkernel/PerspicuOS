@@ -453,9 +453,8 @@ sva_init_primary () {
 
   /* Initialize the IDT of the primary processor */
   init_idt (0);
-#if 0
   init_dispatcher ();
-#endif
+
 #if 0
   init_mmu ();
   init_fpu ();

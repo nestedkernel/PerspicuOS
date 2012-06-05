@@ -24,7 +24,10 @@
  *  This trap handles secure memory allocations.
  */
 secmemtrap:
+  /* Use the swapgs instruction to switch to the kernel map */
+  swapgs
+
   /* Return from the trap */
   call  sva_debug
-  iret
+  iretq
 
