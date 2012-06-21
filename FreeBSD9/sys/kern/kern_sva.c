@@ -15,6 +15,10 @@
 #include <sys/malloc.h>
 #include <sys/types.h>
 
+/* Function prototypes */
+void * provideSVAMemory (uintptr_t size);
+void releaseSVAMemory (void * p, uintptr_t size);
+
 /*
  * Function: provideSVAMemory()
  *
@@ -30,7 +34,10 @@
 void *
 provideSVAMemory (uintptr_t size)
 {
-	return malloc (size);
+  static char buffer[4096];
+  void * p = buffer;
+  printf ("SVA: providesSVAMemory: %p %ld\n", p, size);
+	return p;
 }
 
 /*
@@ -47,5 +54,7 @@ provideSVAMemory (uintptr_t size)
 void
 releaseSVAMemory (void * p, uintptr_t size)
 {
-	return free (p);
+#if 0
+	return free (p, M_KOBJ);
+#endif
 }
