@@ -22,15 +22,24 @@
  *
  * Description:
  *  This trap handles secure memory allocations.
+ *
+ * Inputs:
+ *  %rdi - This register should hold the size, in bytes, of secure memory to
+ *         allocate.
+ *
+ * Return value:
+ *  %rax - This register should hold a pointer to the allocated memory.
  */
 secmemtrap:
   /* Use the swapgs instruction to switch to the kernel map */
   swapgs
 
-  /* Return from the trap */
-  call  sva_debug
+  /* Call the secure memory allocator function */
+  call  allocSecureMemory
 
   /* Use the swapgs instruction to switch back to user mode */
   swapgs
+
+  /* Return from the trap */
   iretq
 
