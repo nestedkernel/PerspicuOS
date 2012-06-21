@@ -29,5 +29,8 @@ secmemtrap:
 
   /* Return from the trap */
   call  sva_debug
+
+  /* Use the swapgs instruction to switch back to user mode */
+  swapgs
   iretq
 
