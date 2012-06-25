@@ -104,7 +104,7 @@ getVirtual (uintptr_t physical) {
  * Function: get_pagetable()
  *
  * Description:
- *  Return a virtual address that can be used to access the current page table.
+ *  Return a physical address that can be used to access the current page table.
  */
 static inline unsigned char *
 get_pagetable (void) {
@@ -119,7 +119,7 @@ get_pagetable (void) {
    * pointer are assumed to be zero, and so they are reserved or used by the
    * hardware.
    */
-  return (getVirtual (cr3 & 0xfffffffffffff000u));
+  return (unsigned char *)((((uintptr_t)cr3) & 0xfffffffffffff000u));
 }
 
 /*
@@ -169,13 +169,8 @@ unsigned
 getPhysicalPage (void * v) {
   extern int printf(const char *, ...);
 
-  /*
-   * Mask off the upper bits of the virtual address.  Part of it just isn't
-   * used by the hardware.
-   */
-  uintptr_t vi = ((uintptr_t) v) & 0x0000ffffffffffffu;
+  uintptr_t vi = ((uintptr_t) v);
   printf ("v   = %p\n", v);
-  printf ("vi  = %lx\n", vi);
 
   /*
    * Get the currently active page table.
@@ -186,7 +181,9 @@ getPhysicalPage (void * v) {
   /*
    * Get the address of the PML4e.
    */
-  unsigned char * p = (cr3 + ((vi >> 39) << 2));
+  vi &= 0x0000ffffffffffffu;
+  printf ("vi  = 0x%lx\n", vi);
+  unsigned char * p = (cr3 + ((vi >> 39) << 3));
   pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
   printf ("pml4e  = %p %p\n", pml4e, pml4e);
   printf ("pml4e  = %p %p %lx\n", pml4e, pml4e, *pml4e);
@@ -194,14 +191,15 @@ getPhysicalPage (void * v) {
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
+  vi &= 0x00000000008fffffu;
+  printf ("vi  = 0x%lx\n", vi);
 #if 0
-  vi &= 0x008fffffu;
   pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
-  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e + ((vi  >> 30) << 2));
+#endif
+  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e + ((vi  >> 30) << 3));
 
   printf ("vi     = %lx %lx\n", vi, vi >> 28);
   printf ("pdpte  = %p\n", pdpte);
-#endif
 #if 0
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
 #endif
