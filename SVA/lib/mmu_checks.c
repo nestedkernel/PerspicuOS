@@ -188,6 +188,7 @@ getPhysicalPage (void * v) {
    */
   unsigned char * p = (cr3 + ((vi >> 39) << 2));
   pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
+  pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
   printf ("pml4e  = %p\n", pml4e);
   printf ("pml4e  = %p %lx\n", pml4e, *pml4e);
 
