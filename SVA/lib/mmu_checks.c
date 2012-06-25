@@ -188,19 +188,20 @@ getPhysicalPage (void * v) {
    */
   unsigned char * p = (cr3 + ((vi >> 39) << 2));
   pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
-  pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
-  printf ("pml4e  = %p\n", pml4e);
-  printf ("pml4e  = %p %lx\n", pml4e, *pml4e);
+  printf ("pml4e  = %p %p\n", pml4e, pml4e);
+  printf ("pml4e  = %p %p %lx\n", pml4e, pml4e, *pml4e);
 
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
+#if 0
   vi &= 0x008fffffu;
   pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
   pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e + ((vi  >> 30) << 2));
 
   printf ("vi     = %lx %lx\n", vi, vi >> 28);
   printf ("pdpte  = %p\n", pdpte);
+#endif
 #if 0
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
 #endif
