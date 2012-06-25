@@ -8,13 +8,13 @@
  *===----------------------------------------------------------------------===
  */
 
-#ifndef MMU_H
-#define MMU_H
+#ifndef SVA_MMU_H
+#define SVA_MMU_H
 
 #include <sys/types.h>
 
 /* Size of the smallest page frame in bytes */
-const uintptr_t PAGE_SIZE = 4096;
+static const uintptr_t PAGE_SIZE = 4096;
 
 /*
  *****************************************************************************
@@ -44,6 +44,5 @@ sva_mm_save_pgtable (void)
   return p;
 }
 
-unsigned getPhysicalPage (void * v);
 #endif
 
