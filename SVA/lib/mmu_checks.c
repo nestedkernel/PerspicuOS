@@ -82,9 +82,6 @@ const unsigned PTE_PS       = 0x0080u;
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
 
-/* Size of a physical page frame */
-const unsigned PAGE_SIZE = 4096;
-
 /*
  * Function: getVirtual()
  *
@@ -129,9 +126,9 @@ get_pagetable (void) {
  * Function: protect_pte()
  *
  * Description:
- *  Protects the page table entry. This disables the flag in cr0 which bypasses
- *   the RW flag in pagetables. After this call, it is safe to re-enable
- *   interrupts.
+ *  Protects the page table entry. This disables the flag in CR0 which bypasses
+ *  the RW flag in pagetables. After this call, it is safe to re-enable
+ *  interrupts.
  */
 static inline void
 protect_pte(void) {
@@ -148,7 +145,7 @@ protect_pte(void) {
  * Function: unprotect_pte
  *
  * Description:
- *  This function disabled page protection on x86_64 systems.  It is used by
+ *  This function disables page protection on x86_64 systems.  It is used by
  *  the SVA VM to allow itself to disable protection to update the in-memory
  *  page tables.
  */
@@ -189,7 +186,7 @@ getPhysicalPage (void * v) {
   /*
    * Get the address of the PML4e.
    */
-  unsigned char * p = cr3 + (vi >> 37);
+  unsigned char * p = (cr3 + ((vi >> 39) << 2));
   pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
   printf ("pml4e  = %p\n", pml4e);
   printf ("pml4e  = %p %lx\n", pml4e, *pml4e);
@@ -197,8 +194,15 @@ getPhysicalPage (void * v) {
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e & 0xfffffffffffff000u) +  (vi >> 28);
+  vi &= 0x008fffffu;
+  pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
+  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e + ((vi  >> 30) << 2));
+
+  printf ("vi     = %lx %lx\n", vi, vi >> 28);
+  printf ("pdpte  = %p\n", pdpte);
+#if 0
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
+#endif
   return 0;
 
 #if 0
