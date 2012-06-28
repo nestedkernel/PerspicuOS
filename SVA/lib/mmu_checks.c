@@ -193,18 +193,49 @@ getPhysicalPage (void * v) {
    */
   vi &= 0x00000000008fffffu;
   printf ("vi  = 0x%lx\n", vi);
-#if 0
-  pml4e = (pml4e_t *)((uintptr_t)(pml4e) & 0x000ffffffffff000u);
-#endif
-  pdpte_t * pdpte = (pdpte_t *) getVirtual (*pml4e + ((vi  >> 30) << 3));
+  pdpte_t * pdpte = (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) +
+                                            ((vi  >> 30) << 3));
 
   printf ("vi     = %lx %lx\n", vi, vi >> 28);
   printf ("pdpte  = %p\n", pdpte);
-#if 0
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
-#endif
-  return 0;
 
+  /*
+   * Determine if the PDPTE has the PS flag set.  If so, then it's pointing to
+   * a 1 GB page; return the physical address of that page.
+   */
+  if ((*pdpte) & PTE_PS) {
+    printf ("PDPTE: PS BIT\n");
+    return (*pdpte & 0x000fffffffffffffu) >> 30;
+  }
+
+  /*
+   * Find the page directory entry table from the PDPTE value.
+   */
+  vi &= 0x000000003fffffffu;
+  pde_t * pde = (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) +
+                                            ((vi  >> 21) << 3));
+  printf ("pde  = %p\n", pde);
+  printf ("pde  = %p %lx\n", pde, *pde);
+
+  /*
+   * Determine if the PDE has the PS flag set.  If so, then it's pointing to a
+   * 2 MB page; return the physical address of that page.
+   */
+  if ((*pde) & PTE_PS) {
+    printf ("PDE: PS BIT\n");
+    return (*pde & 0x000fffffffffffffu) >> 21;
+  }
+
+  /*
+   * Find the PTE pointed to by this PDE.
+   */
+  vi &= 0x0000000000000fffu;
+  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) +
+                                            (vi >> 12));
+  printf ("pte  = %p\n", pte);
+  printf ("pte  = %p %lx\n", pte, *pte);
+  return 0;
 #if 0
   /*
    * Go to the next level in the hierarchy.
