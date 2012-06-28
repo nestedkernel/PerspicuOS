@@ -169,7 +169,8 @@ unsigned
 getPhysicalPage (void * v) {
   extern int printf(const char *, ...);
 
-  uintptr_t vi = ((uintptr_t) v);
+  uintptr_t vaddr  = ((uintptr_t) v);
+  uintptr_t offset = 0;
   printf ("v   = %p\n", v);
 
   /*
@@ -181,22 +182,18 @@ getPhysicalPage (void * v) {
   /*
    * Get the address of the PML4e.
    */
-  vi &= 0x000fffffffffffffu;
-  printf ("vi  = 0x%lx\n", vi);
-  unsigned char * p = (cr3 + ((vi >> 39) << 3));
-  pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
+  offset = ((vaddr >> 39) << 3) & 0x0000000000000fffu;
+  pml4e_t * pml4e = (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
   printf ("pml4e  = %p %p\n", pml4e, pml4e);
   printf ("pml4e  = %p %p %lx\n", pml4e, pml4e, *pml4e);
 
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  vi &= 0x00000000008fffffu;
-  printf ("vi  = 0x%lx\n", vi);
+  offset = ((vaddr  >> 30) << 3) & 0x0000000000000fffu;
   pdpte_t * pdpte = (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) +
-                                            ((vi  >> 30) << 3));
+                                            offset);
 
-  printf ("vi     = %lx %lx\n", vi, vi >> 27);
   printf ("pdpte  = %p\n", pdpte);
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
 
@@ -212,9 +209,8 @@ getPhysicalPage (void * v) {
   /*
    * Find the page directory entry table from the PDPTE value.
    */
-  vi &= 0x000000003fffffffu;
-  pde_t * pde = (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) +
-                                            ((vi  >> 21) << 3));
+  offset = ((vaddr  >> 21) << 3) & 0x0000000000000fffu;
+  pde_t * pde = (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
   printf ("pde  = %p\n", pde);
   printf ("pde  = %p %lx\n", pde, *pde);
 
@@ -230,10 +226,14 @@ getPhysicalPage (void * v) {
   /*
    * Find the PTE pointed to by this PDE.
    */
-  vi &= 0x0000000000000fffu;
-  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + (vi >> 12));
+  offset = (vaddr >> 12) & 0x0000000000000fffu;
+  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
   printf ("pte  = %p\n", pte);
   printf ("pte  = %p %lx\n", pte, *pte);
+
+  offset = vaddr & 0x00000000000001ffu;
+  uintptr_t paddr = (*pte & 0x000ffffffffff000u) + offset;
+  printf ("paddr: %lx %lx\n", paddr, getVirtual (paddr));
   return 0;
 #if 0
   /*
