@@ -181,7 +181,7 @@ getPhysicalPage (void * v) {
   /*
    * Get the address of the PML4e.
    */
-  vi &= 0x0000ffffffffffffu;
+  vi &= 0x000fffffffffffffu;
   printf ("vi  = 0x%lx\n", vi);
   unsigned char * p = (cr3 + ((vi >> 39) << 3));
   pml4e_t * pml4e = (pml4e_t *) getVirtual ((uintptr_t) p);
@@ -196,7 +196,7 @@ getPhysicalPage (void * v) {
   pdpte_t * pdpte = (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) +
                                             ((vi  >> 30) << 3));
 
-  printf ("vi     = %lx %lx\n", vi, vi >> 28);
+  printf ("vi     = %lx %lx\n", vi, vi >> 27);
   printf ("pdpte  = %p\n", pdpte);
   printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
 
@@ -231,8 +231,7 @@ getPhysicalPage (void * v) {
    * Find the PTE pointed to by this PDE.
    */
   vi &= 0x0000000000000fffu;
-  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) +
-                                            (vi >> 12));
+  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + (vi >> 12));
   printf ("pte  = %p\n", pte);
   printf ("pte  = %p %lx\n", pte, *pte);
   return 0;
