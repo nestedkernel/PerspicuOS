@@ -27,7 +27,7 @@ typedef uintptr_t pdpte_t;
 typedef uintptr_t pde_t;
 typedef uintptr_t pte_t;
 
-extern unsigned getPhysicalPage (void * v);
+extern uintptr_t getPhysicalAddr (void * v);
 
 /*
  * Function: sva_mm_save_pgtable()

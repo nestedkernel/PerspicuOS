@@ -160,13 +160,13 @@ unprotect_pte(void) {
 }
 
 /*
- * Function: getPhysicalPage()
+ * Function: getPhysicalAddr()
  *
  * Description:
  *  Find the physical page number of the specified virtual address.
  */
-unsigned
-getPhysicalPage (void * v) {
+uintptr_t
+getPhysicalAddr (void * v) {
   extern int printf(const char *, ...);
 
   /* Mask to get the proper number of bits from the virtual address */
@@ -244,28 +244,7 @@ getPhysicalPage (void * v) {
   offset = vaddr & vmask;
   uintptr_t paddr = (*pte & 0x000ffffffffff000u) + offset;
   printf ("paddr: %lx %lx\n", paddr, getVirtual (paddr));
-  return 0;
-#if 0
-  /*
-   * Go to the next level in the hierarchy.
-   */
-  l2_t * pde = 0;
-  if ((*pdp) & PTE_PS) {
-    return 0;
-    /* return (pde[((vi >> 29u)) << 2] >> PAGESHIFT); */
-  }
-
-  /*
-   * Go to the next level in the hierarchy.
-   */
-  pde = getVirtual (pdp[((vi >> 30) & 0x1ffu) << 2]);
-  if (*pde & PTE_PS) {
-    return 1;
-  }
-
-  l1_t * pte = getVirtual (pde[((vi >> 21) & 0x1ffu) << 2]);
-  return (*pte >> PAGESHIFT);
-#endif
+  return paddr;
 }
 
 #if 0
