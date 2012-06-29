@@ -119,7 +119,7 @@ get_pagetable (void) {
    * pointer are assumed to be zero, and so they are reserved or used by the
    * hardware.
    */
-  return (unsigned char *)((((uintptr_t)cr3) & 0xfffffffffffff000u));
+  return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
 }
 
 /*
@@ -169,8 +169,15 @@ unsigned
 getPhysicalPage (void * v) {
   extern int printf(const char *, ...);
 
+  /* Mask to get the proper number of bits from the virtual address */
+  static const uintptr_t vmask = 0x0000000000000fffu;
+
+  /* Virtual address to convert */
   uintptr_t vaddr  = ((uintptr_t) v);
+
+  /* Offset into the page table */
   uintptr_t offset = 0;
+
   printf ("v   = %p\n", v);
 
   /*
@@ -182,7 +189,7 @@ getPhysicalPage (void * v) {
   /*
    * Get the address of the PML4e.
    */
-  offset = ((vaddr >> 39) << 3) & 0x0000000000000fffu;
+  offset = ((vaddr >> 39) << 3) & vmask;
   pml4e_t * pml4e = (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
   printf ("pml4e  = %p %p\n", pml4e, pml4e);
   printf ("pml4e  = %p %p %lx\n", pml4e, pml4e, *pml4e);
@@ -190,7 +197,7 @@ getPhysicalPage (void * v) {
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  offset = ((vaddr  >> 30) << 3) & 0x0000000000000fffu;
+  offset = ((vaddr  >> 30) << 3) & vmask;
   pdpte_t * pdpte = (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) +
                                             offset);
 
@@ -209,10 +216,10 @@ getPhysicalPage (void * v) {
   /*
    * Find the page directory entry table from the PDPTE value.
    */
-  offset = ((vaddr  >> 21) << 3) & 0x0000000000000fffu;
+  offset = ((vaddr  >> 21) << 3) & vmask;
   pde_t * pde = (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
-  printf ("pde  = %p\n", pde);
-  printf ("pde  = %p %lx\n", pde, *pde);
+  printf ("pde    = %p\n", pde);
+  printf ("pde    = %p %lx\n", pde, *pde);
 
   /*
    * Determine if the PDE has the PS flag set.  If so, then it's pointing to a
@@ -226,12 +233,15 @@ getPhysicalPage (void * v) {
   /*
    * Find the PTE pointed to by this PDE.
    */
-  offset = (vaddr >> 12) & 0x0000000000000fffu;
+  offset = ((vaddr >> 12) << 3) & vmask;
   pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
-  printf ("pte  = %p\n", pte);
-  printf ("pte  = %p %lx\n", pte, *pte);
+  printf ("pte    = %p\n", pte);
+  printf ("pte    = %p %lx\n", pte, *pte);
 
-  offset = vaddr & 0x00000000000001ffu;
+  /*
+   * Compute the physical address.
+   */
+  offset = vaddr & vmask;
   uintptr_t paddr = (*pte & 0x000ffffffffff000u) + offset;
   printf ("paddr: %lx %lx\n", paddr, getVirtual (paddr));
   return 0;
