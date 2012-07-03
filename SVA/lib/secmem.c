@@ -22,6 +22,8 @@
 extern void * provideSVAMemory (uintptr_t size);
 extern void releaseSVAMemory (void * p, uintptr_t size);
 
+extern int printf(const char *, ...);
+
 /*
  * Function: allocSecureMemory()
  *
@@ -34,31 +36,77 @@ extern void releaseSVAMemory (void * p, uintptr_t size);
  *
  * Return value:
  *  A pointer to the first byte of the secure memory.
+ *
+ * Notes:
+ *  The FreeBSD memory map has a gap at 0x0000800000000000 - 0xffff7fffffffffff.
  */
 unsigned char *
 allocSecureMemory (uintptr_t size) {
-  /* Secure memory pointer */
+  /* Virtual address of allocated secure memory pointer */
   unsigned char * sp;
 
+  /* Virtual address assigned to secure memory by SVA */
+  unsigned char * vaddr = 0;
+
+  /* Start of virtual address space used for secure memory */
+  static unsigned char * secmemp = (unsigned char *) 0x0000800000000000u;
+
   /*
-   * Get the memory from the operating system.
+   * Get the memory from the operating system.  Note that the OS provides a
+   * virtual address of the allocated memory.
    */
-  if ((sp = provideSVAMemory (size)) == 0) {
+#if 0
+  if ((sp = provideSVAMemory (size)) != 0) {
+#else
+  if (1) {
+    sp = (unsigned char *) 0xfffffe0000000000;
+#endif
+    /*
+     * Assign the memory to live within the secure memory virtual address
+     * space.
+     */
+    vaddr = secmemp;
+
+    /*
+     * Map each page of the memory into the part of the virtual address space
+     * used for private memory.
+     */
+    for (unsigned char * p = sp; p < (sp + size); p += PAGE_SIZE) {
+      /* Physical address of allocated secure memory */
+      uintptr_t paddr;
+
+      /*
+       * Get the physical address of the memory page.
+       */
+      paddr = getPhysicalAddr (p);
+      printf ("SVA: paddr: %lx\n", paddr);
+
+      /*
+       * Map the memory into a part of the address space reserved for secure
+       * memory.
+       */
+#if 0
+      mapSecurePage (secmemp, paddr);
+#endif
+
+      /*
+       * Let the next page use a different secure memory address.
+       */
+      secmemp += PAGE_SIZE;
+    }
+
+#if 0
     /*
      * Zero out the memory.
      */
-    memset (sp, 0, size);
-
-    /*
-     * TODO:
-     * Map the memory into user-space.
-     */
+    memset (vaddr, 0, size);
+#endif
   }
 
   /*
    * Return the memory to the caller.
    */
-  return sp;
+  return vaddr;
 }
 
 /*
