@@ -14,7 +14,7 @@
 #include <sys/types.h>
 
 /* Size of the smallest page frame in bytes */
-static const uintptr_t PAGE_SIZE = 4096;
+static const uintptr_t PAGE_SIZE = 4096u;
 
 /*
  *****************************************************************************
