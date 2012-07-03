@@ -34,6 +34,9 @@ const unsigned char PG_L2     = 0x8;
 const unsigned char PG_L3     = 0x9;
 const unsigned char PG_L4     = 0xA;
 
+/* Mask to get the proper number of bits from the virtual address */
+static const uintptr_t vmask = 0x0000000000000fffu;
+
 /*
  * Struct: page_desc_t
  *
@@ -159,6 +162,33 @@ unprotect_pte(void) {
   __asm__ __volatile("movq %0,%%cr0\n": : "r"(value));
 }
 
+/* Functions for finding the virtual address of page table components */
+
+static inline pml4e_t *
+get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
+  /* Offset into the page table */
+  uintptr_t offset = ((vaddr >> 39) << 3) & vmask;
+  return (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
+}
+
+static inline pdpte_t *
+get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
+  return (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
+}
+
+static inline pde_t *
+get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
+  return (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
+}
+
+static inline pte_t *
+get_pteVaddr (pde_t * pde, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr >> 12) << 3) & vmask;
+  return (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
+}
+
 /*
  * Function: getPhysicalAddr()
  *
@@ -178,31 +208,20 @@ getPhysicalAddr (void * v) {
   /* Offset into the page table */
   uintptr_t offset = 0;
 
-  printf ("v   = %p\n", v);
-
   /*
    * Get the currently active page table.
    */
   unsigned char * cr3 = get_pagetable();
-  printf ("cr3 = %p\n", cr3);
 
   /*
    * Get the address of the PML4e.
    */
-  offset = ((vaddr >> 39) << 3) & vmask;
-  pml4e_t * pml4e = (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
-  printf ("pml4e  = %p %p\n", pml4e, pml4e);
-  printf ("pml4e  = %p %p %lx\n", pml4e, pml4e, *pml4e);
+  pml4e_t * pml4e = get_pml4eVaddr (cr3, vaddr);
 
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  offset = ((vaddr  >> 30) << 3) & vmask;
-  pdpte_t * pdpte = (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) +
-                                            offset);
-
-  printf ("pdpte  = %p\n", pdpte);
-  printf ("pdpte  = %p %lx\n", pdpte, *pdpte);
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
 
   /*
    * Determine if the PDPTE has the PS flag set.  If so, then it's pointing to
@@ -216,10 +235,7 @@ getPhysicalAddr (void * v) {
   /*
    * Find the page directory entry table from the PDPTE value.
    */
-  offset = ((vaddr  >> 21) << 3) & vmask;
-  pde_t * pde = (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
-  printf ("pde    = %p\n", pde);
-  printf ("pde    = %p %lx\n", pde, *pde);
+  pde_t * pde = get_pdeVaddr (pdpte, vaddr);
 
   /*
    * Determine if the PDE has the PS flag set.  If so, then it's pointing to a
@@ -227,16 +243,13 @@ getPhysicalAddr (void * v) {
    */
   if ((*pde) & PTE_PS) {
     printf ("PDE: PS BIT\n");
-    return (*pde & 0x000fffffffffffffu) >> 21;
+    return (*pde & 0x000fffffffe00000u) + (vaddr & 0x1fffffu);
   }
 
   /*
    * Find the PTE pointed to by this PDE.
    */
-  offset = ((vaddr >> 12) << 3) & vmask;
-  pte_t * pte = (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
-  printf ("pte    = %p\n", pte);
-  printf ("pte    = %p %lx\n", pte, *pte);
+  pte_t * pte = get_pteVaddr (pde, vaddr);
 
   /*
    * Compute the physical address.
@@ -245,6 +258,21 @@ getPhysicalAddr (void * v) {
   uintptr_t paddr = (*pte & 0x000ffffffffff000u) + offset;
   printf ("paddr: %lx %lx\n", paddr, getVirtual (paddr));
   return paddr;
+}
+
+/*
+ * Function: mapSecurePage()
+ *
+ * Description:
+ *  Map a single frame of secure memory into the specified virtual address.
+ *
+ * Inputs:
+ *  vaddr - The virtual address into which to map the physical page frame.
+ *  paddr - The physical address of the page frame to map.
+ */
+void
+mapSecurePage (unsigned char * vaddr, uintptr_t paddr) {
+  return;
 }
 
 #if 0
