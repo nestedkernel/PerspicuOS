@@ -51,20 +51,18 @@ allocSecureMemory (uintptr_t size) {
   /* Start of virtual address space used for secure memory */
   static unsigned char * secmemp = (unsigned char *) 0x0000800000000000u;
 
+  printf ("SVA: allocSecureMemory: %lx\n", getPhysicalAddr (0xfffffe0000004000u));
+
   /*
    * Get the memory from the operating system.  Note that the OS provides a
    * virtual address of the allocated memory.
    */
-#if 0
   if ((sp = provideSVAMemory (size)) != 0) {
-#else
-  if (1) {
-    sp = (unsigned char *) 0xfffffe0000000000;
-#endif
     /*
      * Assign the memory to live within the secure memory virtual address
      * space.
      */
+    printf ("SVA: allocSecureMemory: vaddr: %lx\n", vaddr);
     vaddr = secmemp;
 
     /*
@@ -79,15 +77,18 @@ allocSecureMemory (uintptr_t size) {
        * Get the physical address of the memory page.
        */
       paddr = getPhysicalAddr (p);
-      printf ("SVA: paddr: %lx\n", paddr);
+      printf ("SVA: allocSecureMemory: paddr: %lx\n", paddr);
 
       /*
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
-#if 0
       mapSecurePage (secmemp, paddr);
-#endif
+
+      /*
+       * Double check the results.
+       */
+      printf ("SVA: Check: %lx %lx\n", paddr, getPhysicalAddr (secmemp));
 
       /*
        * Let the next page use a different secure memory address.

@@ -28,6 +28,7 @@ typedef uintptr_t pde_t;
 typedef uintptr_t pte_t;
 
 extern uintptr_t getPhysicalAddr (void * v);
+extern void mapSecurePage (unsigned char * v, uintptr_t paddr);
 
 /*
  * Function: sva_mm_save_pgtable()
