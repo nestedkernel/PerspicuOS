@@ -43,3 +43,27 @@ secmemtrap:
   /* Return from the trap */
   iretq
 
+/*
+ * Trap: secfreetrap
+ *
+ * Description:
+ *  This trap handles secure memory deallocations.
+ *
+ * Inputs:
+ *  %rdi - The pointer to the first byte of secure memory to deallocate.
+ *  %rsi - This register should hold the size, in bytes, of secure memory to
+ *         allocate.
+ */
+secfreetrap:
+  /* Use the swapgs instruction to switch to the kernel map */
+  swapgs
+
+  /* Call the secure memory deallocator function */
+  call  freeSecureMemory
+
+  /* Use the swapgs instruction to switch back to user mode */
+  swapgs
+
+  /* Return from the trap */
+  iretq
+

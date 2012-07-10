@@ -234,7 +234,6 @@ getPhysicalAddr (void * v) {
    * a 1 GB page; return the physical address of that page.
    */
   if ((*pdpte) & PTE_PS) {
-    printf ("PDPTE: PS BIT\n");
     return (*pdpte & 0x000fffffffffffffu) >> 30;
   }
 
@@ -248,7 +247,6 @@ getPhysicalAddr (void * v) {
    * 2 MB page; return the physical address of that page.
    */
   if ((*pde) & PTE_PS) {
-    printf ("PDE: PS BIT\n");
     return (*pde & 0x000fffffffe00000u) + (vaddr & 0x1fffffu);
   }
 
@@ -262,7 +260,6 @@ getPhysicalAddr (void * v) {
    */
   offset = vaddr & vmask;
   uintptr_t paddr = (*pte & 0x000ffffffffff000u) + offset;
-  printf ("paddr: %lx %lx %lx\n", *pte, paddr, getVirtual (paddr));
   return paddr;
 }
 
@@ -289,18 +286,15 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * table, add one.
    */
   uintptr_t vaddr = (uintptr_t) v;
-  printf ("SVA: mapSecurePage: vaddr = %lx\n", vaddr);
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
   if (!isPresent (pml4e)) {
     printf ("SVA: mapSecurePage: No PML4E!\n");
   }
-  printf ("SVA: pml4e: %lx\n", *pml4e);
 
   /*
    * Enable writing to the virtual address space used for secure memory.
    */
   *pml4e |= PTE_CANUSER;
-  printf ("SVA: pml4e: %lx\n", *pml4e);
 
   /*
    * Get the PDPTE entry (or add it if it is not present).
@@ -310,7 +304,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     printf ("SVA: mapSecurePage: No PDPTE!\n");
   }
   *pdpte |= PTE_CANUSER;
-  printf ("SVA: pdpte: %lx\n", *pdpte);
 
   if ((*pdpte) & PTE_PS) {
     printf ("mapSecurePage: PDPTE has PS BIT\n");
@@ -321,8 +314,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
-    printf ("SVA: mapSecurePage: No PDE!\n");
-
     /*
      * Install a new PDE entry.
      */
@@ -331,7 +322,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   }
 
   *pde |= PTE_CANUSER;
-  printf ("SVA: pde: %lx\n", *pde);
 
   if ((*pde) & PTE_PS) {
     printf ("mapSecurePage: PDE has PS BIT\n");
@@ -344,13 +334,11 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   if (isPresent (pte)) {
     printf ("SVA: mapSecurePage: PTE is present!\n");
   }
-  printf ("SVA: pte: %lx\n", *pte);
 
   /*
    * Modify the PTE to install the physical to virtual page mapping.
    */
   *pte = (paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
-  printf ("SVA: mapSecurePage: %lx -> %lx PTE: %lx\n", vaddr, paddr, *pte);
   return;
 }
 

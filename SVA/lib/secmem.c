@@ -75,18 +75,12 @@ allocSecureMemory (uintptr_t size) {
        * Get the physical address of the memory page.
        */
       paddr = getPhysicalAddr (p);
-      printf ("SVA: allocSecureMemory: paddr: %lx\n", paddr);
 
       /*
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
       mapSecurePage (secmemp, paddr);
-
-      /*
-       * Double check the results.
-       */
-      printf ("SVA: Check: %lx %lx\n", paddr, getPhysicalAddr (secmemp));
 
       /*
        * Let the next page use a different secure memory address.
@@ -118,10 +112,23 @@ allocSecureMemory (uintptr_t size) {
  */
 void
 freeSecureMemory (unsigned char * p, uintptr_t size) {
+  printf ("SVA: freeSecureMemory: %p %lx\n", p, size);
+
+  /*
+   * Verify that the memory is within the secure memory portion of the
+   * address space.
+   *
+   * TODO: Implement me!
+   */
+
   /*
    * Zero out the memory.
    */
   memset (p, 0, size);
+
+  /*
+   * Unmap the memory from the secure memory virtual address space.
+   */
 
   /*
    * Release the memory to the operating system.
