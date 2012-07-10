@@ -280,6 +280,10 @@ void
 mapSecurePage (unsigned char * v, uintptr_t paddr) {
   extern int printf(const char *, ...);
 
+  /* Memory to use for missing tables */
+  static char buffer[4096] __attribute__ ((aligned (4096)));
+  static char * nextbuf = buffer;
+
   /*
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
@@ -305,7 +309,12 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   if (!isPresent (pdpte)) {
     printf ("SVA: mapSecurePage: No PDPTE!\n");
   }
+  *pdpte |= PTE_CANUSER;
   printf ("SVA: pdpte: %lx\n", *pdpte);
+
+  if ((*pdpte) & PTE_PS) {
+    printf ("mapSecurePage: PDPTE has PS BIT\n");
+  }
 
   /*
    * Get the PDE entry (or add it if it is not present).
@@ -313,7 +322,15 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
     printf ("SVA: mapSecurePage: No PDE!\n");
+
+    /*
+     * Install a new PDE entry.
+     */
+    uintptr_t pde_paddr = getPhysicalAddr (nextbuf);
+    *pde = (pde_paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
+
+  *pde |= PTE_CANUSER;
   printf ("SVA: pde: %lx\n", *pde);
 
   if ((*pde) & PTE_PS) {
