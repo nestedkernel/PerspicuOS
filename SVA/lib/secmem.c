@@ -49,9 +49,8 @@ allocSecureMemory (uintptr_t size) {
   unsigned char * vaddr = 0;
 
   /* Start of virtual address space used for secure memory */
-  static unsigned char * secmemp = (unsigned char *) 0x0000800000000000u;
-
-  printf ("SVA: allocSecureMemory: %lx\n", getPhysicalAddr (0xfffffe0000004000u));
+  /* Note that using the memory gap doesn't seem to work, but this does */
+  static unsigned char * secmemp = (unsigned char *) 0x0000000000f00000u;
 
   /*
    * Get the memory from the operating system.  Note that the OS provides a
@@ -62,7 +61,6 @@ allocSecureMemory (uintptr_t size) {
      * Assign the memory to live within the secure memory virtual address
      * space.
      */
-    printf ("SVA: allocSecureMemory: vaddr: %lx\n", vaddr);
     vaddr = secmemp;
 
     /*
@@ -96,11 +94,11 @@ allocSecureMemory (uintptr_t size) {
       secmemp += PAGE_SIZE;
     }
 
-#if 0
+#if 1
     /*
      * Zero out the memory.
      */
-    memset (vaddr, 0, size);
+    memset (vaddr, 0xbe, size);
 #endif
   }
 
