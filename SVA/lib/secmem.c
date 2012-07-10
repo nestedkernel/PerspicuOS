@@ -94,12 +94,10 @@ allocSecureMemory (uintptr_t size) {
       secmemp += PAGE_SIZE;
     }
 
-#if 1
     /*
      * Zero out the memory.
      */
-    memset (vaddr, 0xbe, size);
-#endif
+    memset (vaddr, 0, size);
   }
 
   /*
