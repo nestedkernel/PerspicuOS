@@ -1105,6 +1105,7 @@ setidt(idx, func, typ, dpl, ist)
 {
 	struct gate_descriptor *ip;
 
+#if 0
 	ip = idt + idx;
 	ip->gd_looffset = (uintptr_t)func;
 	ip->gd_selector = GSEL(GCODE_SEL, SEL_KPL);
@@ -1114,6 +1115,32 @@ setidt(idx, func, typ, dpl, ist)
 	ip->gd_dpl = dpl;
 	ip->gd_p = 1;
 	ip->gd_hioffset = ((uintptr_t)func)>>16 ;
+#else
+	extern void register_x86_interrupt (int, void *, unsigned char);
+
+  /*
+   * Do not change the vectors used by SVA.
+   */
+  if ((idx == 0x7f) || (idx == 0x7e))
+    return;
+
+	if (ist || (typ != SDT_SYSIGT)) {
+		ip = idt + idx;
+		ip->gd_looffset = (uintptr_t)func;
+		ip->gd_selector = GSEL(GCODE_SEL, SEL_KPL);
+		ip->gd_ist = ist;
+		ip->gd_xx = 0;
+		ip->gd_type = typ;
+		ip->gd_dpl = dpl;
+		ip->gd_p = 1;
+		ip->gd_hioffset = ((uintptr_t)func)>>16 ;
+	} else {
+		register_x86_interrupt (idx, func, dpl);
+	}
+
+	return;
+
+#endif
 }
 
 extern inthand_t
