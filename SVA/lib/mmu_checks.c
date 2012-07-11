@@ -278,7 +278,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   extern int printf(const char *, ...);
 
   /* Memory to use for missing tables */
-  static char buffer[4096] __attribute__ ((aligned (4096)));
+  static char buffer[4096*64] __attribute__ ((aligned (4096)));
   static char * nextbuf = buffer;
 
   /*
@@ -302,6 +302,17 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
     printf ("SVA: mapSecurePage: No PDPTE!\n");
+    /*
+     * Install a new PDPTE entry.
+     */
+    memset (nextbuf, 0, PAGE_SIZE);
+    uintptr_t pdpte_paddr = getPhysicalAddr (nextbuf);
+    *pdpte = (pdpte_paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
+
+    /*
+     * Update the nextbuf index to point to the next page.
+     */
+    nextbuf += 4096;
   }
   *pdpte |= PTE_CANUSER;
 
@@ -314,11 +325,18 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
+    printf ("SVA: mapSecurePage: No PDE!\n");
     /*
      * Install a new PDE entry.
      */
+    memset (nextbuf, 0, PAGE_SIZE);
     uintptr_t pde_paddr = getPhysicalAddr (nextbuf);
     *pde = (pde_paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
+
+    /*
+     * Update the nextbuf index to point to the next page.
+     */
+    nextbuf += 4096;
   }
 
   *pde |= PTE_CANUSER;
