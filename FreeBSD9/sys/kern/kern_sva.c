@@ -12,11 +12,6 @@
  *===----------------------------------------------------------------------===
  */
 
-#if 0
-#include "opt_pmap.h"
-#include "opt_vm.h"
-#endif
-
 #include <sys/malloc.h>
 #include <sys/types.h>
 
@@ -69,11 +64,7 @@ provideSVAMemory (uintptr_t size)
   /*
    * Request a page from the page manager.
    */
-#if 0
-	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL | VM_ALLOC_WIRED);
-#else
 	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL);
-#endif
 
   /*
    * Convert the page into a physical address.
