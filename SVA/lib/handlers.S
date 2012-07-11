@@ -17,6 +17,9 @@
 .global secmemtrap
 .type secmemtrap, @function
 
+.global secfreetrap
+.type secfreetrap, @function
+
 /*
  * Trap: secmemtrap
  *

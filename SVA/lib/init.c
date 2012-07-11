@@ -514,7 +514,8 @@ init_dispatcher ()
 {
   /* Register the secure memory allocation and deallocation traps */
   extern void secmemtrap(void);
-  register_x86_trap (0x7e, secmemtrap);
+  extern void secfreetrap(void);
+  register_x86_trap (0x7e, secfreetrap);
   register_x86_trap (0x7f, secmemtrap);
 
 #if 0
