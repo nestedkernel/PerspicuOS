@@ -64,12 +64,16 @@ provideSVAMemory (uintptr_t size)
    * Check to see if a single page will do.  If not, then panic.
    */
   if (size > 4096u)
-    panic ("SVA: providesSVAMemory: Too much memory requested!\n");
+    panic ("SVA: providesSVAMemory: Too much memory requested: %ld\n", size);
 
   /*
    * Request a page from the page manager.
    */
+#if 0
 	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL | VM_ALLOC_WIRED);
+#else
+	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL);
+#endif
 
   /*
    * Convert the page into a physical address.
@@ -94,7 +98,19 @@ provideSVAMemory (uintptr_t size)
 void
 releaseSVAMemory (void * p, uintptr_t size)
 {
-#if 0
-	return free (p, M_KOBJ);
-#endif
+  /* Paging structure for the memory */
+  vm_page_t page;
+
+  /*
+   * Convert the virtual address into a physical address, and then convert the
+   * physical address into a vm_page_t.
+   */
+  vm_paddr_t paddr = vtophys (p);
+  page = vm_phys_paddr_to_vm_page (paddr);
+
+  /*
+   * Now free the page.
+   */
+  vm_page_free (page);
+  return;
 }
