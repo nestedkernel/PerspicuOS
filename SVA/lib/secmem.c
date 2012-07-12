@@ -16,11 +16,8 @@
 
 #include <sys/types.h>
 
+#include "sva/callbacks.h"
 #include "sva/mmu.h"
-
-/* Kernel callback function for allocating memory */
-extern void * provideSVAMemory (uintptr_t size);
-extern void releaseSVAMemory (void * p, uintptr_t size);
 
 extern int printf(const char *, ...);
 
@@ -50,7 +47,11 @@ allocSecureMemory (uintptr_t size) {
 
   /* Start of virtual address space used for secure memory */
   /* Note that using the memory gap doesn't seem to work, but this does */
+#if 1
   static unsigned char * secmemp = (unsigned char *) 0x0000000000f00000u;
+#else
+  static unsigned char * secmemp = (unsigned char *) 0x00000000f0000000u;
+#endif
 
   /*
    * Get the memory from the operating system.  Note that the OS provides a
@@ -129,10 +130,13 @@ freeSecureMemory (unsigned char * p, uintptr_t size) {
   /*
    * Unmap the memory from the secure memory virtual address space.
    */
+  unmapSecurePage (p);
 
   /*
    * Release the memory to the operating system.
    */
+#if 0
   releaseSVAMemory (p, size);
+#endif
   return;
 }
