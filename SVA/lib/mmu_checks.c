@@ -309,6 +309,9 @@ allocPTPage (void) {
    * Find an empty page table array entry to record information about this page
    * table page.  Note that we're a multi-processor system, so use an atomic to
    * keep things valid.
+   *
+   * Note that we leave the first entry reserved.  This permits us to use a
+   * zero index to denote an invalid index.
    */
   for (ptindex = 1; ptindex < 64; ++ptindex) {
     if (__sync_bool_compare_and_swap (&(PTPages[ptindex].valid), 0, 1)) {
@@ -339,7 +342,6 @@ allocPTPage (void) {
     /*
      * Return the index in the table.
      */
-    printf ("SVA:allocPT: %lx\n", PTPages[ptindex].paddr);
     return ptindex;
   }
 
@@ -362,7 +364,6 @@ freePTPage (unsigned int ptindex) {
   /*
    * Mark the entry in the page table page array as available.
    */
-  printf ("SVA:freePT: %lx\n", PTPages[ptindex].paddr);
   PTPages[ptindex].valid = 0;
   return;
 }
@@ -388,7 +389,6 @@ updateUses (uintptr_t * ptp) {
    * use it to determine if this is an SVA VM page.
    */
   uintptr_t paddr = getPhysicalAddr (ptp) & 0xfffffffffffff000u;
-  printf ("SVA:update: %p -> %lx\n", ptp, paddr);
 
   /*
    * Look for the page table page with the specified physical address.  If we
@@ -429,7 +429,6 @@ releaseUse (uintptr_t * ptp) {
    * use it to determine if this is an SVA VM page.
    */
   uintptr_t paddr = getPhysicalAddr (ptp) & 0xfffffffffffff000u;
-  printf ("SVA:release: %p -> %lx\n", ptp, paddr);
 
   /*
    * Look for the page table page with the specified physical address.  If we
@@ -437,7 +436,6 @@ releaseUse (uintptr_t * ptp) {
    */
   for (ptindex = 0; ptindex < 64; ++ptindex) {
     if (paddr == PTPages[ptindex].paddr) {
-      printf ("SVA:release: %p -> %lx: %d\n", ptp, paddr, PTPages[ptindex].uses);
       if ((--(PTPages[ptindex].uses)) == 0) {
         return ptindex;
       }
@@ -620,13 +618,13 @@ unmapSecurePage (unsigned char * v) {
    * that the operating system doesn't get confused.
    */
   unsigned int ptindex;
-  if (ptindex = releaseUse (pte)) {
+  if ((ptindex = releaseUse (pte))) {
     freePTPage (ptindex);
-    if (ptindex = releaseUse (pde)) {
+    if ((ptindex = releaseUse (pde))) {
       freePTPage (ptindex);
-      if (ptindex = releaseUse (pdpte)) {
+      if ((ptindex = releaseUse (pdpte))) {
         freePTPage (ptindex);
-        if (ptindex = releaseUse (pml4e)) {
+        if ((ptindex = releaseUse (pml4e))) {
           freePTPage (ptindex);
         }
       }
