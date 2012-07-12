@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "sva/callbacks.h"
 #include "sva/mmu.h"
 
 /*
@@ -36,6 +37,9 @@ const unsigned char PG_L4     = 0xA;
 
 /* Mask to get the proper number of bits from the virtual address */
 static const uintptr_t vmask = 0x0000000000000fffu;
+
+/* Mask to get the address bits out of a PTE, PDE, etc. */
+static const uintptr_t addrmask = 0x000ffffffffff000u;
 
 /*
  * Struct: page_desc_t
@@ -67,6 +71,31 @@ typedef struct page_desc_t {
   /* Is this page a user page? */
   unsigned user : 1;
 } page_desc_t;
+
+/*
+ * Struct: PTInfo
+ *
+ * Description:
+ *  This structure contains information on pages fetched from the OS that are
+ *  used for page table pages that the SVA VM creates for its own purposes
+ *  (e.g., secure memory).
+ */
+struct PTInfo {
+  /* Virtual address of page provided by the OS */
+  unsigned char * vosaddr;
+
+  /* Physical address to which the virtual address is mapped. */
+  uintptr_t paddr;
+
+  /* Number of uses in this page table page */
+  unsigned short uses;
+
+  /* Flags whether this entry is used */
+  unsigned char valid;
+};
+
+/* Memory to use for missing pages in the page table */
+struct PTInfo PTPages[64];
 
 /* Size of the physical memory and page size in bytes */
 const unsigned int memSize = 1024*1024*1024;
@@ -203,8 +232,6 @@ isPresent (uintptr_t * pte) {
  */
 uintptr_t
 getPhysicalAddr (void * v) {
-  extern int printf(const char *, ...);
-
   /* Mask to get the proper number of bits from the virtual address */
   static const uintptr_t vmask = 0x0000000000000fffu;
 
@@ -264,6 +291,163 @@ getPhysicalAddr (void * v) {
 }
 
 /*
+ * Function: allocPTPage()
+ *
+ * Description:
+ *  This function allocates a page table page, initializes it, and returns it
+ *  to the caller.
+ */
+static unsigned int
+allocPTPage (void) {
+  /* Index into the page table information array */
+  unsigned int ptindex;
+
+  /* Pointer to newly allocated memory */
+  unsigned char * p;
+
+  /*
+   * Find an empty page table array entry to record information about this page
+   * table page.  Note that we're a multi-processor system, so use an atomic to
+   * keep things valid.
+   */
+  for (ptindex = 1; ptindex < 64; ++ptindex) {
+    if (__sync_bool_compare_and_swap (&(PTPages[ptindex].valid), 0, 1)) {
+      break;
+    }
+  }
+  if (ptindex == 64)
+    panic ("SVA: allocPTPage: No more table space!\n");
+
+  /*
+   * Ask the system software for a page of memory.
+   */
+  if ((p = provideSVAMemory (PAGE_SIZE)) != 0) {
+    /*
+     * Initialize the memory.
+     */
+    memset (p, 0, PAGE_SIZE);
+
+    /*
+     * Record the information about the page in the page table page array.
+     * We'll need the virtual address by which the system software knows the
+     * page as well as the physical address so that the SVA VM can unmap it
+     * later.
+     */
+    PTPages[ptindex].vosaddr = p;
+    PTPages[ptindex].paddr   = getPhysicalAddr (p);
+
+    /*
+     * Return the index in the table.
+     */
+    printf ("SVA:allocPT: %lx\n", PTPages[ptindex].paddr);
+    return ptindex;
+  }
+
+  return 0;
+}
+
+/*
+ * Function: freePTPage()
+ *
+ * Description:
+ *  Return an SVA VM page table page back to the operating system for use.
+ */
+void
+freePTPage (unsigned int ptindex) {
+  /*
+   * Release the memory back to the system software.
+   */
+  releaseSVAMemory (PTPages[ptindex].vosaddr, PAGE_SIZE);
+
+  /*
+   * Mark the entry in the page table page array as available.
+   */
+  printf ("SVA:freePT: %lx\n", PTPages[ptindex].paddr);
+  PTPages[ptindex].valid = 0;
+  return;
+}
+
+/*
+ * Function: updateUses()
+ *
+ * Description:
+ *  This function will update the number of present entries within a page table
+ *  page that was allocated by the SVA VM.
+ *
+ * Inputs:
+ *  ptp - A pointer to the page table page.  This does not need to be a page
+ *        table page owned by the SVA VM.
+ */
+static void
+updateUses (uintptr_t * ptp) {
+  /* Page table page array index */
+  unsigned int ptindex;
+
+  /*
+   * Find the physical address to which this virtual address is mapped.  We'll
+   * use it to determine if this is an SVA VM page.
+   */
+  uintptr_t paddr = getPhysicalAddr (ptp) & 0xfffffffffffff000u;
+  printf ("SVA:update: %p -> %lx\n", ptp, paddr);
+
+  /*
+   * Look for the page table page with the specified physical address.  If we
+   * find it, increment the number of uses.
+   */
+  for (ptindex = 0; ptindex < 64; ++ptindex) {
+    if (paddr == PTPages[ptindex].paddr) {
+      ++PTPages[ptindex].uses;
+    }
+  }
+
+  return;
+}
+
+/*
+ * Function: releaseUse()
+ *
+ * Description:
+ *  This function will decrement the number of present entries within a page
+ *  table page allocated by the SVA VM.
+ *
+ * Inputs:
+ *  pde - A pointer to the page table page.  This does not need to be an SVA VM
+ *        page table page.
+ *
+ * Return value:
+ *  0 - The page is not a SVA VM page table page, or the page still has live
+ *      references in it.
+ *  Otherwise, the index into the page table array will be returned.
+ */
+static unsigned int
+releaseUse (uintptr_t * ptp) {
+  /* Page table page array index */
+  unsigned int ptindex;
+
+  /*
+   * Find the physical address to which this virtual address is mapped.  We'll
+   * use it to determine if this is an SVA VM page.
+   */
+  uintptr_t paddr = getPhysicalAddr (ptp) & 0xfffffffffffff000u;
+  printf ("SVA:release: %p -> %lx\n", ptp, paddr);
+
+  /*
+   * Look for the page table page with the specified physical address.  If we
+   * find it, decrement the uses.
+   */
+  for (ptindex = 0; ptindex < 64; ++ptindex) {
+    if (paddr == PTPages[ptindex].paddr) {
+      printf ("SVA:release: %p -> %lx: %d\n", ptp, paddr, PTPages[ptindex].uses);
+      if ((--(PTPages[ptindex].uses)) == 0) {
+        return ptindex;
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*
  * Function: mapSecurePage()
  *
  * Description:
@@ -275,12 +459,6 @@ getPhysicalAddr (void * v) {
  */
 void
 mapSecurePage (unsigned char * v, uintptr_t paddr) {
-  extern int printf(const char *, ...);
-
-  /* Memory to use for missing tables */
-  static char buffer[4096*64] __attribute__ ((aligned (4096)));
-  static char * nextbuf = buffer;
-
   /*
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
@@ -301,20 +479,26 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
+    /* Page table page index */
+    unsigned int ptindex;
+
     printf ("SVA: mapSecurePage: No PDPTE!\n");
-    /*
-     * Install a new PDPTE entry.
-     */
-    memset (nextbuf, 0, PAGE_SIZE);
-    uintptr_t pdpte_paddr = getPhysicalAddr (nextbuf);
-    *pdpte = (pdpte_paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
+
+    /* Fetch a new page table page */
+    ptindex = allocPTPage ();
 
     /*
-     * Update the nextbuf index to point to the next page.
+     * Install a new PDPTE entry using the page.
      */
-    nextbuf += 4096;
+    uintptr_t pdpte_paddr = PTPages[ptindex].paddr;
+    *pdpte = (pdpte_paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
   *pdpte |= PTE_CANUSER;
+
+  /*
+   * Note that we've added another translation to the pml4e.
+   */
+  updateUses (pdpte);
 
   if ((*pdpte) & PTE_PS) {
     printf ("mapSecurePage: PDPTE has PS BIT\n");
@@ -325,21 +509,26 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
+    /* Page table page index */
+    unsigned int ptindex;
+
     printf ("SVA: mapSecurePage: No PDE!\n");
+
+    /* Fetch a new page table page */
+    ptindex = allocPTPage ();
+
     /*
      * Install a new PDE entry.
      */
-    memset (nextbuf, 0, PAGE_SIZE);
-    uintptr_t pde_paddr = getPhysicalAddr (nextbuf);
-    *pde = (pde_paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
-
-    /*
-     * Update the nextbuf index to point to the next page.
-     */
-    nextbuf += 4096;
+    uintptr_t pde_paddr = PTPages[ptindex].paddr;
+    *pde = (pde_paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
-
   *pde |= PTE_CANUSER;
+
+  /*
+   * Note that we've added another translation to the pdpte.
+   */
+  updateUses (pde);
 
   if ((*pde) & PTE_PS) {
     printf ("mapSecurePage: PDE has PS BIT\n");
@@ -356,7 +545,94 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Modify the PTE to install the physical to virtual page mapping.
    */
-  *pte = (paddr & 0x000ffffffffff000u) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
+  *pte = (paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
+
+  /*
+   * Note that we've added another translation to the pde.
+   */
+  updateUses (pte);
+  return;
+}
+
+/*
+ * Function: unmapSecurePage()
+ *
+ * Description:
+ *  Unmap a single frame of secure memory from the specified virtual address.
+ *
+ * Inputs:
+ *  vaddr - The virtual address to unmap.
+ */
+void
+unmapSecurePage (unsigned char * v) {
+  /*
+   * Get the PML4E of the current page table.  If there isn't one in the
+   * table, add one.
+   */
+  uintptr_t vaddr = (uintptr_t) v;
+  pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
+  if (!isPresent (pml4e)) {
+    panic ("SVA: mapSecurePage: No PML4E!\n");
+  }
+
+  /*
+   * Get the PDPTE entry (or add it if it is not present).
+   */
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  if (!isPresent (pdpte)) {
+    panic ("SVA: mapSecurePage: No PDPTE!\n");
+  }
+
+  if ((*pdpte) & PTE_PS) {
+    panic ("mapSecurePage: PDPTE has PS BIT\n");
+  }
+
+  /*
+   * Get the PDE entry (or add it if it is not present).
+   */
+  pde_t * pde = get_pdeVaddr (pdpte, vaddr);
+  if (!isPresent (pde)) {
+    panic ("SVA: mapSecurePage: No PDE!\n");
+  }
+
+  if ((*pde) & PTE_PS) {
+    panic ("mapSecurePage: PDE has PS BIT\n");
+  }
+
+  /*
+   * Get the PTE entry (or add it if it is not present).
+   */
+  pte_t * pte = get_pteVaddr (pde, vaddr);
+  if (!isPresent (pte)) {
+    panic ("SVA: mapSecurePage: PTE is not present!\n");
+  }
+
+  /*
+   * Modify the PTE so that the page is not present.
+   */
+  *pte = 0;
+
+  /*
+   * Go through and determine if any of the SVA VM pages tables are now unused.
+   * If so, decrement their uses.
+   *
+   * The goal here is to make unused page tables have all unused entries so
+   * that the operating system doesn't get confused.
+   */
+  unsigned int ptindex;
+  if (ptindex = releaseUse (pte)) {
+    freePTPage (ptindex);
+    if (ptindex = releaseUse (pde)) {
+      freePTPage (ptindex);
+      if (ptindex = releaseUse (pdpte)) {
+        freePTPage (ptindex);
+        if (ptindex = releaseUse (pml4e)) {
+          freePTPage (ptindex);
+        }
+      }
+    }
+  }
+
   return;
 }
 
