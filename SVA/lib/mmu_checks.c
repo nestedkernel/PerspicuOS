@@ -620,9 +620,12 @@ unmapSecurePage (unsigned char * v) {
   unsigned int ptindex;
   if ((ptindex = releaseUse (pte))) {
     freePTPage (ptindex);
+    *pde = 0;
     if ((ptindex = releaseUse (pde))) {
       freePTPage (ptindex);
+      *pdpte = 0;
       if ((ptindex = releaseUse (pdpte))) {
+        *pml4e = 0;
         freePTPage (ptindex);
         if ((ptindex = releaseUse (pml4e))) {
           freePTPage (ptindex);
