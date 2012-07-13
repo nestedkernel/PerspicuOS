@@ -47,7 +47,7 @@ allocSecureMemory (uintptr_t size) {
 
   /* Start of virtual address space used for secure memory */
   /* Note that using the memory gap doesn't seem to work, but this does */
-  static unsigned char * secmemp = (unsigned char *) 0x00000000f0000000u;
+  static unsigned char * secmemp = (unsigned char *) 0x0000000100000000u;
 
   /*
    * Get the memory from the operating system.  Note that the OS provides a
