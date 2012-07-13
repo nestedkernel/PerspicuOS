@@ -464,7 +464,19 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
   if (!isPresent (pml4e)) {
+    /* Page table page index */
+    unsigned int ptindex;
+
     printf ("SVA: mapSecurePage: No PML4E!\n");
+
+    /* Fetch a new page table page */
+    ptindex = allocPTPage ();
+
+    /*
+     * Install a new PDPTE entry using the page.
+     */
+    uintptr_t paddr = PTPages[ptindex].paddr;
+    *pml4e = (paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
 
   /*
@@ -537,7 +549,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   pte_t * pte = get_pteVaddr (pde, vaddr);
   if (isPresent (pte)) {
-    printf ("SVA: mapSecurePage: PTE is present!\n");
+    panic ("SVA: mapSecurePage: PTE is present!\n");
   }
 
   /*
