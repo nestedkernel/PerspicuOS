@@ -582,7 +582,7 @@ unmapSecurePage (unsigned char * v) {
   uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
   if (!isPresent (pml4e)) {
-    panic ("SVA: mapSecurePage: No PML4E!\n");
+    panic ("SVA: unmapSecurePage: No PML4E!\n");
   }
 
   /*
@@ -590,11 +590,11 @@ unmapSecurePage (unsigned char * v) {
    */
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
-    panic ("SVA: mapSecurePage: No PDPTE!\n");
+    panic ("SVA: unmapSecurePage: No PDPTE!\n");
   }
 
   if ((*pdpte) & PTE_PS) {
-    panic ("mapSecurePage: PDPTE has PS BIT\n");
+    panic ("unmapSecurePage: PDPTE has PS BIT\n");
   }
 
   /*
@@ -602,11 +602,11 @@ unmapSecurePage (unsigned char * v) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
-    panic ("SVA: mapSecurePage: No PDE!\n");
+    panic ("SVA: unmapSecurePage: No PDE!\n");
   }
 
   if ((*pde) & PTE_PS) {
-    panic ("mapSecurePage: PDE has PS BIT\n");
+    panic ("unmapSecurePage: PDE has PS BIT\n");
   }
 
   /*
@@ -614,7 +614,7 @@ unmapSecurePage (unsigned char * v) {
    */
   pte_t * pte = get_pteVaddr (pde, vaddr);
   if (!isPresent (pte)) {
-    panic ("SVA: mapSecurePage: PTE is not present!\n");
+    panic ("SVA: unmapSecurePage: PTE is not present!\n");
   }
 
   /*
