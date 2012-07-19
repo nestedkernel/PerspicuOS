@@ -46,5 +46,11 @@ sva_mm_save_pgtable (void)
   return p;
 }
 
+static inline void
+sva_mm_flush_tlb (void * address) {
+  __asm__ __volatile__ ("invlpg %0" : : "m" (address) : "memory");
+  return;
+}
+
 #endif
 

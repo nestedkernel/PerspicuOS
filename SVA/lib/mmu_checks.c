@@ -572,6 +572,10 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
  *
  * Inputs:
  *  vaddr - The virtual address to unmap.
+ *
+ * TODO:
+ *  Implement code that will tell other processors to invalid their TLB entries
+ *  for this page.
  */
 void
 unmapSecurePage (unsigned char * v) {
@@ -621,6 +625,11 @@ unmapSecurePage (unsigned char * v) {
    * Modify the PTE so that the page is not present.
    */
   *pte = 0;
+
+  /*
+   * Invalidate any TLBs in the processor.
+   */
+  sva_mm_flush_tlb (v);
 
   /*
    * Go through and determine if any of the SVA VM pages tables are now unused.
