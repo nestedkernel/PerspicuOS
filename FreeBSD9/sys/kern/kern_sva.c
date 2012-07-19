@@ -30,7 +30,7 @@
 
 /* Function prototypes */
 void * provideSVAMemory (uintptr_t size);
-void releaseSVAMemory (void * p, uintptr_t size);
+void releaseSVAMemory (unsigned char * p, uintptr_t size);
 
 /*
  * Function: provideSVAMemory()
@@ -87,7 +87,7 @@ provideSVAMemory (uintptr_t size)
  *
  */
 void
-releaseSVAMemory (void * p, uintptr_t size)
+releaseSVAMemory (unsigned char * p, uintptr_t size)
 {
   /* Paging structure for the memory */
   vm_page_t page;
@@ -103,5 +103,24 @@ releaseSVAMemory (void * p, uintptr_t size)
    * Now free the page.
    */
   vm_page_free (page);
+  return;
+}
+
+/*
+ * Function: testSVAMemory()
+ *
+ * Description:
+ *  Try to access secure memory.
+ */
+void
+testSVAMemory (unsigned char * p) {
+  /*
+   * Testing time: Attempt to access the secure memory.
+   */
+  printf ("Kernel: Spying on you!\n");
+  for (int index = 0; index < 5; ++index) {
+    printf ("Kernel: %c", p[index]);
+  }
+  printf ("\n");
   return;
 }
