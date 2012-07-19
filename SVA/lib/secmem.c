@@ -21,6 +21,10 @@
 
 extern int printf(const char *, ...);
 
+/* Start and end addresses of the secure memory */
+#define SECMEMSTART 0xffffff0000000000u
+#define SECMEMEND   0xffffff8000000000u
+
 /*
  * Function: allocSecureMemory()
  *
@@ -33,9 +37,6 @@ extern int printf(const char *, ...);
  *
  * Return value:
  *  A pointer to the first byte of the secure memory.
- *
- * Notes:
- *  The FreeBSD memory map has a gap at 0x0000800000000000 - 0xffff7fffffffffff.
  */
 unsigned char *
 allocSecureMemory (uintptr_t size) {
@@ -46,8 +47,7 @@ allocSecureMemory (uintptr_t size) {
   unsigned char * vaddr = 0;
 
   /* Start of virtual address space used for secure memory */
-  /* Note that using the memory gap doesn't seem to work, but this does */
-  static unsigned char * secmemp = (unsigned char *) 0xffffff0000000000;
+  static unsigned char * secmemp = (unsigned char *) SECMEMSTART;
 
   /*
    * Get the memory from the operating system.  Note that the OS provides a
@@ -114,25 +114,25 @@ freeSecureMemory (unsigned char * p, uintptr_t size) {
   /*
    * Verify that the memory is within the secure memory portion of the
    * address space.
-   *
-   * TODO: Implement me!
    */
+  uintptr_t pint = (uintptr_t) p;
+  if (SECMEMSTART <= pint < SECMEMEND) {
+    /*
+     * Zero out the memory.
+     */
+    memset (p, 0, size);
 
-  /*
-   * Zero out the memory.
-   */
-  memset (p, 0, size);
+    /*
+     * Unmap the memory from the secure memory virtual address space.
+     */
+    unmapSecurePage (p);
 
-  /*
-   * Unmap the memory from the secure memory virtual address space.
-   */
-  unmapSecurePage (p);
-
-  /*
-   * Release the memory to the operating system.
-   */
+    /*
+     * Release the memory to the operating system.
+     */
 #if 0
-  releaseSVAMemory (p, size);
+    releaseSVAMemory (p, size);
 #endif
+  }
   return;
 }
