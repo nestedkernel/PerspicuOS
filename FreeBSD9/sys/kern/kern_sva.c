@@ -69,11 +69,9 @@ provideSVAMemory (uintptr_t size)
    * Unmap the page from the 1 TB direct map.
    */
 	p = (void *) PHYS_TO_DMAP(VM_PAGE_TO_PHYS(bufferPage));
-#if 0
   pmap_remove (&(curproc->p_vmspace->vm_pmap),
                (vm_offset_t) p,
                (vm_offset_t) p + 4096);
-#endif
 
   /*
    * Convert the page into a physical address and return it.
@@ -105,16 +103,21 @@ releaseSVAMemory (uintptr_t paddr, uintptr_t size)
   page = vm_phys_paddr_to_vm_page (paddr);
 
   /*
+   * Figure out where in the virtual address space it should go.
+   */
+	unsigned char * p = (void *) PHYS_TO_DMAP(VM_PAGE_TO_PHYS(page));
+
+  /*
    * Remap the page back into the direct 1 TB map.
    */
-#if 0
   pmap_enter (&(curproc->p_vmspace->vm_pmap),
                (vm_offset_t) p,
-               VM_PROT_READ | VM_PROT_WRITE,
-               vm_page_t m,
+               0,
+               page,
                VM_PROT_READ | VM_PROT_WRITE,
                0);
-#endif
+
+  printf ("SVA: releaseSVAMemory: %p\n", p);
 
   /*
    * Now free the page.
