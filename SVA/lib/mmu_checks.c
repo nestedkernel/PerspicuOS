@@ -290,6 +290,10 @@ getPhysicalAddr (void * v) {
   return paddr;
 }
 
+/* Cache of page table pages */
+extern unsigned char
+SVAPTPages[64][PAGE_SIZE];
+
 /*
  * Function: allocPTPage()
  *
@@ -324,7 +328,7 @@ allocPTPage (void) {
   /*
    * Ask the system software for a page of memory.
    */
-  if ((p = provideSVAMemory (PAGE_SIZE)) != 0) {
+  if ((p = SVAPTPages[ptindex]) != 0) {
     /*
      * Initialize the memory.
      */
@@ -356,11 +360,6 @@ allocPTPage (void) {
  */
 void
 freePTPage (unsigned int ptindex) {
-  /*
-   * Release the memory back to the system software.
-   */
-  releaseSVAMemory (PTPages[ptindex].vosaddr, PAGE_SIZE);
-
   /*
    * Mark the entry in the page table page array as available.
    */
