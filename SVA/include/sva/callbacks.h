@@ -15,9 +15,11 @@
 #ifndef SVA_CALLBACKS_H
 #define SVA_CALLBACKS_H
 
+#include <sys/types.h>
+
 /* Kernel callback function for allocating memory */
-extern void * provideSVAMemory (uintptr_t size);
-extern void releaseSVAMemory (void * p, uintptr_t size);
+extern uintptr_t provideSVAMemory (uintptr_t size);
+extern void releaseSVAMemory (uintptr_t, uintptr_t size);
 
 /* These callbacks are used for debugging and assertions */
 extern int printf(const char *, ...);

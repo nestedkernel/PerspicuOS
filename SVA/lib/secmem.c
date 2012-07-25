@@ -26,6 +26,27 @@ extern int printf(const char *, ...);
 #define SECMEMEND   0xffffff8000000000u
 
 /*
+ * Function: getNextSecureAddress()
+ *
+ * Description:
+ *  Find the next available address in the secure virtual address space.
+ */
+unsigned char *
+getNextSecureAddress (void) {
+  /* Start of virtual address space used for secure memory */
+  static unsigned char * secmemp = (unsigned char *) SECMEMSTART;
+
+  /* Address to return */
+  unsigned char * p = secmemp;
+
+  /*
+   * Advance the address by a single page frame.
+   */
+  secmemp += PAGE_SIZE;
+  return p;
+}
+
+/*
  * Function: allocSecureMemory()
  *
  * Description:
@@ -40,49 +61,33 @@ extern int printf(const char *, ...);
  */
 unsigned char *
 allocSecureMemory (uintptr_t size) {
-  /* Virtual address of allocated secure memory pointer */
-  unsigned char * sp;
+  /* Physical address of allocated secure memory pointer */
+  uintptr_t sp;
 
   /* Virtual address assigned to secure memory by SVA */
   unsigned char * vaddr = 0;
 
-  /* Start of virtual address space used for secure memory */
-  static unsigned char * secmemp = (unsigned char *) SECMEMSTART;
-
   /*
-   * Get the memory from the operating system.  Note that the OS provides a
-   * virtual address of the allocated memory.
+   * Get the memory from the operating system.  Note that the OS provides the
+   * physical address of the allocated memory.
    */
   if ((sp = provideSVAMemory (size)) != 0) {
-    /*
-     * Assign the memory to live within the secure memory virtual address
-     * space.
-     */
-    vaddr = secmemp;
-
     /*
      * Map each page of the memory into the part of the virtual address space
      * used for private memory.
      */
-    for (unsigned char * p = sp; p < (sp + size); p += PAGE_SIZE) {
-      /* Physical address of allocated secure memory */
-      uintptr_t paddr;
-
+    for (uintptr_t paddr = sp; paddr < (sp + size); paddr += PAGE_SIZE) {
       /*
-       * Get the physical address of the memory page.
+       * Assign the memory to live within the secure memory virtual address
+       * space.
        */
-      paddr = getPhysicalAddr (p);
+      vaddr = getNextSecureAddress();
 
       /*
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
-      mapSecurePage (secmemp, paddr);
-
-      /*
-       * Let the next page use a different secure memory address.
-       */
-      secmemp += PAGE_SIZE;
+      mapSecurePage (vaddr, paddr);
     }
 
     /*
@@ -123,16 +128,24 @@ freeSecureMemory (unsigned char * p, uintptr_t size) {
     memset (p, 0, size);
 
     /*
+     * Get the physical address before unmapping the page.  We do this because
+     * unmapping the page may remove page table pages that are no longer
+     * needed for mapping secure pages.
+     */
+    uintptr_t paddr = getPhysicalAddr (p);
+
+    /*
      * Unmap the memory from the secure memory virtual address space.
      */
     unmapSecurePage (p);
 
     /*
-     * Release the memory to the operating system.
+     * Release the memory to the operating system.  Note that we must first
+     * get the physical address of the data page as that is what the OS is
+     * expecting.
      */
-#if 0
-    releaseSVAMemory (p, size);
-#endif
+    releaseSVAMemory (paddr, size);
   }
+
   return;
 }
