@@ -14,6 +14,7 @@
 
 #include <sys/malloc.h>
 #include <sys/types.h>
+#include <sys/proc.h>
 
 #include <sys/cdefs.h>
 #include <vm/vm.h>
@@ -29,8 +30,8 @@
 #include <vm/uma.h>
 
 /* Function prototypes */
-void * provideSVAMemory (uintptr_t size);
-void releaseSVAMemory (unsigned char * p, uintptr_t size);
+uintptr_t provideSVAMemory (uintptr_t size);
+void releaseSVAMemory (uintptr_t p, uintptr_t size);
 
 /*
  * Function: provideSVAMemory()
@@ -42,18 +43,16 @@ void releaseSVAMemory (unsigned char * p, uintptr_t size);
  *  The amount of memory to give SVA in bytes.
  *
  * Return value:
- *  The first virtual address of the memory that SVA can use.
+ *  The first physical address of the memory that SVA can use.
  */
-static char buffer[4096] __attribute__ ((aligned (4096)));
-
-void *
+uintptr_t
 provideSVAMemory (uintptr_t size)
 {
   /* Structure to get a page */
   vm_page_t bufferPage;
 
   /* Virtual address of memory to be returned. */
-  void * p;
+  unsigned char * p;
 
   /*
    * Check to see if a single page will do.  If not, then panic.
@@ -67,12 +66,20 @@ provideSVAMemory (uintptr_t size)
 	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL);
 
   /*
-   * Convert the page into a physical address.
+   * Unmap the page from the 1 TB direct map.
    */
 	p = (void *) PHYS_TO_DMAP(VM_PAGE_TO_PHYS(bufferPage));
+#if 0
+  pmap_remove (&(curproc->p_vmspace->vm_pmap),
+               (vm_offset_t) p,
+               (vm_offset_t) p + 4096);
+#endif
 
+  /*
+   * Convert the page into a physical address and return it.
+   */
   printf ("SVA: providesSVAMemory: %p -> %lx\n", p, vtophys (p));
-	return p;
+	return VM_PAGE_TO_PHYS(bufferPage);
 }
 
 /*
@@ -82,22 +89,32 @@ provideSVAMemory (uintptr_t size)
  *  SVA calls this function when it no longer needs a piece of memory.
  *
  * Inputs:
- *  p    - The first virtual address of the memory to release back to the OS.
- *  size - The length of the memory in bytes to release.
+ *  paddr - The first physical address of the memory to release back to the OS.
+ *  size  - The length of the memory in bytes to release.
  *
  */
 void
-releaseSVAMemory (unsigned char * p, uintptr_t size)
+releaseSVAMemory (uintptr_t paddr, uintptr_t size)
 {
   /* Paging structure for the memory */
   vm_page_t page;
 
   /*
-   * Convert the virtual address into a physical address, and then convert the
-   * physical address into a vm_page_t.
+   * Convert the physical address into a vm_page_t.
    */
-  vm_paddr_t paddr = vtophys (p);
   page = vm_phys_paddr_to_vm_page (paddr);
+
+  /*
+   * Remap the page back into the direct 1 TB map.
+   */
+#if 0
+  pmap_enter (&(curproc->p_vmspace->vm_pmap),
+               (vm_offset_t) p,
+               VM_PROT_READ | VM_PROT_WRITE,
+               vm_page_t m,
+               VM_PROT_READ | VM_PROT_WRITE,
+               0);
+#endif
 
   /*
    * Now free the page.
