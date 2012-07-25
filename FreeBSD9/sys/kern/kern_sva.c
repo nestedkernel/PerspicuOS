@@ -76,7 +76,6 @@ provideSVAMemory (uintptr_t size)
   /*
    * Convert the page into a physical address and return it.
    */
-  printf ("SVA: providesSVAMemory: %p -> %lx\n", p, vtophys (p));
 	return VM_PAGE_TO_PHYS(bufferPage);
 }
 
@@ -116,8 +115,6 @@ releaseSVAMemory (uintptr_t paddr, uintptr_t size)
                page,
                VM_PROT_READ | VM_PROT_WRITE,
                0);
-
-  printf ("SVA: releaseSVAMemory: %p\n", p);
 
   /*
    * Now free the page.
