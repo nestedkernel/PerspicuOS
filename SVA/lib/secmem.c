@@ -30,20 +30,20 @@ extern int printf(const char *, ...);
  *
  * Description:
  *  Find the next available address in the secure virtual address space.
+ *
+ * Notes:
+ *  This function is called by multiple processors, so it must be SMP-safe.
  */
 unsigned char *
 getNextSecureAddress (void) {
   /* Start of virtual address space used for secure memory */
   static unsigned char * secmemp = (unsigned char *) SECMEMSTART;
 
-  /* Address to return */
-  unsigned char * p = secmemp;
-
   /*
-   * Advance the address by a single page frame.
+   * Advance the address by a single page frame and return the value before
+   * increment.
    */
-  secmemp += PAGE_SIZE;
-  return p;
+  return (unsigned char *)(__sync_fetch_and_add (((uintptr_t *)(&secmemp)), PAGE_SIZE));
 }
 
 /*
