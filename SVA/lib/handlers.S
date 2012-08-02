@@ -14,11 +14,62 @@
  *===----------------------------------------------------------------------===
  */
 
+.global SVAsyscall
+.type SVAsyscall, @function
+
 .global secmemtrap
 .type secmemtrap, @function
 
 .global secfreetrap
 .type secfreetrap, @function
+
+/*
+ * Trap: SVAsyscall
+ *
+ * Description:
+ *  This trap handles system call entry.
+ *
+ * Notes:
+ *  The GS register should be pointing to the base of the interrupt context
+ *  for the current processor.
+ */
+SVAsyscall:
+  /*
+   * Get a pointer to the current interrupt context.
+   */
+  pushq %rax
+  movq %gs:0x260, %rax
+
+  /*
+   * Save a copy of the interrupt context on to the stack
+   */
+  movq %rdi,  8(%rax)
+  movq %rsi, 16(%rax)
+
+  popq 24(%rax)
+  movq %rbx, 32(%rax)
+  movq %rcx, 40(%rax)
+  movq %rdx, 48(%rax)
+
+  movq %r8,  56(%rax)
+  movq %r9,  64(%rax)
+  movq %r10, 72(%rax)
+  movq %r11, 80(%rax)
+  movq %r12, 88(%rax)
+  movq %r13, 96(%rax)
+  movq %r14, 104(%rax)
+  movq %r15, 112(%rax)
+
+  movq %rbp, 120(%rax)
+
+  /*
+   * Restore the rax register.
+   */
+  movq 24(%rax), %rax
+  ret
+
+  /* Exit the system call */
+  sysexit
 
 /*
  * Trap: secmemtrap
