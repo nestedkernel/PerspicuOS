@@ -62,10 +62,11 @@ static sva_icontext_t userContexts[numProcessors];
  */
 void *
 sva_get_uicontext (void) {
-#if 1
+  static int index=0;
+#if 0
   return &(userContexts[getProcessorID()]);
 #else
-  return &(userContexts[0]);
+  return &(userContexts[index++]);
 #endif
 }
 
