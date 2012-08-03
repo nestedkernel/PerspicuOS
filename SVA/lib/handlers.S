@@ -17,6 +17,9 @@
 .global SVAsyscall
 .type SVAsyscall, @function
 
+.global SVAsysret
+.type SVAsysret, @function
+
 .global secmemtrap
 .type secmemtrap, @function
 
@@ -35,7 +38,7 @@
  */
 SVAsyscall:
   /*
-   * Get a pointer to the current interrupt context.
+   * Get a pointer to the current processor's interrupt context.
    */
   pushq %rax
   movq %gs:0x260, %rax
@@ -68,8 +71,42 @@ SVAsyscall:
   movq 24(%rax), %rax
   ret
 
+SVAsysret:
+  /*
+   * Get a pointer to the current processor's interrupt context.
+   */
+  pushq %rax
+  movq %gs:0x260, %rax
+
+  /*
+   * Copy the registers from the interrupt context back on to the processor.
+   */
+  movq   8(%rax), %rdi
+  movq  16(%rax), %rsi
+
+  /* Don't restore %rax or %rdx; they are used for syscall return values */
+  movq  32(%rax), %rbx
+  movq  40(%rax), %rcx
+
+  movq  56(%rax), %r8
+  movq  64(%rax), %r9
+  movq  72(%rax), %r10
+#if 0
+  movq  80(%rax), %r11
+#endif
+  movq  88(%rax), %r12
+  movq  96(%rax), %r13
+  movq 104(%rax), %r14
+  movq 112(%rax), %r15
+
+  movq 120(%rax), %rbp
+
+  /* Get the return value from the original system call */
+  popq %rax
+  ret
+
   /* Exit the system call */
-  sysexit
+  sysretq
 
 /*
  * Trap: secmemtrap
