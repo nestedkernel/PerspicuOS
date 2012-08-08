@@ -29,6 +29,9 @@
 #include <vm/pmap.h>
 #include <vm/uma.h>
 
+#include <sys/pcpu.h>
+#include <machine/frame.h>
+
 /* Function prototypes */
 uintptr_t provideSVAMemory (uintptr_t size);
 void releaseSVAMemory (uintptr_t p, uintptr_t size);
@@ -134,10 +137,11 @@ testSVAMemory (unsigned char * p) {
   /*
    * Testing time: Attempt to access the secure memory.
    */
-  printf ("Kernel: Spying on you!\n");
+  printf ("Kernel: Spying on you!  Secret is: \n");
   for (int index = 0; index < 5; ++index) {
-    printf ("Kernel: %c", p[index]);
+    printf ("%c", p[index]);
   }
   printf ("\n");
   return;
 }
+
