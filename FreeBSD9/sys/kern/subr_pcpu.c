@@ -61,6 +61,10 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/kern/subr_pcpu.c 224218 2011-07-19 14:57:5
 #include <sys/sx.h>
 #include <ddb/ddb.h>
 
+#if 1
+#include <sva/interrupt.h>
+#endif
+
 MALLOC_DEFINE(M_PCPU, "Per-cpu", "Per-cpu resource accouting.");
 
 struct dpcpu_free {
@@ -92,6 +96,9 @@ pcpu_init(struct pcpu *pcpu, int cpuid, size_t size)
 	cpu_pcpu_init(pcpu, cpuid, size);
 	pcpu->pc_rm_queue.rmq_next = &pcpu->pc_rm_queue;
 	pcpu->pc_rm_queue.rmq_prev = &pcpu->pc_rm_queue;
+#if 1
+	pcpu->svaIContext = sva_get_uicontext();
+#endif
 }
 
 void
