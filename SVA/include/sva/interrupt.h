@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+extern void * sva_get_uicontext (void);
+
 #if 0
 /* Types for handlers */
 typedef void (*genfault_handler_t)(sva_icontext_t * icontext);
