@@ -28,6 +28,8 @@ extern "C" {
 
 extern void * sva_get_uicontext (void);
 
+void sva_icontext_setretval (unsigned long retval, unsigned char error);
+
 #if 0
 /* Types for handlers */
 typedef void (*genfault_handler_t)(sva_icontext_t * icontext);

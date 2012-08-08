@@ -13,6 +13,7 @@
  *===----------------------------------------------------------------------===
  */
 
+#include "sva/callbacks.h"
 #include "sva/config.h"
 #include "sva/interrupt.h"
 #include "sva/state.h"
@@ -50,6 +51,24 @@ static void * interrupt_table[256];
 static sva_icontext_t userContexts[numProcessors];
 
 /*
+ * Function: get_uicontext()
+ *
+ * Description:
+ *  This function finds the user-space interrupt context for the currently
+ *  running processor.
+ */
+static inline sva_icontext_t *
+get_uicontext(void) {
+  /*
+   * Use an offset from the GS register to look up the interrupt context for
+   * this processor.
+   */
+  sva_icontext_t * icontextp;
+  __asm__ __volatile__ ("movq %%gs:0x260, %0\n" : "=r" (icontextp));
+  return icontextp;
+}
+
+/*
  * Intrinsic: sva_get_uicontext()
  *
  * Description:
@@ -68,6 +87,43 @@ sva_get_uicontext (void) {
 #else
   return &(userContexts[index++]);
 #endif
+}
+
+/*
+ * Intrinsic: sva_icontext_setretval()
+ *
+ * Descrption:
+ *  This intrinsic permits the system software to set the return value of
+ *  a system call.
+ *
+ * Notes:
+ *  This intrinsic mimics the syscall convention of FreeBSD.
+ */
+void
+sva_icontext_setretval (unsigned long retval, unsigned char error) {
+  /*
+   * Get the current processor's user-space interrupt context.
+   */
+  sva_icontext_t * icontextp = get_uicontext();
+
+  /*
+   * Set the return value.  The high order bits go in %edx, and the low
+   * order bits go in %eax.
+   */
+  icontextp->rdx = (unsigned) ((retval & 0xffffffff00000000) >> 32);
+  icontextp->rax = (unsigned) ((retval & 0x00000000ffffffff));
+
+  /*
+   * Set or clear the carry flags of the EFLAGS register depending on whether
+   * the system call succeeded for failed.
+   */
+  if (error) {
+    icontextp->r11 |= 1;
+  } else {
+    icontextp->r11 &= 0xfffffffffffffffe;
+  }
+
+  return;
 }
 
 #if 0
