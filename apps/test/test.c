@@ -42,6 +42,7 @@ main (int argc, char ** argv) {
     printf ("Address: %p\n", &(ptr[index]));
     ptr[index] = 'c';
   }
+  ptr[5] = 0;
   for (index = 0; index < size; ++index) {
     printf ("Address: %p %c\n", &(ptr[index]), ptr[index]);
   }
