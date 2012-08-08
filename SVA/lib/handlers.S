@@ -91,9 +91,7 @@ SVAsysret:
   movq  56(%rax), %r8
   movq  64(%rax), %r9
   movq  72(%rax), %r10
-#if 0
   movq  80(%rax), %r11
-#endif
   movq  88(%rax), %r12
   movq  96(%rax), %r13
   movq 104(%rax), %r14
