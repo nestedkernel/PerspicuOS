@@ -83,6 +83,10 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/vm_machdep.c 223758 2011-07-04
 
 #include <x86/isa/isa.h>
 
+#if 1
+#include <sva/interrupt.h>
+#endif
+
 static void	cpu_reset_real(void);
 #ifdef SMP
 static void	cpu_reset_proxy(void);
@@ -327,12 +331,16 @@ cpu_thread_free(struct thread *td)
 void
 cpu_set_syscall_retval(struct thread *td, int error)
 {
-
 	switch (error) {
 	case 0:
 		td->td_frame->tf_rax = td->td_retval[0];
 		td->td_frame->tf_rdx = td->td_retval[1];
 		td->td_frame->tf_rflags &= ~PSL_C;
+#if 1
+    unsigned long retval;
+    retval = td->td_retval[0] | (td->td_retval[1] << 32);
+    sva_icontext_setretval (retval, 0);
+#endif
 		break;
 
 	case ERESTART:
@@ -361,6 +369,9 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		}
 		td->td_frame->tf_rax = error;
 		td->td_frame->tf_rflags |= PSL_C;
+#if 1
+    sva_icontext_setretval (error, 1);
+#endif
 		break;
 	}
 }

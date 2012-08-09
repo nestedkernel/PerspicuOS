@@ -343,10 +343,17 @@ IDTVEC(prot)
  * We do not support invoking this from a custom %cs or %ss (e.g. using
  * entries from an LDT).
  */
+.global SVAsyscall
+.type SVAsyscall, @function
+
+.global SVAsysret
+.type SVAsysret, @function
+
 IDTVEC(fast_syscall)
 	swapgs
 	movq	%rsp,PCPU(SCRATCH_RSP)
 	movq	PCPU(RSP0),%rsp
+	call SVAsyscall
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
 	subq	$TF_SIZE,%rsp
 	/* defer TF_RSP till we have a spare register */
@@ -402,6 +409,7 @@ IDTVEC(fast_syscall)
 	movq	TF_RAX(%rsp),%rax	/* return value 1 */
 	movq	TF_RFLAGS(%rsp),%r11	/* original %rflags */
 	movq	TF_RIP(%rsp),%rcx	/* original %rip */
+	call SVAsysret
 	movq	TF_RSP(%rsp),%rsp	/* user stack pointer */
 	swapgs
 	sysretq
