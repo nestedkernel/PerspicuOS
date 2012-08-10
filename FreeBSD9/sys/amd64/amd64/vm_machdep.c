@@ -337,9 +337,11 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		td->td_frame->tf_rdx = td->td_retval[1];
 		td->td_frame->tf_rflags &= ~PSL_C;
 #if 1
-    unsigned long retval;
-    retval = td->td_retval[0] | (td->td_retval[1] << 32);
-    sva_icontext_setretval (retval, 0);
+    {
+      unsigned long retval;
+      retval = td->td_retval[0] | (td->td_retval[1] << 32);
+      sva_icontext_setretval (retval, 0);
+    }
 #endif
 		break;
 
@@ -353,8 +355,13 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		 * %r10 restore is only required for freebsd/amd64 processes,
 		 * but shall be innocent for any ia32 ABI.
 		 */
+#if 0
 		td->td_frame->tf_rip -= td->td_frame->tf_err;
 		td->td_frame->tf_r10 = td->td_frame->tf_rcx;
+    sva_icontext_restart(td->td_frame->tf_r10, td->td_frame->tf_rip);
+#else
+    sva_icontext_restart(0, 0);
+#endif
 		break;
 
 	case EJUSTRETURN:
