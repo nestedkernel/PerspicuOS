@@ -1,0 +1,17 @@
+SVA2 Master Plan
+================
+
+o SVA-OS
+  o MMU
+  o Context Switching
+  o Interrupt Context
+    o System Calls
+    o Interrupts
+    o Process creation/destruction
+  o I/O
+
+o Compiler Instrumentation
+  o Control-Flow Integrity
+  o MachineFunctionPass for Load/Store Instrumentation
+
+o Applications using Secure Memory
