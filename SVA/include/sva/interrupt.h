@@ -28,7 +28,7 @@ extern "C" {
 
 extern void * sva_get_uicontext (void);
 
-void sva_icontext_setretval (unsigned long retval, unsigned char error);
+void sva_icontext_setretval (unsigned long, unsigned long, unsigned char error);
 void sva_icontext_restart (unsigned long, unsigned long);
 
 #if 0

@@ -100,7 +100,7 @@ sva_get_uicontext (void) {
  *  This intrinsic mimics the syscall convention of FreeBSD.
  */
 void
-sva_icontext_setretval2 (unsigned long high,
+sva_icontext_setretval (unsigned long high,
                         unsigned long low,
                         unsigned char error) {
   /*
