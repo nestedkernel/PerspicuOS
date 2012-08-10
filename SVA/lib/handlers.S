@@ -75,7 +75,6 @@ SVAsysret:
   /*
    * Get a pointer to the current processor's interrupt context.
    */
-  pushq %rax
   movq %gs:0x260, %rax
 
   /*
@@ -84,9 +83,9 @@ SVAsysret:
   movq   8(%rax), %rdi
   movq  16(%rax), %rsi
 
-  /* Don't restore %rax or %rdx; they are used for syscall return values */
   movq  32(%rax), %rbx
   movq  40(%rax), %rcx
+  movq  48(%rax), %rdx
 
   movq  56(%rax), %r8
   movq  64(%rax), %r9
@@ -99,8 +98,8 @@ SVAsysret:
 
   movq 120(%rax), %rbp
 
-  /* Get the return value from the original system call */
-  popq %rax
+  /* Restore %rax last */
+  movq 24(%rax), %rax
   ret
 
   /* Exit the system call */
