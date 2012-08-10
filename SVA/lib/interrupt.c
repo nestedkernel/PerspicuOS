@@ -100,7 +100,9 @@ sva_get_uicontext (void) {
  *  This intrinsic mimics the syscall convention of FreeBSD.
  */
 void
-sva_icontext_setretval (unsigned long retval, unsigned char error) {
+sva_icontext_setretval2 (unsigned long high,
+                        unsigned long low,
+                        unsigned char error) {
   /*
    * Get the current processor's user-space interrupt context.
    */
@@ -110,8 +112,8 @@ sva_icontext_setretval (unsigned long retval, unsigned char error) {
    * Set the return value.  The high order bits go in %edx, and the low
    * order bits go in %eax.
    */
-  icontextp->rdx = (unsigned) ((retval & 0xffffffff00000000) >> 32);
-  icontextp->rax = (unsigned) ((retval & 0x00000000ffffffff));
+  icontextp->rdx = high;
+  icontextp->rax = low;
 
   /*
    * Set or clear the carry flags of the EFLAGS register depending on whether
