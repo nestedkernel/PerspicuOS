@@ -126,6 +126,33 @@ sva_icontext_setretval (unsigned long retval, unsigned char error) {
   return;
 }
 
+/*
+ * Intrinsic: sva_icontext_restart()
+ *
+ * Description:
+ *  This intrinsic modifies a user-space interrupt context so that it restarts
+ *  the specified system call.
+ */
+void
+sva_icontext_restart (unsigned long r10, unsigned long rip) {
+  /*
+   * Get the current processor's user-space interrupt context.
+   */
+  sva_icontext_t * icontextp = get_uicontext();
+
+  /*
+   * Modify the saved %rcx register so that it re-executes the syscall
+   * instruction.  We do this by reducing it by 2 bytes.
+   */
+#if 1
+  icontextp->rcx -= 2;
+#else
+  icontextp->r10 = r10;
+  icontextp->rcx = rip;
+#endif
+  return;
+}
+
 #if 0
 /*
  * Intrinsic: sva_register_general_exception()
