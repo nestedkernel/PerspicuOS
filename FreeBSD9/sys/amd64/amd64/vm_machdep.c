@@ -331,14 +331,13 @@ cpu_thread_free(struct thread *td)
 void
 cpu_set_syscall_retval(struct thread *td, int error)
 {
-  extern void sva_icontext_setretval2 (unsigned long, unsigned long, unsigned char);
 	switch (error) {
 	case 0:
 		td->td_frame->tf_rax = td->td_retval[0];
 		td->td_frame->tf_rdx = td->td_retval[1];
 		td->td_frame->tf_rflags &= ~PSL_C;
 #if 1
-    sva_icontext_setretval2 (td->td_retval[1], td->td_retval[0], 0);
+    sva_icontext_setretval (td->td_retval[1], td->td_retval[0], 0);
 #endif
 		break;
 
@@ -374,7 +373,7 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		td->td_frame->tf_rax = error;
 		td->td_frame->tf_rflags |= PSL_C;
 #if 1
-    sva_icontext_setretval2 (0, error, 1);
+    sva_icontext_setretval (0, error, 1);
 #endif
 		break;
 	}
