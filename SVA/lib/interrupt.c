@@ -1,6 +1,6 @@
 /*===- interrupt.c - SVA Execution Engine  --------------------------------===
  * 
- *                     The LLVM Compiler Infrastructure
+ *                        Secure Virtual Architecture
  *
  * This file was developed by the LLVM research group and is distributed under
  * the University of Illinois Open Source License. See LICENSE.TXT for details.
@@ -49,24 +49,6 @@ static void * interrupt_table[256];
  *  Kernel-space interrupt contexts will be stored on the kernel stack.
  */
 static sva_icontext_t userContexts[numProcessors];
-
-/*
- * Function: get_uicontext()
- *
- * Description:
- *  This function finds the user-space interrupt context for the currently
- *  running processor.
- */
-static inline sva_icontext_t *
-get_uicontext(void) {
-  /*
-   * Use an offset from the GS register to look up the interrupt context for
-   * this processor.
-   */
-  sva_icontext_t * icontextp;
-  __asm__ __volatile__ ("movq %%gs:0x260, %0\n" : "=r" (icontextp));
-  return icontextp;
-}
 
 /*
  * Intrinsic: sva_get_uicontext()

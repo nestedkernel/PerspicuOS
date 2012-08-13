@@ -17,10 +17,10 @@
 #define _SVA_INTERRUPT_H
 
 #if 0
-#include <asm/sva/config.h>
-#include <asm/sva/exceptions.h>
-#include <asm/sva/state.h>
+#include <sva/config.h>
+#include <sva/exceptions.h>
 #endif
+#include <sva/state.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +30,24 @@ extern void * sva_get_uicontext (void);
 
 void sva_icontext_setretval (unsigned long, unsigned long, unsigned char error);
 void sva_icontext_restart (unsigned long, unsigned long);
+
+/*
+ * Function: get_uicontext()
+ *
+ * Description:
+ *  This function finds the user-space interrupt context for the currently
+ *  running processor.
+ */
+static inline sva_icontext_t *
+get_uicontext(void) {
+  /*
+   * Use an offset from the GS register to look up the interrupt context for
+   * this processor.
+   */
+  sva_icontext_t * icontextp;
+  __asm__ __volatile__ ("movq %%gs:0x260, %0\n" : "=r" (icontextp));
+  return icontextp;
+}
 
 #if 0
 /* Types for handlers */
