@@ -15,6 +15,7 @@
 #if 0
 #include <sva/config.h>
 #endif
+#include <sva/callbacks.h>
 #include <sva/util.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
@@ -370,7 +371,7 @@ sva_ipush_function1 (void * icontext, void (*newf)(int), int param)
 
 
 /*
- * Intrinsic: sva_ipush_function3 ()
+ * Intrinsic: sva_ipush_function4 ()
  *
  * Description:
  *  This intrinsic modifies the user space process code so that the
@@ -386,7 +387,7 @@ sva_ipush_function1 (void * icontext, void (*newf)(int), int param)
  *    This should be addressed at some point.
  */
 void
-sva_ipush_function3 (void (*newf)(int, int, int), int p1, int p2, int p3) {
+sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t), uintptr_t p1, uintptr_t p2, uintptr_t p3, uintptr_t p4) {
   /* Old interrupt flags */
   unsigned int rflags;
 
@@ -406,7 +407,9 @@ sva_ipush_function3 (void (*newf)(int, int, int), int p1, int p2, int p3) {
      * Check the memory.
      */
     sva_check_memory_write (ep, sizeof (sva_icontext_t));
+#if 0
     sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
+#endif
 
     /*
      * Verify that this interrupt context has a stack pointer.
@@ -423,10 +426,14 @@ sva_ipush_function3 (void (*newf)(int, int, int), int p1, int p2, int p3) {
   /*
    * Place the arguments into the proper registers.
    */
+  uintptr_t offset = ((uintptr_t) &(ep->rdi)) - ((uintptr_t) ep);
+  printf ("SVA: offset=%lx: %lx %lx %lx %lx\n", offset, p1, p2, p3, p4);
   ep->rdi = p1;
   ep->rsi = p2;
   ep->rdx = p3;
+  ep->rcx = p4;
 
+#if 0
   /*
    * Push the return PC pointer on to the stack.
    */
@@ -436,6 +443,7 @@ sva_ipush_function3 (void (*newf)(int, int, int), int p1, int p2, int p3) {
    * Set the return function to be the specificed function.
    */
   ep->rip = (unsigned int)newf;
+#endif
 
   /*
    * Re-enable interrupts.
