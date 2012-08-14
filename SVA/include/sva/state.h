@@ -68,6 +68,12 @@ typedef struct
 
   unsigned long rbp;
 
+  /* Segment selector registers */
+  unsigned short fs;
+  unsigned short gs;
+  unsigned short es;
+  unsigned short pad1;
+
   /*
    * These values are automagically saved by the x86_64 hardware upon an
    * interrupt or exception.

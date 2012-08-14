@@ -102,6 +102,12 @@ SVAsysret:
 
   movq 120(%rax), %rbp
 
+#if 0
+  movw 128(%rax), %fs
+  movw 130(%rax), %gs
+  movw 132(%rax), %es
+#endif
+
   /* Restore %rax last */
   movq 24(%rax), %rax
   ret
