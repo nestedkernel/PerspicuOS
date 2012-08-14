@@ -23,8 +23,81 @@
 .global secmemtrap
 .type secmemtrap, @function
 
+.global trap0
+.type trap0, @function
+
 .global secfreetrap
 .type secfreetrap, @function
+
+/* FreeBSD segment selector for kernel code segment */
+#define KERNELCS 0x03
+
+trap0:
+  /*
+   * Determine whether we interrupted user or supervisor mode execution.
+   */
+  cmpw $KERNELCS, 8(%rsp)
+  je 1f
+
+  /*
+   * We came from user mode.  First switch to the kernel %GS register.
+   */
+  swapgs
+
+  /*
+   * Save the processor state in the per-processor user interrrupt context
+   * structure.
+   */
+  call SVAsyscall
+
+  /*
+   * Increment the PC by 2 to move past the idiv instruction.
+   */
+  addq $2, 0(%rsp)
+
+  /*
+   * Restore the user-space %GS register and return to user-space.
+   */
+  swapgs
+  iretq
+
+1:
+  /*
+   * We are in kernel mode.  Save the state on the kernel stack instead of
+   * in the SVA virtual memory.
+   */
+  pushq $0
+
+  pushq %rdi
+  pushq %rsi
+
+  pushq %rax
+  pushq %rbx
+  pushq %rcx
+  pushq %rdx
+
+  pushq %r8
+  pushq %r9
+  pushq %r10
+  pushq %r11
+  pushq %r12
+  pushq %r13
+  pushq %r14
+  pushq %r15
+
+  pushq %rbp
+
+#if 0
+  pushw %fs
+  pushw %gs
+  pushw %es
+#else
+  pushw $0
+  pushw $0
+  pushw $0
+#endif
+
+  ret
 
 /*
  * Trap: SVAsyscall

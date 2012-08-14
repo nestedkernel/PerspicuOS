@@ -522,9 +522,11 @@ init_dispatcher ()
   /* Page Fault and Memory Alignment Trap, respectively */
   register_x86_interrupt (0x0e, mem_trap14, 0);
   register_x86_interrupt (0x11, mem_trap17, 0);
+#endif
 
   /* Register general exception */
   REGISTER_EXCEPTION(0);
+#if 0
   REGISTER_EXCEPTION(1);
   REGISTER_EXCEPTION(2);
   REGISTER_EXCEPTION(3);
