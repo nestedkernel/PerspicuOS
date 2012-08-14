@@ -65,6 +65,10 @@ SVAsyscall:
 
   movq %rbp, 120(%rax)
 
+  movw %fs,  128(%rax)
+  movw %gs,  130(%rax)
+  movw %es,  132(%rax)
+
   /*
    * Restore the rax register.
    */
