@@ -14,6 +14,24 @@
  *===----------------------------------------------------------------------===
  */
 
+/*****************************************************************************
+ * Macros
+ ****************************************************************************/
+
+/* FreeBSD segment selector for kernel code segment */
+#define KERNELCS 0x03
+
+/*****************************************************************************
+ * Data Section
+ ****************************************************************************/
+.data
+.comm interrupt_table, 2048
+
+/*****************************************************************************
+ * Text Section
+ ****************************************************************************/
+.text
+
 .global SVAsyscall
 .type SVAsyscall, @function
 
@@ -28,9 +46,6 @@
 
 .global secfreetrap
 .type secfreetrap, @function
-
-/* FreeBSD segment selector for kernel code segment */
-#define KERNELCS 0x03
 
 trap0:
   /*
@@ -48,7 +63,13 @@ trap0:
    * Save the processor state in the per-processor user interrrupt context
    * structure.
    */
+  movq %rsp, %rdi
   call SVAsyscall
+
+  /*
+   * Call the trap handler registered by the OS for this trap.
+   */
+  call *(interrupt_table)
 
   /*
    * Increment the PC by 2 to move past the idiv instruction.

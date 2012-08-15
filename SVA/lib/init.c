@@ -296,6 +296,23 @@ init_procID (void) {
 }
 
 /*
+ * Function: init_interrupt_table()
+ *
+ * Description:
+ *  This function initializes the table of system software functions to call
+ *  when an interrupt or trap occurs.  Since the system software hasn't set up
+ *  any callback functions, we use a default handler that belongs to SVA.
+ */
+static void
+init_interrupt_table (unsigned int procID) {
+  for (int index = 0; index < 256; index++) {
+    interrupt_table[index] = default_interrupt;
+  }
+
+  return;
+}
+
+/*
  * Function: init_idt()
  *
  * Description:
@@ -315,16 +332,6 @@ init_idt (unsigned int procID) {
 
   /* Kernel's idea of where the IDT is */
   extern void * idt;
-
-  /*
-   * Set up the table in memory.  Each entry will be an interrupt gate to
-   * a dummy function.
-   */
-#if 0
-  for (int index = 0; index < 256; index++) {
-    interrupt_table[index] = default_interrupt;
-  }
-#endif
 
   /*
    * Load our descriptor table on to the processor.
@@ -452,6 +459,7 @@ sva_init_primary () {
   init_procID();
 
   /* Initialize the IDT of the primary processor */
+  init_interrupt_table(0);
   init_idt (0);
   init_dispatcher ();
 
@@ -487,6 +495,7 @@ sva_init_secondary () {
   init_idt (0);
 
 #if 0
+  init_interrupt_table(0);
   init_dispatcher ();
 #endif
 #if 0

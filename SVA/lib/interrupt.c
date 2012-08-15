@@ -18,24 +18,23 @@
 #include "sva/interrupt.h"
 #include "sva/state.h"
 
+/* Definitions of LLVA specific exceptions */
+#define sva_syscall_exception   (31)
+#define sva_interrupt_exception (30)
+#define sva_exception_exception (29)
+#define sva_state_exception     (28)
+#define sva_safemem_exception   (27)
+
+extern void * interrupt_table[256];
+
 /*
  * Default LLVA interrupt, exception, and system call handlers.
  */
 void
-default_interrupt (unsigned int number, void * state)
-{
+default_interrupt (unsigned int number, void * state) {
+  printf ("SVA: default interrupt handler: %p\n", interrupt_table);
   return;
 }
-
-/*
- * Structure: interrupt_table
- *
- * Description:
- *  This is a table that contains the list of interrupt functions registered
- *  with the Execution Engine.  Whenever an interrupt occurs, one of these
- *  functions will be dispatched.
- */
-static void * interrupt_table[256];
 
 /*
  * Structure: userContexts
@@ -136,7 +135,6 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
   return;
 }
 
-#if 0
 /*
  * Intrinsic: sva_register_general_exception()
  *
@@ -149,14 +147,15 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
  *  1 - Some error occurred.
  */
 unsigned char
-sva_register_general_exception (unsigned int number,
-                                 genfault_handler_t handler)
-{
+sva_register_general_exception (unsigned char number,
+                                genfault_handler_t handler) {
   /*
    * First, ensure that the exception number is within range.
    */
-  if (number > 31)
-  {
+#if 0
+  printf ("SVA: register_general: %d: %lx\n", number, handler);
+#endif
+  if (number > 31) {
     __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
     return 1;
   }
@@ -164,8 +163,7 @@ sva_register_general_exception (unsigned int number,
   /*
    * Ensure that this is not one of the special handlers.
    */
-  switch (number)
-  {
+  switch (number) {
     case 8:
     case 10:
     case 11:
@@ -175,6 +173,7 @@ sva_register_general_exception (unsigned int number,
       __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
       return 1;
       break;
+
     default:
       break;
   }
@@ -182,7 +181,14 @@ sva_register_general_exception (unsigned int number,
   /*
    * Put the handler into our dispatch table.
    */
+#if 0
+  printf ("SVA: register_general: Installing %d: %lx\n", number, handler);
+#endif
+#if 0
   interrupt_table[number] = handler;
+#else
+  interrupt_table[0] = handler;
+#endif
   return 0;
 }
 
@@ -194,13 +200,11 @@ sva_register_general_exception (unsigned int number,
  *  the memory address that was used by the instruction when the fault occurred.
  */
 unsigned char
-sva_register_memory_exception (unsigned int number, memfault_handler_t handler)
-{
+sva_register_memory_exception (unsigned char number, memfault_handler_t handler) {
   /*
    * Ensure that this is not one of the special handlers.
    */
-  switch (number)
-  {
+  switch (number) {
     case 14:
     case 17:
       /*
@@ -208,6 +212,7 @@ sva_register_memory_exception (unsigned int number, memfault_handler_t handler)
        */
       interrupt_table[number] = handler;
       return 0;
+
     default:
       __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
       return 1;
@@ -223,13 +228,11 @@ sva_register_memory_exception (unsigned int number, memfault_handler_t handler)
  *  This intrinsic registers an interrupt handler with the Execution Engine.
  */
 unsigned char
-sva_register_interrupt (unsigned int number, interrupt_handler_t interrupt)
-{
+sva_register_interrupt (unsigned char number, interrupt_handler_t interrupt) {
   /*
    * Ensure that the number is within range.
    */
-  if ((number < 32) || (number > 255))
-  {
+  if (number < 32) {
     __asm__ __volatile__ ("int %0\n" :: "i" (sva_interrupt_exception));
     return 1;
   }
@@ -241,6 +244,7 @@ sva_register_interrupt (unsigned int number, interrupt_handler_t interrupt)
   return 0;
 }
 
+#if 0
 /**************************** Inline Functions *******************************/
 
 /*

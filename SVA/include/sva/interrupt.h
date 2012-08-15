@@ -49,7 +49,6 @@ get_uicontext(void) {
   return icontextp;
 }
 
-#if 0
 /* Types for handlers */
 typedef void (*genfault_handler_t)(sva_icontext_t * icontext);
 typedef void (*memfault_handler_t)(sva_icontext_t * icontext, void * mp);
@@ -57,11 +56,19 @@ typedef void (*interrupt_handler_t)(unsigned int num, sva_icontext_t * icontext)
 typedef void * syscall_t;
 
 /* Prototypes for Execution Engine Functions */
-extern unsigned char sva_register_general_exception (unsigned int, genfault_handler_t);
-extern unsigned char sva_register_memory_exception (unsigned int, memfault_handler_t);
-extern unsigned char sva_register_interrupt (unsigned int, interrupt_handler_t);
-extern unsigned char sva_register_syscall (unsigned int, syscall_t);
+extern unsigned char
+sva_register_general_exception (unsigned char, genfault_handler_t);
 
+extern unsigned char
+sva_register_memory_exception (unsigned char, memfault_handler_t);
+
+extern unsigned char
+sva_register_interrupt (unsigned char, interrupt_handler_t);
+
+extern unsigned char
+sva_register_syscall (unsigned char, syscall_t);
+
+#if 0
 extern void sva_register_old_interrupt (int number, void *interrupt);
 extern void sva_register_old_trap      (int number, void *interrupt);
 #endif
