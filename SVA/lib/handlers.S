@@ -93,34 +93,35 @@ trap0:
    * in the SVA virtual memory.
    */
 
-  /* Padding and segment selector registers */
-  pushw $0
-  pushw %fs
-  pushw %gs
-#if 0
-  pushw %es
-#else
-  pushw $0
-#endif
+  /* Push an error code on to the stack */
+  push $0
 
-  pushq %rbp
+  /* Allocate an interrupt context on the stack and fill it in */
+  subq $160, %rsp
 
-  pushq %r15
-  pushq %r14
-  pushq %r13
-  pushq %r12
-  pushq %r11
-  pushq %r10
-  pushq %r9
-  pushq %r8
+  /* Save the registers into the interrupt context */
+  movq %rdi,  8(%rsp)
+  movq %rsi, 16(%rsp)
 
-  pushq %rdx
-  pushq %rcx
-  pushq %rbx
-  pushq %rax
+  movq %rax, 24(%rsp)
+  movq %rbx, 32(%rsp)
+  movq %rcx, 40(%rsp)
+  movq %rdx, 48(%rsp)
 
-  pushq %rsi
-  pushq %rdi
+  movq %r8,  56(%rsp)
+  movq %r9,  64(%rsp)
+  movq %r10, 72(%rsp)
+  movq %r11, 80(%rsp)
+  movq %r12, 88(%rsp)
+  movq %r13, 96(%rsp)
+  movq %r14, 104(%rsp)
+  movq %r15, 112(%rsp)
+
+  movq %rbp, 120(%rsp)
+
+  movw %fs,  128(%rsp)
+  movw %gs,  130(%rsp)
+  movw %es,  132(%rsp)
 
   /*
    * Call the trap handler registered by the OS for this trap.
@@ -128,36 +129,35 @@ trap0:
   call *(interrupt_table+(8*0))
 
   /*
-   * Restore the processor state.
+   * Copy the registers from the interrupt context back on to the processor.
    */
-  popq %rdi
-  popq %rsi
+  movq   8(%rsp), %rdi
+  movq  16(%rsp), %rsi
 
-  popq %rax
-  popq %rbx
-  popq %rcx
-  popq %rdx
+  movq  24(%rsp), %rax
+  movq  32(%rsp), %rbx
+  movq  40(%rsp), %rcx
+  movq  48(%rsp), %rdx
 
-  popq %r8
-  popq %r9
-  popq %r10
-  popq %r11
-  popq %r12
-  popq %r13
-  popq %r14
-  popq %r15
+  movq  56(%rsp), %r8
+  movq  64(%rsp), %r9
+  movq  72(%rsp), %r10
+  movq  80(%rsp), %r11
+  movq  88(%rsp), %r12
+  movq  96(%rsp), %r13
+  movq 104(%rsp), %r14
+  movq 112(%rsp), %r15
 
-  popq %rbp
+  movq 120(%rsp), %rbp
 
 #if 0
-  popw
-  popw %fs
-  popw %gs
-  popw %es
-#else
-  addq $32, %rsp
+  movw 128(%rsp), %fs
+  movw 130(%rsp), %gs
+  movw 132(%rsp), %es
 #endif
 
+  /* Remove the interrupt context and the error code */
+  addq $168, %rsp
   iretq
 
 /*
@@ -178,7 +178,7 @@ SVAsyscall:
   movq %gs:0x260, %rax
 
   /*
-   * Save a copy of the interrupt context on to the stack
+   * Save a copy of the interrupt context into SVA memory.
    */
   movq %rdi,  8(%rax)
   movq %rsi, 16(%rax)
