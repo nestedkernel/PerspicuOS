@@ -51,8 +51,8 @@ trap0:
   /*
    * Determine whether we interrupted user or supervisor mode execution.
    */
-  cmpw $KERNELCS, 8(%rsp)
-  je 1f
+  testw $KERNELCS, 8(%rsp)
+  jz 1f
 
   /*
    * We came from user mode.  First switch to the kernel %GS register.
@@ -69,7 +69,12 @@ trap0:
   /*
    * Call the trap handler registered by the OS for this trap.
    */
-  call *(interrupt_table)
+  call *(interrupt_table+(8*0))
+
+  /*
+   * Restore the processor state.
+   */
+  call SVAsysret
 
   /*
    * Increment the PC by 2 to move past the idiv instruction.
@@ -87,38 +92,73 @@ trap0:
    * We are in kernel mode.  Save the state on the kernel stack instead of
    * in the SVA virtual memory.
    */
-  pushq $0
 
-  pushq %rdi
-  pushq %rsi
-
-  pushq %rax
-  pushq %rbx
-  pushq %rcx
-  pushq %rdx
-
-  pushq %r8
-  pushq %r9
-  pushq %r10
-  pushq %r11
-  pushq %r12
-  pushq %r13
-  pushq %r14
-  pushq %r15
-
-  pushq %rbp
-
-#if 0
+  /* Padding and segment selector registers */
+  pushw $0
   pushw %fs
   pushw %gs
+#if 0
   pushw %es
 #else
   pushw $0
-  pushw $0
-  pushw $0
 #endif
 
-  ret
+  pushq %rbp
+
+  pushq %r15
+  pushq %r14
+  pushq %r13
+  pushq %r12
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
+
+  pushq %rdx
+  pushq %rcx
+  pushq %rbx
+  pushq %rax
+
+  pushq %rsi
+  pushq %rdi
+
+  /*
+   * Call the trap handler registered by the OS for this trap.
+   */
+  call *(interrupt_table+(8*0))
+
+  /*
+   * Restore the processor state.
+   */
+  popq %rdi
+  popq %rsi
+
+  popq %rax
+  popq %rbx
+  popq %rcx
+  popq %rdx
+
+  popq %r8
+  popq %r9
+  popq %r10
+  popq %r11
+  popq %r12
+  popq %r13
+  popq %r14
+  popq %r15
+
+  popq %rbp
+
+#if 0
+  popw
+  popw %fs
+  popw %gs
+  popw %es
+#else
+  addq $32, %rsp
+#endif
+
+  iretq
 
 /*
  * Trap: SVAsyscall
