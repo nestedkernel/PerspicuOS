@@ -37,17 +37,26 @@ default_interrupt (unsigned int number, void * state) {
 }
 
 /*
- * Structure: userContexts
+ * Structure: CPUState
  *
  * Description:
- *  This struture contains the interrupt contexts of user-space applications.
- *  We are guaranteed to only enter user-space to kernel-space once per
- *  processor, so all of these interrupt icontexts will be stored in SVA memory
- *  here.
- *
- *  Kernel-space interrupt contexts will be stored on the kernel stack.
+ *  This is a structure containing the per-CPU state of each processor in the
+ *  system.  We gather this here so that it's easy to find them from the %GS
+ *  register.
  */
-static sva_icontext_t userContexts[numProcessors];
+static struct CPUState {
+  /*
+   * Interrupt contexts of user-space applications.  We are guaranteed to
+   * only enter user-space to kernel-space once per processor, so all of these
+   * interrupt icontexts will be stored in SVA memory here.
+   *
+   *  Kernel-space interrupt contexts will be stored on the kernel stack.
+   */
+  sva_icontext_t userContexts;
+
+  /* Current interrupt context pointer */
+  sva_icontext_t * currentIContext;
+} CPUState[numProcessors];
 
 /*
  * Intrinsic: sva_get_uicontext()
@@ -66,7 +75,8 @@ sva_get_uicontext (void) {
 #if 0
   return &(userContexts[getProcessorID()]);
 #else
-  return &(userContexts[index++]);
+  CPUState[index].currentIContext = 0;
+  return &(CPUState[index++].userContexts);
 #endif
 }
 
@@ -134,6 +144,38 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
   icontextp->rcx -= 2;
   return;
 }
+
+void
+linkNewIC (sva_icontext_t * icp) {
+  /*
+   * Get the current processor's SVA state.
+   */
+  struct CPUState * cpuState = (struct CPUState *)get_uicontext();
+
+  /*
+   * Link icp at the head of the interrupt context list.
+   */
+  icp->next = cpuState->currentIContext;
+  cpuState->currentIContext = icp;
+  return;
+}
+
+void
+unlinkIC (sva_icontext_t * icp) {
+  /*
+   * Get the current processor's SVA state.
+   */
+  struct CPUState * cpuState = (struct CPUState *)get_uicontext();
+
+  /*
+   * Link icp at the head of the interrupt context list.
+   */
+  icp->next = cpuState->currentIContext;
+  if (cpuState->currentIContext)
+    cpuState->currentIContext = cpuState->currentIContext->next;
+  return;
+}
+
 
 /*
  * Intrinsic: sva_register_general_exception()

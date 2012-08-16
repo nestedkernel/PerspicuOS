@@ -171,10 +171,24 @@ trap0:
   call saveRegs
 
   /*
+   * Get the current interrupt context link from the per-CPU data structure
+   * and put it into our new interrupt context and put our new interrupt
+   * context at the head of the list.
+   */
+  movq %rsp, %rdi
+  call linkNewIC
+
+  /*
    * Call the trap handler registered by the OS for this trap.
    */
   movq $0, %rdi
   call *(interrupt_table+(8*0))
+
+  /*
+   * Unlink the interrupt context.
+   */
+  movq %rsp, %rdi
+  call unlinkIC
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
@@ -203,6 +217,12 @@ SVAsyscall:
    */
   pushq %rbp
   movq %gs:0x260, %rbp
+
+  /*
+   * Set the next link to NULL (the user-space interrupt context should always
+   * be the first in the interrupt context chain).
+   */
+  movq $0, 0x00(%rbp)
 
   /*
    * Save a copy of the interrupt context into SVA memory.
