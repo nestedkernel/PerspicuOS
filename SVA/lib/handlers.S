@@ -127,7 +127,6 @@ trap0:
    * Save the processor state in the per-processor user interrrupt context
    * structure.
    */
-  movq %rsp, %rdi
   call SVAsyscall
 
   /*
@@ -167,7 +166,7 @@ trap0:
   subq $176, %rsp
 
   /* Save the registers into the interrupt context */
-  movq %rsp, %rax
+  movq %rsp, %rbp
   call saveRegs
 
   /*
