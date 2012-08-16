@@ -47,6 +47,70 @@
 .global secfreetrap
 .type secfreetrap, @function
 
+/*
+ * Function: saveRegs
+ *
+ * Description:
+ *  This function saves the registers into the interrupt context pointed to
+ *  by %rbp.
+ */
+saveRegs:
+  /* Save the registers into the interrupt context */
+  movw %fs,  0x10(%rbp)
+  movw %gs,  0x12(%rbp)
+  movw %es,  0x14(%rbp)
+
+  movq %rdi, 0x18(%rbp)
+  movq %rsi, 0x20(%rbp)
+
+  movq %rax, 0x28(%rbp)
+  movq %rbx, 0x30(%rbp)
+  movq %rcx, 0x38(%rbp)
+  movq %rdx, 0x40(%rbp)
+
+  movq %r8,  0x48(%rbp)
+  movq %r9,  0x50(%rbp)
+  movq %r10, 0x58(%rbp)
+  movq %r11, 0x60(%rbp)
+  movq %r12, 0x68(%rbp)
+  movq %r13, 0x70(%rbp)
+  movq %r14, 0x78(%rbp)
+  movq %r15, 0x80(%rbp)
+
+  ret
+
+/*
+ * Function: restoreRegs
+ *
+ * Description:
+ *  Copy the registers from the interrupt context back on to the processor.
+ */
+restoreRegs:
+#if 0
+  movw 0x10(%rbp), %fs
+  movw 0x12(%rbp), %gs
+  movw 0x14(%rbp), %es
+#endif
+
+  movq 0x18(%rbp), %rdi
+  movq 0x20(%rbp), %rsi
+
+  movq 0x28(%rbp), %rax
+  movq 0x30(%rbp), %rbx
+  movq 0x38(%rbp), %rcx
+  movq 0x40(%rbp), %rdx
+
+  movq 0x48(%rbp), %r8
+  movq 0x50(%rbp), %r9
+  movq 0x58(%rbp), %r10
+  movq 0x60(%rbp), %r11
+  movq 0x68(%rbp), %r12
+  movq 0x70(%rbp), %r13
+  movq 0x78(%rbp), %r14
+  movq 0x80(%rbp), %r15
+
+  ret
+
 trap0:
   /*
    * Determine whether we interrupted user or supervisor mode execution.
@@ -94,34 +158,17 @@ trap0:
    */
 
   /* Push an error code on to the stack */
-  push $0
+  pushq $0
+
+  /* Save the %rbp register since we'll need to use it */
+  pushq %rbp
 
   /* Allocate an interrupt context on the stack and fill it in */
-  subq $160, %rsp
+  subq $176, %rsp
 
   /* Save the registers into the interrupt context */
-  movq %rdi,  8(%rsp)
-  movq %rsi, 16(%rsp)
-
-  movq %rax, 24(%rsp)
-  movq %rbx, 32(%rsp)
-  movq %rcx, 40(%rsp)
-  movq %rdx, 48(%rsp)
-
-  movq %r8,  56(%rsp)
-  movq %r9,  64(%rsp)
-  movq %r10, 72(%rsp)
-  movq %r11, 80(%rsp)
-  movq %r12, 88(%rsp)
-  movq %r13, 96(%rsp)
-  movq %r14, 104(%rsp)
-  movq %r15, 112(%rsp)
-
-  movq %rbp, 120(%rsp)
-
-  movw %fs,  128(%rsp)
-  movw %gs,  130(%rsp)
-  movw %es,  132(%rsp)
+  movq %rsp, %rax
+  call saveRegs
 
   /*
    * Call the trap handler registered by the OS for this trap.
@@ -131,33 +178,12 @@ trap0:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-  movq   8(%rsp), %rdi
-  movq  16(%rsp), %rsi
-
-  movq  24(%rsp), %rax
-  movq  32(%rsp), %rbx
-  movq  40(%rsp), %rcx
-  movq  48(%rsp), %rdx
-
-  movq  56(%rsp), %r8
-  movq  64(%rsp), %r9
-  movq  72(%rsp), %r10
-  movq  80(%rsp), %r11
-  movq  88(%rsp), %r12
-  movq  96(%rsp), %r13
-  movq 104(%rsp), %r14
-  movq 112(%rsp), %r15
-
-  movq 120(%rsp), %rbp
-
-#if 0
-  movw 128(%rsp), %fs
-  movw 130(%rsp), %gs
-  movw 132(%rsp), %es
-#endif
+  call restoreRegs
 
   /* Remove the interrupt context and the error code */
-  addq $168, %rsp
+  addq $176, %rsp
+  popq %rbp
+  addq $8, %rsp
   iretq
 
 /*
@@ -174,76 +200,34 @@ SVAsyscall:
   /*
    * Get a pointer to the current processor's interrupt context.
    */
-  pushq %rax
-  movq %gs:0x260, %rax
+  pushq %rbp
+  movq %gs:0x260, %rbp
 
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
-  movq %rdi,  8(%rax)
-  movq %rsi, 16(%rax)
-
-  popq 24(%rax)
-  movq %rbx, 32(%rax)
-  movq %rcx, 40(%rax)
-  movq %rdx, 48(%rax)
-
-  movq %r8,  56(%rax)
-  movq %r9,  64(%rax)
-  movq %r10, 72(%rax)
-  movq %r11, 80(%rax)
-  movq %r12, 88(%rax)
-  movq %r13, 96(%rax)
-  movq %r14, 104(%rax)
-  movq %r15, 112(%rax)
-
-  movq %rbp, 120(%rax)
-
-  movw %fs,  128(%rax)
-  movw %gs,  130(%rax)
-  movw %es,  132(%rax)
+  call saveRegs
 
   /*
-   * Restore the rax register.
+   * Save a copy of the %rbp register into the interrupt context.
    */
-  movq 24(%rax), %rax
+  popq 0x88(%rbp)
+  movq 0x88(%rbp), %rbp
   ret
 
 SVAsysret:
   /*
    * Get a pointer to the current processor's interrupt context.
    */
-  movq %gs:0x260, %rax
+  movq %gs:0x260, %rbp
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-  movq   8(%rax), %rdi
-  movq  16(%rax), %rsi
+  call restoreRegs
 
-  movq  32(%rax), %rbx
-  movq  40(%rax), %rcx
-  movq  48(%rax), %rdx
-
-  movq  56(%rax), %r8
-  movq  64(%rax), %r9
-  movq  72(%rax), %r10
-  movq  80(%rax), %r11
-  movq  88(%rax), %r12
-  movq  96(%rax), %r13
-  movq 104(%rax), %r14
-  movq 112(%rax), %r15
-
-  movq 120(%rax), %rbp
-
-#if 0
-  movw 128(%rax), %fs
-  movw 130(%rax), %gs
-  movw 132(%rax), %es
-#endif
-
-  /* Restore %rax last */
-  movq 24(%rax), %rax
+  /* Restore %rbp last */
+  movq 0x88(%rbp), %rbp
   ret
 
   /* Exit the system call */

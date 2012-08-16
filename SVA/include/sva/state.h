@@ -44,10 +44,18 @@ typedef uintptr_t * sva_sp_t;
  *  of these, or on hardware with shadow register sets, we might be able to
  *  forgo it at all.
  */
-typedef struct
-{
+typedef struct sva_icontext {
+  /* Next Interrupt Context Pointer */
+  struct sva_icontext * next;
+
   /* Invoke Pointer */
   void * invokep;
+
+  /* Segment selector registers */
+  unsigned short fs;
+  unsigned short gs;
+  unsigned short es;
+  unsigned short pad1;
 
   unsigned long rdi;
   unsigned long rsi;
@@ -66,13 +74,11 @@ typedef struct
   unsigned long r14;
   unsigned long r15;
 
+  /*
+   * Keep this register right here.  We'll use it in assembly code, and we
+   * place it here for easy saving and recovery.
+   */
   unsigned long rbp;
-
-  /* Segment selector registers */
-  unsigned short fs;
-  unsigned short gs;
-  unsigned short es;
-  unsigned short pad1;
 
   /*
    * These values are automagically saved by the x86_64 hardware upon an
