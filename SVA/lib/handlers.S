@@ -132,6 +132,7 @@ trap0:
   /*
    * Call the trap handler registered by the OS for this trap.
    */
+  movq $0, %rdi
   call *(interrupt_table+(8*0))
 
   /*
@@ -172,6 +173,7 @@ trap0:
   /*
    * Call the trap handler registered by the OS for this trap.
    */
+  movq $0, %rdi
   call *(interrupt_table+(8*0))
 
   /*
