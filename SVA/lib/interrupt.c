@@ -194,9 +194,6 @@ sva_register_general_exception (unsigned char number,
   /*
    * First, ensure that the exception number is within range.
    */
-#if 0
-  printf ("SVA: register_general: %d: %lx\n", number, handler);
-#endif
   if (number > 31) {
     __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
     return 1;
@@ -223,14 +220,7 @@ sva_register_general_exception (unsigned char number,
   /*
    * Put the handler into our dispatch table.
    */
-#if 0
-  printf ("SVA: register_general: Installing %d: %lx\n", number, handler);
-#endif
-#if 0
   interrupt_table[number] = handler;
-#else
-  interrupt_table[0] = handler;
-#endif
   return 0;
 }
 
