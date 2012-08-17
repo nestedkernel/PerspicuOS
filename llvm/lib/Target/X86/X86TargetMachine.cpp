@@ -117,6 +117,10 @@ UseVZeroUpper("x86-use-vzeroupper",
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
 
+namespace llvm {
+  extern FunctionPass * createX86CFIOptPass(X86TargetMachine &tm);
+}
+
 namespace {
 /// X86 Code Generator Pass Configuration Options.
 class X86PassConfig : public TargetPassConfig {
@@ -176,6 +180,9 @@ bool X86PassConfig::addPreEmitPass() {
     ShouldPrint = true;
   }
 
+#if 1
+  PM->add(createX86CFIOptPass(getX86TargetMachine()));
+#endif
   return ShouldPrint;
 }
 
