@@ -265,14 +265,28 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
   assert(false && "64 bit not supported");
 }
   
-// insert a check before ret using cdecl calling convention
-// %ecx is used for comparision
-void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB, MachineInstr* MI,
-                   DebugLoc& dl, const TargetInstrInfo* TII,
-                   MachineBasicBlock* EMBB){
+//
+// Method: insertCheckRet()
+// 
+// Description:
+//  Insert a check before a ret instruction using the cdecl calling convention.
+//
+// Notes:
+// The %ecx is used for the comparison.
+//
+void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
+                                   MachineInstr* MI,
+                                   DebugLoc& dl,
+                                   const TargetInstrInfo* TII,
+                                   MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::RET && "opcode: RET expected");
-  if((MI->getParent()->getParent()->getFunction()->getName()).equals("main"))
-  return;
+
+  //
+  // Do not instrument a return in the main() function.
+  //
+  if ((MI->getParent()->getParent()->getFunction()->getName()).equals("main"))
+    return;
+
   // movl (%esp), %ecx, we use %ecx since %ecx is not used for return values
   BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
   .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0);
