@@ -368,23 +368,39 @@ void X86CFIOptPass::insertIDSuccessors(MachineBasicBlock & MBB,
   } else { llvm::errs() << "error: jmp target not found\n"; abort(); }
 }
 
-// insert prefetchnta after call instruction
-// MI points to the call instruction
-// nextMI points to the next instruction
-void X86CFIOptPass::insertIDCall(MachineBasicBlock & MBB, MachineInstr* MI,
-                 MachineInstr* next, DebugLoc& dl,
-                 const TargetInstrInfo* TII){
+//
+// Method: insertIDCall()
+//
+// Description:
+//  Insert a label after a call instruction.  The label is a prefetchnta.
+//
+// Inputs:
+//  MI     - Pointer to the call instruction
+//  nextMI - Pointer to the next instruction
+//
+void X86CFIOptPass::insertIDCall(MachineBasicBlock & MBB,
+                                 MachineInstr* MI,
+                                 MachineInstr* next,
+                                 DebugLoc& dl,
+                                 const TargetInstrInfo* TII) {
+  // Ensure that the instruction is a call instruction
   assert(MI->getDesc().isCall());
-  // for instrutions like this: CALLpcrel32 exit/abort
-  // no need to insert prefetchnta
-  if(MI->getParent()->succ_empty() &&
-   MI == &*(MI->getParent()->rbegin()) &&
-   MI->getOpcode() == X86::CALLpcrel32 )
+
+  //
+  // For instrutions like this: CALLpcrel32 exit/abort
+  // there is no need to insert prefetchnta
+  //
+  if (MI->getParent()->succ_empty() &&
+      MI == &*(MI->getParent()->rbegin()) &&
+      MI->getOpcode() == X86::CALLpcrel32 )
   return;
    
-  // prefetchnta $CFI_ID
-  BuildMI(MBB,next,dl,TII->get(X86::PREFETCHNTA))
+  //
+  // Add the label: prefetchnta $CFI_ID
+  //
+  BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
   .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+  return;
 }
 
 // insert a machine basic block with the error_label into MF and before I
@@ -457,169 +473,233 @@ bool X86CFIOptPass::fromJmpTable(const MachineInstr* const MI){
   return false;
 }
 
-// this function does the main work
-bool X86CFIOptPass::runOnMachineFunction(MachineFunction &F){
+//
+// Method: runOnMachineFunction()
+//
+// Description:
+//  This method is called when the compiler wants to run this machine function
+//  pass.  It will instrument the given function with the labels and run-time
+//  checks needed to enforce control-flow integrity.
+//
+bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
   const TargetInstrInfo *TII = F.getTarget().getInstrInfo();
   DebugLoc dl;
   insertIDFunction(F,dl,TII); // insert an ID at the beginning of F
 
-  // insert an error MachineBasicBlock at the end
+  //
+  // Insert an error MachineBasicBlock at the end.  This block will be used
+  // for reporting a control-flow integrity violation.
+  //
   MachineBasicBlock *EMBB = insertBasicBlockBefore(F, F.end());
+
   // traverse all the machine basic blocks
-  for(MachineFunction::iterator FI = F.begin();
-    FI != F.end(); ++FI){
-  MachineBasicBlock& MBB = *FI;
-  // traverse all the instructions inside the machine basic block
-  for(MachineBasicBlock::iterator I = MBB.begin(); I!=MBB.end();){
-    MachineInstr* MI = I++;
-    MachineInstr* nextMI = I;
-    if(MI->getDesc().isCall() || MI->getDesc().isIndirectBranch() || MI->getDesc().isReturn()){
-    switch(MI->getOpcode()){
-    case X86::CALL32m:
-      insertIDCall(MBB,MI,nextMI,dl,TII);
-      insertCheckCall32m(MBB,MI,dl,TII,EMBB);
-      break;
-    case X86::CALL32r:
-      insertIDCall(MBB,MI,nextMI,dl,TII);
-      insertCheckCall32r(MBB,MI,dl,TII,EMBB);
-      break;
-    case X86::CALL64m:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::CALL64pcrel32:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::CALL64r:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::CALLpcrel16:
-    case X86::CALLpcrel32:
-      insertIDCall(MBB,MI,nextMI,dl,TII);
-      break;
-    case X86::FARCALL16i:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARCALL16m:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARCALL32i:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARCALL32m:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARCALL64:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
+  for (MachineFunction::iterator FI = F.begin(); FI != F.end(); ++FI) {
+    MachineBasicBlock& MBB = *FI;
+
+    // traverse all the instructions inside the machine basic block
+    for (MachineBasicBlock::iterator I = MBB.begin(); I!=MBB.end(); ){
+      MachineInstr* MI = I++;
+      MachineInstr* nextMI = I;
+      if (MI->getDesc().isCall() ||
+          MI->getDesc().isIndirectBranch() ||
+          MI->getDesc().isReturn()){
+        switch(MI->getOpcode()) {
+          case X86::CALL32m:
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            insertCheckCall32m(MBB,MI,dl,TII,EMBB);
+            break;
+
+          case X86::CALL32r:
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            insertCheckCall32r(MBB,MI,dl,TII,EMBB);
+            break;
+
+          case X86::CALL64m:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::CALL64pcrel32:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::CALL64r:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::CALLpcrel16:
+          case X86::CALLpcrel32:
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            break;
+
+          case X86::FARCALL16i:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARCALL16m:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARCALL32i:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARCALL32m:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARCALL64:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
 #if 0
-    case X86::TAILJMP_1:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
+          case X86::TAILJMP_1:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
 #endif
-      // TAILJMPd is an direct jmp instruction
-      // when there is a call at the end of a function, it can be transformed into
-      // a jmp instruction
-    case X86::TAILJMPd:
-      break;
-    case X86::TAILJMPd64:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TAILJMPm:
-      insertCheckTailJmpm(MBB,MI,dl,TII, EMBB); break;
-    case X86::TAILJMPm64:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TAILJMPr:
-      insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
-    case X86::TAILJMPr64:
-      llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TCRETURNdi:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TCRETURNdi64:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump();  abort(); break;
-    case X86::TCRETURNmi:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TCRETURNmi64:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TCRETURNri:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::TCRETURNri64:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
+            // TAILJMPd is an direct jmp instruction
+            // when there is a call at the end of a function, it can be transformed into
+            // a jmp instruction
+          case X86::TAILJMPd:
+            break;
+
+          case X86::TAILJMPd64:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TAILJMPm:
+            insertCheckTailJmpm(MBB,MI,dl,TII, EMBB); break;
+
+          case X86::TAILJMPm64:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TAILJMPr:
+            insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
+
+          case X86::TAILJMPr64:
+            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TCRETURNdi:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TCRETURNdi64:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump();  abort(); break;
+
+          case X86::TCRETURNmi:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TCRETURNmi64:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TCRETURNri:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::TCRETURNri64:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
 #if 0
-    case X86::WINCALL64m:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::WINCALL64pcrel32:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::WINCALL64r:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
+          case X86::WINCALL64m:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::WINCALL64pcrel32:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::WINCALL64r:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
 #endif
-    case X86::FARJMP16i:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARJMP16m:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARJMP32i:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARJMP32m:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::FARJMP64:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::JMP32m:
-      // if the jmp does not jump through a jump table index insert checks and IDs
-      if(!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex){
-      insertCheckJmp32m(MBB,MI,dl,TII,EMBB);
-      insertIDSuccessors(MBB,dl,TII); // insert prefetchnta CFI_ID at successors
+          case X86::FARJMP16i:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARJMP16m:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARJMP32i:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARJMP32m:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::FARJMP64:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::JMP32m:
+            //
+            // If the jmp does not jump through a jump table index, insert
+            // checks and IDs.
+            //
+            if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
+              insertCheckJmp32m(MBB,MI,dl,TII,EMBB);
+ 
+              // insert prefetchnta CFI_ID at successors
+              insertIDSuccessors(MBB,dl,TII);
+            }
+            break;
+
+          case X86::JMP32r:
+            //
+            // If the JMP32r instruction is a jump table, the check can be
+            // eliminated.
+            //
+            if (!JTOpt || !fromJmpTable(MI)){
+              insertIDSuccessors(MBB,dl,TII);
+              insertCheckJmp32r(MBB,MI,dl,TII,EMBB);
+            }
+            break;
+
+          case X86::JMP64m:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::JMP64pcrel32:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::JMP64r:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          case X86::RET:
+            insertCheckRet(MBB,MI,dl,TII,EMBB); break;
+
+          case X86::RETI:
+            insertCheckReti(MBB,MI,dl,TII,EMBB); break;
+
+      #if 0
+          case X86::LRET: // far ret
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+      #endif
+          case X86::LRETI: // far reti
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+          default:
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+
+        }
       }
-      break;
-    case X86::JMP32r:
-      /// if the JMP32r instruction is a jump table the check can be eliminated
-      if(!JTOpt || !fromJmpTable(MI)){
-      insertIDSuccessors(MBB,dl,TII);
-      insertCheckJmp32r(MBB,MI,dl,TII,EMBB);
-      }
-      break;
-    case X86::JMP64m:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::JMP64pcrel32:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::JMP64r:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    case X86::RET:
-      insertCheckRet(MBB,MI,dl,TII,EMBB); break;
-    case X86::RETI:
-      insertCheckReti(MBB,MI,dl,TII,EMBB); break;
-#if 0
-    case X86::LRET: // far ret
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-#endif
-    case X86::LRETI: // far reti
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    default:
-      llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-      MI->dump(); abort(); break;
-    }
     }
   }
-  }
+
   return true;
 }
 
