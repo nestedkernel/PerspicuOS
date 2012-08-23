@@ -80,6 +80,9 @@ typedef struct sva_icontext {
    */
   unsigned long rbp;
 
+  /* Hardware trap number */
+  unsigned long trapno;
+
   /*
    * These values are automagically saved by the x86_64 hardware upon an
    * interrupt or exception.

@@ -120,7 +120,7 @@ struct procMap svaProcMap[numProcessors];
  *
  *  Note that we need one of these per processor.
  */
-void * interrupt_table[256];
+extern void * interrupt_table[256];
 
 /*
  * Taken from FreeBSD: amd64/segments.h
@@ -535,11 +535,11 @@ init_dispatcher ()
 
   /* Register general exception */
   REGISTER_EXCEPTION(0);
-#if 0
   REGISTER_EXCEPTION(1);
   REGISTER_EXCEPTION(2);
   REGISTER_EXCEPTION(3);
   REGISTER_EXCEPTION(4);
+#if 0
   REGISTER_EXCEPTION(5);
   REGISTER_EXCEPTION(6);
   REGISTER_EXCEPTION(7);

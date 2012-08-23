@@ -21,6 +21,71 @@
 /* FreeBSD segment selector for kernel code segment */
 #define KERNELCS 0x03
 
+/*
+ * Macro: TRAP
+ *
+ * Description:
+ *  Create an assembly language routine that can dispatch the specified trap.
+ *  This version is for traps that do not generate their own error code.
+ */
+#define TRAP(x) \
+  .global trap##x ; \
+  .type   trap##x, @function ; \
+; \
+trap##x: \
+  /* \
+   * Determine whether we interrupted user or supervisor mode execution. \
+   */ \
+  testw $KERNELCS, 8(%rsp) ; \
+  jz 1f ; \
+ \
+  /* \
+   * We came from user mode.  First switch to the kernel %GS register. \
+   */ \
+  swapgs ; \
+ \
+  /* \
+   * Save the processor state in the per-processor user interrrupt context \
+   * structure. \
+   */ \
+  call SVAsyscall ; \
+ \
+  /* \
+   * Call the trap handler registered by the OS for this trap. \
+   */ \
+  call *(interrupt_table+(8*x)) ; \
+ \
+  /* \
+   * Restore the processor state. \
+   */ \
+  call SVAsysret ; \
+ \
+  /* \
+   * Increment the PC by 2 to move past the idiv instruction. \
+   */ \
+  addq $2, 0(%rsp) ; \
+ \
+  /* \
+   * Restore the user-space %GS register and return to user-space. \
+   */ \
+  swapgs ; \
+  iretq ; \
+ \
+1: \
+  /* \
+   * We are in kernel mode.  Save the state on the kernel stack instead of \
+   * in the SVA virtual memory. \
+   */ \
+ \
+  /* Push an error code on to the stack */ \
+  pushq $0 ; \
+ \
+  /* Push the trap number */ \
+  pushq $x ; \
+\
+  /* Run common code for interrupts with error codes */ \
+  jmp Trap
+
 /*****************************************************************************
  * Data Section
  ****************************************************************************/
@@ -40,9 +105,6 @@
 
 .global secmemtrap
 .type secmemtrap, @function
-
-.global trap0
-.type trap0, @function
 
 .global secfreetrap
 .type secfreetrap, @function
@@ -111,60 +173,19 @@ restoreRegs:
 
   ret
 
-trap0:
-  /*
-   * Determine whether we interrupted user or supervisor mode execution.
-   */
-  testw $KERNELCS, 8(%rsp)
-  jz 1f
-
-  /*
-   * We came from user mode.  First switch to the kernel %GS register.
-   */
-  swapgs
-
-  /*
-   * Save the processor state in the per-processor user interrrupt context
-   * structure.
-   */
-  call SVAsyscall
-
-  /*
-   * Call the trap handler registered by the OS for this trap.
-   */
-  movq $0, %rdi
-  call *(interrupt_table+(8*0))
-
-  /*
-   * Restore the processor state.
-   */
-  call SVAsysret
-
-  /*
-   * Increment the PC by 2 to move past the idiv instruction.
-   */
-  addq $2, 0(%rsp)
-
-  /*
-   * Restore the user-space %GS register and return to user-space.
-   */
-  swapgs
-  iretq
-
-1:
-  /*
-   * We are in kernel mode.  Save the state on the kernel stack instead of
-   * in the SVA virtual memory.
-   */
-
-  /* Push an error code on to the stack */
-  pushq $0
-
+/*
+ * Function: Trap
+ *
+ * Description:
+ *  This code is common code for all trap handlers that handle traps with
+ *  no x86_64 error code.
+ */
+Trap:
   /* Save the %rbp register since we'll need to use it */
   pushq %rbp
 
   /* Allocate an interrupt context on the stack and fill it in */
-  subq $176, %rsp
+  subq $136, %rsp
 
   /* Save the registers into the interrupt context */
   movq %rsp, %rbp
@@ -175,14 +196,17 @@ trap0:
    * and put it into our new interrupt context and put our new interrupt
    * context at the head of the list.
    */
+#if 0
   movq %rsp, %rdi
   call linkNewIC
+#endif
 
   /*
    * Call the trap handler registered by the OS for this trap.
    */
-  movq $0, %rdi
-  call *(interrupt_table+(8*0))
+  movq 0x90(%rsp), %rdi
+  movq $interrupt_table, %rax
+  call *(%rax,%rdi,8)
 
   /*
    * Unlink the interrupt context.
@@ -196,9 +220,9 @@ trap0:
   call restoreRegs
 
   /* Remove the interrupt context and the error code */
-  addq $176, %rsp
+  addq $136, %rsp
   popq %rbp
-  addq $8, %rsp
+  addq $16, %rsp
   iretq
 
 /*
@@ -303,4 +327,11 @@ secfreetrap:
 
   /* Return from the trap */
   iretq
+
+/* Define the trap handlers */
+TRAP(0)
+TRAP(1)
+TRAP(2)
+TRAP(3)
+TRAP(4)
 
