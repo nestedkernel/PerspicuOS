@@ -86,6 +86,136 @@ trap##x: \
   /* Run common code for interrupts with error codes */ \
   jmp Trap
 
+/*
+ * Macro: ECTRAP
+ *
+ * Description:
+ *  Create an assembly language routine that can dispatch the specified trap.
+ *  This version is for traps that generate their own error code.
+ */
+#define ECTRAP(x) \
+  .global trap##x ; \
+  .type   trap##x, @function ; \
+; \
+trap##x: \
+  /* \
+   * Determine whether we interrupted user or supervisor mode execution. \
+   */ \
+  testw $KERNELCS, 8(%rsp) ; \
+  jz 1f ; \
+ \
+  /* \
+   * We came from user mode.  First switch to the kernel %GS register. \
+   */ \
+  swapgs ; \
+ \
+  /* \
+   * Save the processor state in the per-processor user interrrupt context \
+   * structure. \
+   */ \
+  call SVAsyscall ; \
+ \
+  /* \
+   * Call the trap handler registered by the OS for this trap. \
+   */ \
+  call *(interrupt_table+(8*x)) ; \
+ \
+  /* \
+   * Restore the processor state. \
+   */ \
+  call SVAsysret ; \
+ \
+  /* \
+   * Increment the PC by 2 to move past the idiv instruction. \
+   */ \
+  addq $2, 0(%rsp) ; \
+ \
+  /* \
+   * Restore the user-space %GS register and return to user-space. \
+   */ \
+  swapgs ; \
+  iretq ; \
+ \
+1: \
+  /* \
+   * We are in kernel mode.  Save the state on the kernel stack instead of \
+   * in the SVA virtual memory. \
+   */ \
+ \
+  /* Push the trap number */ \
+  pushq $x ; \
+\
+  /* Run common code for interrupts with error codes */ \
+  jmp Trap
+
+/*
+ * Macro: INTERRUPT()
+ * 
+ * Description:
+ *  Define the handler for an interrupt.  This is nearly identical to the 
+ *  trap code.  It is really only different because it was different in the
+ *  original SVA system; the new system does not need to distinguish between
+ *  an interrupt and a trap.
+ */
+#define INTERRUPT(x) \
+  .global interrupt##x ; \
+  .type   interrupt##x, @function ; \
+; \
+interrupt##x: \
+  /* \
+   * Determine whether we interrupted user or supervisor mode execution. \
+   */ \
+  testw $KERNELCS, 8(%rsp) ; \
+  jz 1f ; \
+ \
+  /* \
+   * We came from user mode.  First switch to the kernel %GS register. \
+   */ \
+  swapgs ; \
+ \
+  /* \
+   * Save the processor state in the per-processor user interrrupt context \
+   * structure. \
+   */ \
+  call SVAsyscall ; \
+ \
+  /* \
+   * Call the trap handler registered by the OS for this trap. \
+   */ \
+  call *(interrupt_table+(8*x)) ; \
+ \
+  /* \
+   * Restore the processor state. \
+   */ \
+  call SVAsysret ; \
+ \
+  /* \
+   * Increment the PC by 2 to move past the idiv instruction. \
+   */ \
+  addq $2, 0(%rsp) ; \
+ \
+  /* \
+   * Restore the user-space %GS register and return to user-space. \
+   */ \
+  swapgs ; \
+  iretq ; \
+ \
+1: \
+  /* \
+   * We are in kernel mode.  Save the state on the kernel stack instead of \
+   * in the SVA virtual memory. \
+   */ \
+ \
+  /* Push an error code on to the stack */ \
+  pushq $0 ; \
+ \
+  /* Push the trap number */ \
+  pushq $x ; \
+\
+  /* Run common code for interrupts with error codes */ \
+  jmp Trap
+
+
 /*****************************************************************************
  * Data Section
  ****************************************************************************/
@@ -332,4 +462,79 @@ TRAP(1)
 TRAP(2)
 TRAP(3)
 TRAP(4)
+TRAP(5)
+TRAP(6)
+TRAP(7)
+ECTRAP(8)
+TRAP(9)
+ECTRAP(10)
+ECTRAP(11)
+ECTRAP(12)
+ECTRAP(13)
+TRAP(15)
+TRAP(16)
+TRAP(18)
+TRAP(19)
+TRAP(20)
+TRAP(21)
+TRAP(22)
+TRAP(23)
+TRAP(24)
+TRAP(25)
+TRAP(26)
+TRAP(27)
+TRAP(28)
+TRAP(29)
+TRAP(30)
+TRAP(31)
+
+/*
+ * Old PC IRQ Interrupts
+ *  33 - Keyboard
+ *  38 - Floppy Disk
+ *  44 - PS/2 Mouse
+ */
+INTERRUPT(32)
+INTERRUPT(33)
+INTERRUPT(34)
+INTERRUPT(35)
+INTERRUPT(36)
+INTERRUPT(37)
+INTERRUPT(38)
+INTERRUPT(39)
+INTERRUPT(40)
+INTERRUPT(41)
+INTERRUPT(42)
+INTERRUPT(43)
+INTERRUPT(44)
+INTERRUPT(45)
+INTERRUPT(46)
+INTERRUPT(47)
+INTERRUPT(48)
+
+/*
+ * IO-APIC Interrupts
+ */
+INTERRUPT(49)
+INTERRUPT(57)
+INTERRUPT(65)
+INTERRUPT(73)
+INTERRUPT(89)
+INTERRUPT(121)
+INTERRUPT(137)
+INTERRUPT(153)
+INTERRUPT(161)
+
+/*
+ * New Local APIC Interrupts
+ *  239     : Local APIC Timer
+ *  251-255 : SMP APIC Vectors
+ */
+INTERRUPT(239)
+INTERRUPT(251)
+INTERRUPT(252)
+INTERRUPT(253)
+INTERRUPT(254)
+INTERRUPT(255)
+
 
