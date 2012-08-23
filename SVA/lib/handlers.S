@@ -196,10 +196,8 @@ Trap:
    * and put it into our new interrupt context and put our new interrupt
    * context at the head of the list.
    */
-#if 0
   movq %rsp, %rdi
   call linkNewIC
-#endif
 
   /*
    * Call the trap handler registered by the OS for this trap.
