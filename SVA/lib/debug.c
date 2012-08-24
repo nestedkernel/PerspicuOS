@@ -36,7 +36,7 @@ sva_trapframe (struct trapframe * tf) {
   /*
    * Fetch the interrupt context.
    */
-  sva_icontext_t * p = get_uicontext();
+  sva_icontext_t * p = get_CPUState()->currentIContext;
 
   /*
    * Store the fields into the trap frame.
@@ -75,6 +75,58 @@ sva_trapframe (struct trapframe * tf) {
   tf->tf_rflags = p->rflags;
   tf->tf_rsp = (unsigned long)(p->rsp);
   tf->tf_ss = p->ss;
+
+  return;
+}
+
+/*
+ * Function: sva_icontext()
+ *
+ * Description:
+ *  Convert the state as represented by the FreeBSD's trapframe structure back
+ *  into the interrupt context.
+ *
+ *  The reason for doing this is that it allows me to progressively move the
+ *  kernel to using SVA for interrupts without completely breaking it.
+ */
+void
+sva_icontext (struct trapframe * tf) {
+  /*
+   * Fetch the interrupt context.
+   */
+  sva_icontext_t * p = get_CPUState()->currentIContext;
+
+  /*
+   * Store the fields into the trap frame.
+   */
+  p->rdi = tf->tf_rdi;
+  p->rsi = tf->tf_rsi;
+  p->rcx = tf->tf_rcx;
+  p->r8  = tf->tf_r8;
+  p->r9  = tf->tf_r9;
+  p->rax = tf->tf_rax;
+  p->rbx = tf->tf_rbx;
+  p->rbp = tf->tf_rbp;
+  p->r10 = tf->tf_r10;
+  p->r11 = tf->tf_r11;
+  p->r12 = tf->tf_r12;
+  p->r13 = tf->tf_r13;
+  p->r14 = tf->tf_r14;
+  p->r15 = tf->tf_r15;
+
+  p->trapno = tf->tf_trapno;
+
+
+  p->fs = tf->tf_fs;
+  p->gs = tf->tf_gs;
+  p->es = tf->tf_es;
+
+  p->code = tf->tf_err;
+  p->rip = tf->tf_rip;
+  p->cs = tf->tf_cs;
+  p->rflags = tf->tf_rflags;
+  p->rsp = (unsigned long *)(tf->tf_rsp);
+  p->ss = tf->tf_ss;
 
   return;
 }
