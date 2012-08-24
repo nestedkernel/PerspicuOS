@@ -51,10 +51,26 @@ trap##x: \
   call SVAsyscall ; \
  \
   /* \
+   * Get the current interrupt context link from the per-CPU data structure \
+   * and put it into our new interrupt context and put our new interrupt \
+   * context at the head of the list. \
+   */ \
+  movq %gs:0x260, %rdi ; \
+  call linkNewIC ; \
+  \
+  /* \
    * Call the trap handler registered by the OS for this trap. \
    */ \
+  movq %gs:0x260, %rbp ; \
+  movq 0x90(%rbp), %rdi ; \
   call *(interrupt_table+(8*x)) ; \
- \
+  \
+  /* \
+   * Unlink the interrupt context. \
+   */ \
+  movq %gs:0x260, %rdi ; \
+  call unlinkIC ; \
+  \
   /* \
    * Restore the processor state. \
    */ \
@@ -63,7 +79,7 @@ trap##x: \
   /* \
    * Increment the PC by 2 to move past the idiv instruction. \
    */ \
-  addq $2, 0(%rsp) ; \
+  /* addq $2, 0(%rsp) ; */ \
  \
   /* \
    * Restore the user-space %GS register and return to user-space. \
@@ -382,10 +398,32 @@ SVAsyscall:
   call saveRegs
 
   /*
-   * Save a copy of the %rbp register into the interrupt context.
+   * Copy the registers saved by the processor into the user-space interupt
+   * context.
+   */
+  movq 0x00(%rsp), %rax
+  movq %rax, 0xa0(%rbp)
+  movq 0x08(%rsp), %rax
+  movq %rax, 0xa8(%rbp)
+  movq 0x10(%rsp), %rax
+  movq %rax, 0xb0(%rbp)
+  movq 0x18(%rsp), %rax
+  movq %rax, 0xb8(%rbp)
+  movq 0x20(%rsp), %rax
+  movq %rax, 0xc0(%rbp)
+
+  /*
+   * Restore %rax from the saved register state.
+   */
+  movq 0x28(%rbp), %rax
+
+  /*
+   * Save a copy of the %rbp register into the interrupt context and then
+   * restore it to its saved value.
    */
   popq 0x88(%rbp)
   movq 0x88(%rbp), %rbp
+
   ret
 
 SVAsysret:
