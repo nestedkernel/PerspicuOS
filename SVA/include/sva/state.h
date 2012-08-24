@@ -49,53 +49,53 @@ typedef uintptr_t * sva_sp_t;
  */
 typedef struct sva_icontext {
   /* Next Interrupt Context Pointer */
-  struct sva_icontext * next;
+  struct sva_icontext * next;         // 0x00
 
   /* Invoke Pointer */
-  void * invokep;
+  void * invokep;                     // 0x08
 
   /* Segment selector registers */
-  unsigned short fs;
+  unsigned short fs;                  // 0x10
   unsigned short gs;
   unsigned short es;
   unsigned short pad1;
 
-  unsigned long rdi;
-  unsigned long rsi;
+  unsigned long rdi;                  // 0x18
+  unsigned long rsi;                  // 0x20
 
-  unsigned long rax;
-  unsigned long rbx;
-  unsigned long rcx;
-  unsigned long rdx;
+  unsigned long rax;                  // 0x28
+  unsigned long rbx;                  // 0x30
+  unsigned long rcx;                  // 0x38
+  unsigned long rdx;                  // 0x40
 
-  unsigned long r8;
-  unsigned long r9;
-  unsigned long r10;
-  unsigned long r11;
-  unsigned long r12;
-  unsigned long r13;
-  unsigned long r14;
-  unsigned long r15;
+  unsigned long r8;                   // 0x48
+  unsigned long r9;                   // 0x50
+  unsigned long r10;                  // 0x58
+  unsigned long r11;                  // 0x60
+  unsigned long r12;                  // 0x68
+  unsigned long r13;                  // 0x70
+  unsigned long r14;                  // 0x78
+  unsigned long r15;                  // 0x80
 
   /*
    * Keep this register right here.  We'll use it in assembly code, and we
    * place it here for easy saving and recovery.
    */
-  unsigned long rbp;
+  unsigned long rbp;                  // 0x88
 
   /* Hardware trap number */
-  unsigned long trapno;
+  unsigned long trapno;               // 0x90
 
   /*
    * These values are automagically saved by the x86_64 hardware upon an
    * interrupt or exception.
    */
-  unsigned long code;
-  unsigned long rip;
-  unsigned long cs;
-  unsigned long rflags;
-  unsigned long * rsp;
-  unsigned long ss;
+  unsigned long code;                 // 0x98
+  unsigned long rip;                  // 0xa0
+  unsigned long cs;                   // 0xa8
+  unsigned long rflags;               // 0xb0
+  unsigned long * rsp;                // 0xb8
+  unsigned long ss;                   // 0xc0
 } sva_icontext_t;
 
 /*
