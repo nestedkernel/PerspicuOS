@@ -18,6 +18,9 @@
 
 #include <sys/types.h>
 
+/* FreeBSD segment selector for kernel code segment */
+#define KERNELCS 0x03
+
 #if 0
 #include "sva/util.h"
 #include "sva/exceptions.h"
@@ -90,7 +93,7 @@ typedef struct sva_icontext {
   unsigned long code;
   unsigned long rip;
   unsigned long cs;
-  unsigned long eflags;
+  unsigned long rflags;
   unsigned long * rsp;
   unsigned long ss;
 } sva_icontext_t;
@@ -163,20 +166,68 @@ struct invoke_frame
   unsigned int cpinvoke;
 };
 
-#if 0
+/*
+ * Structure: CPUState
+ *
+ * Description:
+ *  This is a structure containing the per-CPU state of each processor in the
+ *  system.  We gather this here so that it's easy to find them from the %GS
+ *  register.
+ */
+struct CPUState {
+  /*
+   * Interrupt contexts of user-space applications.  We are guaranteed to
+   * only enter user-space to kernel-space once per processor, so all of these
+   * interrupt icontexts will be stored in SVA memory here.
+   *
+   *  Kernel-space interrupt contexts will be stored on the kernel stack.
+   */
+  sva_icontext_t userContexts;
+
+  /* Current interrupt context pointer */
+  sva_icontext_t * currentIContext;
+};
+
+
+/*
+ * Function: get_cpuState()
+ *
+ * Description:
+ *  This function finds the CPU state for the current process.
+ */
+static inline struct CPUState *
+get_CPUState(void) {
+  /*
+   * Use an offset from the GS register to look up the processor CPU state for
+   * this processor.
+   */
+  struct CPUState * cpustate;
+  __asm__ __volatile__ ("movq %%gs:0x260, %0\n" : "=r" (cpustate));
+  return cpustate;
+}
+
 /*
  * Intrinsic: sva_was_privileged()
  *
  * Description:
- *  This intrinsic flags whether the specified context was running in a
- *  privileged state before the interrupt/exception occurred.
+ *  This intrinsic flags whether the most recent interrupt context was running
+ *  in a privileged state before the interrupt/exception occurred.
+ *
+ * Return value:
+ *  true  - The processor was in privileged mode when interrupted.
+ *  false - The processor was in user-mode when interrupted.
  */
-extern inline unsigned char
-sva_was_privileged (sva_icontext_t * icontext)
-{
-  return (((icontext->cs) & 0x10) == 0x10);
+static inline unsigned char
+sva_was_privileged (void) {
+  /*
+   * Get the current processor's SVA state.
+   */
+  struct CPUState * cpuState = get_CPUState();
+
+  return (((cpuState->currentIContext->cs) & KERNELCS) == KERNELCS);
 }
 
+#if 0
 /* Prototypes for Execution Engine Functions */
 extern unsigned char * sva_get_integer_stackp  (void * integerp);
 extern void            sva_set_integer_stackp  (sva_integer_state_t * p, sva_sp_t sp);

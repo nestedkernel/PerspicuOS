@@ -40,13 +40,7 @@ void sva_icontext_restart (unsigned long, unsigned long);
  */
 static inline sva_icontext_t *
 get_uicontext(void) {
-  /*
-   * Use an offset from the GS register to look up the interrupt context for
-   * this processor.
-   */
-  sva_icontext_t * icontextp;
-  __asm__ __volatile__ ("movq %%gs:0x260, %0\n" : "=r" (icontextp));
-  return icontextp;
+  return &(get_CPUState()->userContexts);
 }
 
 /* Types for handlers */

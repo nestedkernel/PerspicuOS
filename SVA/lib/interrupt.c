@@ -44,19 +44,7 @@ default_interrupt (unsigned int number, void * state) {
  *  system.  We gather this here so that it's easy to find them from the %GS
  *  register.
  */
-static struct CPUState {
-  /*
-   * Interrupt contexts of user-space applications.  We are guaranteed to
-   * only enter user-space to kernel-space once per processor, so all of these
-   * interrupt icontexts will be stored in SVA memory here.
-   *
-   *  Kernel-space interrupt contexts will be stored on the kernel stack.
-   */
-  sva_icontext_t userContexts;
-
-  /* Current interrupt context pointer */
-  sva_icontext_t * currentIContext;
-} CPUState[numProcessors];
+static struct CPUState CPUState[numProcessors];
 
 /*
  * Intrinsic: sva_get_uicontext()
