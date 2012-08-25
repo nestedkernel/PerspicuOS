@@ -132,8 +132,18 @@ trap##x: \
   call SVAsyscall ; \
  \
   /* \
+   * Get the current interrupt context link from the per-CPU data structure \
+   * and put it into our new interrupt context and put our new interrupt \
+   * context at the head of the list. \
+   */ \
+  movq %gs:0x260, %rdi ; \
+  call linkNewIC ; \
+  \
+  /* \
    * Call the trap handler registered by the OS for this trap. \
    */ \
+  movq %gs:0x260, %rbp ; \
+  movq 0x90(%rbp), %rdi ; \
   call *(interrupt_table+(8*x)) ; \
  \
   /* \
@@ -142,10 +152,11 @@ trap##x: \
   call SVAsysret ; \
  \
   /* \
-   * Increment the PC by 2 to move past the idiv instruction. \
+   * Unlink the interrupt context. \
    */ \
-  addq $2, 0(%rsp) ; \
- \
+  movq %gs:0x260, %rdi ; \
+  call unlinkIC ; \
+  \
   /* \
    * Restore the user-space %GS register and return to user-space. \
    */ \
@@ -285,7 +296,7 @@ saveRegs:
   movq %r14, 0x78(%rbp)
   movq %r15, 0x80(%rbp)
 
-  ret
+  retq
 
 /*
  * Function: restoreRegs
@@ -335,7 +346,7 @@ Trap:
 
   /* Save the registers into the interrupt context */
   movq %rsp, %rbp
-  call saveRegs
+  callq saveRegs
 
   /*
    * Get the current interrupt context link from the per-CPU data structure
@@ -395,21 +406,21 @@ SVAsyscall:
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
-  call saveRegs
+  callq saveRegs
 
   /*
    * Copy the registers saved by the processor into the user-space interupt
    * context.
    */
-  movq 0x00(%rsp), %rax
-  movq %rax, 0xa0(%rbp)
-  movq 0x08(%rsp), %rax
-  movq %rax, 0xa8(%rbp)
   movq 0x10(%rsp), %rax
-  movq %rax, 0xb0(%rbp)
+  movq %rax, 0xa0(%rbp)
   movq 0x18(%rsp), %rax
-  movq %rax, 0xb8(%rbp)
+  movq %rax, 0xa8(%rbp)
   movq 0x20(%rsp), %rax
+  movq %rax, 0xb0(%rbp)
+  movq 0x28(%rsp), %rax
+  movq %rax, 0xb8(%rbp)
+  movq 0x30(%rsp), %rax
   movq %rax, 0xc0(%rbp)
 
   /*
