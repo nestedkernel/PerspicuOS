@@ -62,7 +62,7 @@ trap##x: \
    * Call the trap handler registered by the OS for this trap. \
    */ \
   movq %gs:0x260, %rbp ; \
-  movq 0x90(%rbp), %rdi ; \
+  movq $x, %rdi ; \
   call *(interrupt_table+(8*x)) ; \
   \
   /* \
@@ -143,7 +143,7 @@ trap##x: \
    * Call the trap handler registered by the OS for this trap. \
    */ \
   movq %gs:0x260, %rbp ; \
-  movq 0x90(%rbp), %rdi ; \
+  movq $x, %rdi ; \
   call *(interrupt_table+(8*x)) ; \
  \
   /* \
@@ -207,8 +207,18 @@ interrupt##x: \
   call SVAsyscall ; \
  \
   /* \
+   * Get the current interrupt context link from the per-CPU data structure \
+   * and put it into our new interrupt context and put our new interrupt \
+   * context at the head of the list. \
+   */ \
+  movq %gs:0x260, %rdi ; \
+  call linkNewIC ; \
+  \
+  /* \
    * Call the trap handler registered by the OS for this trap. \
    */ \
+  movq %gs:0x260, %rbp ; \
+  movq $x, %rdi ; \
   call *(interrupt_table+(8*x)) ; \
  \
   /* \
@@ -217,10 +227,11 @@ interrupt##x: \
   call SVAsysret ; \
  \
   /* \
-   * Increment the PC by 2 to move past the idiv instruction. \
+   * Unlink the interrupt context. \
    */ \
-  addq $2, 0(%rsp) ; \
- \
+  movq %gs:0x260, %rdi ; \
+  call unlinkIC ; \
+  \
   /* \
    * Restore the user-space %GS register and return to user-space. \
    */ \
