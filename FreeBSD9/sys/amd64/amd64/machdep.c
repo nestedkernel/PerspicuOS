@@ -1095,6 +1095,22 @@ struct soft_segment_descriptor gdt_segs[] = {
 	.ssd_gran = 0		},
 };
 
+extern int svaCounter;
+static void
+defaultHandler (void) {
+  ++svaCounter;
+#if 1
+  __asm__ __volatile__ ("int $4\n");
+#endif
+  return;
+}
+
+static void
+defaultHandler1 (void) {
+  svaCounter += 2;
+  return;
+}
+
 void
 setidt(idx, func, typ, dpl, ist)
 	int idx;
@@ -1117,6 +1133,24 @@ setidt(idx, func, typ, dpl, ist)
 	ip->gd_hioffset = ((uintptr_t)func)>>16 ;
 #else
 	extern void register_x86_interrupt (int, void *, unsigned char);
+
+  /*
+   * Use an SVA intrinsic to map traps handled by SVA.
+   */
+  switch (idx) {
+    case 0:
+      sva_register_general_exception (idx, defaultHandler);
+      return;
+      break;
+
+    case 4:
+      sva_register_general_exception (idx, defaultHandler1);
+      return;
+      break;
+
+    default:
+      break;
+  }
 
   /*
    * Do not change the vectors used by SVA.
@@ -1675,17 +1709,35 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 	/* exceptions */
+#if 0
 	for (x = 0; x < NIDT; x++)
 		setidt(x, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
+#endif
+#if 0
 	setidt(IDT_DE, &IDTVEC(div),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
-	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
  	setidt(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
 	setidt(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_BR, &IDTVEC(bnd),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_UD, &IDTVEC(ill),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NM, &IDTVEC(dna),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_DF, &IDTVEC(dblfault), SDT_SYSIGT, SEL_KPL, 1);
+#else
+	extern void fr_sva_trap(int type);
+	sva_register_general_exception(IDT_DE, fr_sva_trap);
+	sva_register_general_exception(IDT_DB, fr_sva_trap);
+#if 0
+	sva_register_general_exception(IDT_NMI, fr_sva_trap);
+#else
+	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
+#endif
+	sva_register_general_exception(IDT_BP, fr_sva_trap);
+	sva_register_general_exception(IDT_OF, fr_sva_trap);
+	sva_register_general_exception(IDT_BR, fr_sva_trap);
+	sva_register_general_exception(IDT_UD, fr_sva_trap);
+	sva_register_general_exception(IDT_NM, fr_sva_trap);
+	sva_register_general_exception(IDT_DF, fr_sva_trap);
+#endif
 	setidt(IDT_FPUGP, &IDTVEC(fpusegm),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
