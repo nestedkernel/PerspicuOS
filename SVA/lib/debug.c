@@ -13,6 +13,7 @@
  *===----------------------------------------------------------------------===
  */
 
+#include <sva/callbacks.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
 #include <machine/frame.h>
