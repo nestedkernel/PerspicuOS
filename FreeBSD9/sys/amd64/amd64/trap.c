@@ -674,36 +674,64 @@ fr_sva_trap(int type)
    * Translate the SVA trap number into a FreeBSD trap number.
    */
   switch (type) {
-    case 0:
+    case IDT_DE:
       type = T_DIVIDE;
       break;
 
-    case 1:
+    case IDT_DB:
       type = T_RESERVED;
       break;
 
-    case 2:
+    case IDT_NMI:
       type = T_NMI;
       break;
 
-    case 3:
+    case IDT_BP:
       type = T_BPTFLT;
       break;
 
-    case 4:
+    case IDT_OF:
       type = T_OFLOW;
       break;
 
-    case 5:
+    case IDT_BR:
       type = T_BOUND;
       break;
 
-    case 6:
+    case IDT_UD:
       type = T_PRIVINFLT;
       break;
 
-    case 7:
+    case IDT_NM:
       type = T_DNA;
+      break;
+
+    case IDT_FPUGP:
+      type = T_FPOPFLT;
+      break;
+
+    case IDT_TS:
+      type = T_TSSFLT;
+      break;
+
+    case IDT_NP:
+      type = T_SEGNPFLT;
+      break;
+
+    case IDT_SS:
+      type = T_STKFLT;
+      break;
+
+    case IDT_AC:
+      type = T_ALIGNFLT;
+      break;
+
+    case IDT_MC:
+      type = T_MCHK;
+      break;
+
+    case IDT_XF:
+      type = T_XMMFLT;
       break;
 
     default:
