@@ -225,8 +225,13 @@ lapic_init(vm_paddr_t addr)
 	    ("local APIC not aligned on a page boundary"));
 	lapic = pmap_mapdev(addr, sizeof(lapic_t));
 	lapic_paddr = addr;
+#if 0
 	setidt(APIC_SPURIOUS_INT, IDTVEC(spuriousint), SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
+#else
+  extern void spurious_handler (unsigned intNum, sva_icontext_t * p);
+	sva_register_interrupt(APIC_SPURIOUS_INT, spurious_handler);
+#endif
 
 	/* Perform basic initialization of the BSP's local APIC. */
 	lapic_enable();
