@@ -1095,22 +1095,6 @@ struct soft_segment_descriptor gdt_segs[] = {
 	.ssd_gran = 0		},
 };
 
-extern int svaCounter;
-static void
-defaultHandler (void) {
-  ++svaCounter;
-#if 1
-  __asm__ __volatile__ ("int $4\n");
-#endif
-  return;
-}
-
-static void
-defaultHandler1 (void) {
-  svaCounter += 2;
-  return;
-}
-
 void
 setidt(idx, func, typ, dpl, ist)
 	int idx;
@@ -1133,24 +1117,6 @@ setidt(idx, func, typ, dpl, ist)
 	ip->gd_hioffset = ((uintptr_t)func)>>16 ;
 #else
 	extern void register_x86_interrupt (int, void *, unsigned char);
-
-  /*
-   * Use an SVA intrinsic to map traps handled by SVA.
-   */
-  switch (idx) {
-    case 0:
-      sva_register_general_exception (idx, defaultHandler);
-      return;
-      break;
-
-    case 4:
-      sva_register_general_exception (idx, defaultHandler1);
-      return;
-      break;
-
-    default:
-      break;
-  }
 
   /*
    * Do not change the vectors used by SVA.
@@ -1616,6 +1582,19 @@ do_next:
 	msgbufp = (struct msgbuf *)PHYS_TO_DMAP(phys_avail[pa_indx]);
 }
 
+#if 1
+/*
+ * Function: spurious_handler()
+ *
+ * Description:
+ *  Handle (ignore) spurious APIC interrupts.
+ */
+void
+spurious_handler (unsigned intNum, sva_icontext_t * p) {
+  return;
+}
+#endif
+
 u_int64_t
 hammer_time(u_int64_t modulep, u_int64_t physfree)
 {
@@ -1791,8 +1770,13 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Point the ICU spurious interrupt vectors at the APIC spurious
 	 * interrupt handler.
 	 */
+#if 0
 	setidt(IDT_IO_INTS + 7, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_IO_INTS + 15, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
+#else
+	sva_register_interrupt(IDT_IO_INTS + 7, spurious_handler);
+	sva_register_interrupt(IDT_IO_INTS + 15, spurious_handler);
+#endif
 #endif
 #else
 #error "have you forgotten the isa device?";
