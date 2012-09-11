@@ -661,14 +661,6 @@ fr_sva_trap(int type)
 	 */
 	extern void sva_trapframe (struct trapframe * tf);
 	sva_trapframe (frame);
-  if (type != 7) {
-    printf ("SVA: fr_sva_trap: %d!\n", type);
-    printf ("SVA: cs = %lx\n", frame->tf_cs);
-    printf ("SVA: rip = %lx\n", frame->tf_rip);
-    printf ("SVA: rflags = %lx\n", frame->tf_rflags);
-    printf ("SVA: rsp = %lx\n", frame->tf_rsp);
-    printf ("SVA: ss = %lx\n", frame->tf_ss);
-  }
 
   /*
    * Translate the SVA trap number into a FreeBSD trap number.
