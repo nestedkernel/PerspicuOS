@@ -172,30 +172,30 @@ llva_get_eip (void * icontext)
   llva_icontext_t * p = icontext;
   return p->eip;
 }
+#endif
 
 int
-llva_print_icontext (void * q)
-{
-  llva_icontext_t * p = q;
-  if (q)
-  {
-    printk ("<0>" "LLVA: icontext\n");
-    printk("<0>eip: 0x%x   esp: 0x%x   ebp: 0x%x \n", p->eip, p->esp, p->ebp);
-    printk("<0>eax: 0x%x   ebx: 0x%x   ecx: 0x%x \n", p->eax, p->ebx, p->ecx);
-    printk("<0>edx: 0x%x   esi: 0x%x   edi: 0x%x \n", p->edx, p->esi, p->edi);
-    printk ("<0>" "LLVA: icontext  cs: 0x%x\n", (p->cs & 0xffff));
-    printk ("<0>" "LLVA: icontext  eflags: 0x%x\n", p->eflags);
-    printk ("<0>" "LLVA: icontext  code  : 0x%x\n", p->code);
-    printk("es: 0x%x   ds: 0x%x   gs: 0x%x \n", p->es, p->ds, p->gs);
-    printk ("<0>" "--------------------------------\n", p->eax);
-  }
-  else
-  {
-    printk ("<0>" "LLVA: icontext is NULL\n");
+sva_print_icontext (void) {
+  sva_icontext_t * p = get_CPUState()->currentIContext;
+  if (p) {
+    printf ("SVA: icontext: %p\n", p);
+    printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
+#if 0
+    printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
+    printf("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
+    printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
+    printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
+    printf ("SVA: icontext  code  : 0x%lx\n", p->code);
+    printf("es: 0x%x   ds: 0x%x   gs: 0x%x \n", p->es, 0, p->gs);
+    printf ("--------------------------------\n");
+#endif
+  } else {
+    printf ("SVA: icontext is NULL\n");
   }
   return 0;
 }
 
+#if 0
 void
 llva_psysnum (int a, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, void * icontext)
 {
