@@ -337,13 +337,18 @@ void X86CFIOptPass::insertCheckReti(MachineBasicBlock& MBB, MachineInstr* MI,
 // insert prefetchnta $CFI_ID
 void X86CFIOptPass::insertIDFunction(MachineFunction& F,DebugLoc & dl, 
                    const TargetInstrInfo* TII){
-  // main function does not need ID
-  if((F.getFunction()->getName()).equals("main")) return;
+  //
+  // Do not add an ID to the main() function.
+  //
+  if ((F.getFunction()->getName()).equals("main")) return;
+
   MachineBasicBlock& MBB = *(F.begin());
   MachineInstr* MI = MBB.begin();
+#if 0
   // prefetchnta CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
   .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+#endif
 }
 
 // insert prefetchnta $CFI_ID at the beginning of MBB
@@ -398,8 +403,13 @@ void X86CFIOptPass::insertIDCall(MachineBasicBlock & MBB,
   //
   // Add the label: prefetchnta $CFI_ID
   //
+#if 0
   BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
   .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+#else
+  BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
+  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+#endif
   return;
 }
 
@@ -519,8 +529,12 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             MI->dump(); abort(); break;
 
           case X86::CALL64pcrel32:
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            break;
+#if 0
             llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
+#endif
 
           case X86::CALL64r:
             llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
@@ -672,8 +686,23 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             MI->dump(); abort(); break;
 
           case X86::JMP64r:
+#if 0
+            //
+            // If the JMP32r instruction is a jump table, the check can be
+            // eliminated.
+            //
+            if (!JTOpt || !fromJmpTable(MI)){
+              insertIDSuccessors(MBB,dl,TII);
+              insertCheckJmp32r(MBB,MI,dl,TII,EMBB);
+            }
+            break;
+#endif
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+#if 0
             MI->dump(); abort(); break;
+#else
+            break;
+#endif
 
           case X86::RET:
             insertCheckRet(MBB,MI,dl,TII,EMBB); break;
