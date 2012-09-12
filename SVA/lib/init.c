@@ -523,8 +523,16 @@ init_dispatcher ()
   /* Register the secure memory allocation and deallocation traps */
   extern void secmemtrap(void);
   extern void secfreetrap(void);
+  extern void SVAbadtrap(void);
   register_x86_trap (0x7e, secfreetrap);
   register_x86_trap (0x7f, secmemtrap);
+
+  /*
+   * Register the bad trap handler for all interrupts and traps.
+   */
+  for (unsigned index = 0; index < 255; ++index) {
+    register_x86_interrupt (index, SVAbadtrap, 0);
+  }
 
 #if 0
   /* Page Fault and Memory Alignment Trap, respectively */
