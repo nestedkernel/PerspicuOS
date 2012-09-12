@@ -222,16 +222,16 @@ interrupt##x: \
   call *(interrupt_table+(8*x)) ; \
  \
   /* \
-   * Restore the processor state. \
-   */ \
-  call SVAsysret ; \
- \
-  /* \
    * Unlink the interrupt context. \
    */ \
   movq %gs:0x260, %rdi ; \
   call unlinkIC ; \
   \
+  /* \
+   * Restore the processor state. \
+   */ \
+  call SVAsysret ; \
+ \
   /* \
    * Restore the user-space %GS register and return to user-space. \
    */ \
@@ -265,6 +265,9 @@ interrupt##x: \
  ****************************************************************************/
 .text
 
+.global SVAbadtrap
+.type SVAbadtrap, @function
+
 .global SVAsyscall
 .type SVAsyscall, @function
 
@@ -276,6 +279,19 @@ interrupt##x: \
 
 .global secfreetrap
 .type secfreetrap, @function
+
+/*
+ * Function: SVAbadtrap
+ *
+ * Description:
+ *  This function just generates a fault, allowing us to catch traps which SVA
+ *  isn't fielding.
+ */
+SVAbadtrap:
+  movq $0xbeefbeef, %rbx
+  movq $0, %rax
+  movq (%rax), %rax
+  iretq
 
 /*
  * Function: saveRegs
