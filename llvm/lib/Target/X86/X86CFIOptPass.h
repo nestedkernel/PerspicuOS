@@ -26,10 +26,19 @@ namespace llvm{
   
   struct X86CFIOptPass : public MachineFunctionPass {
     // the CFI ID
+#if 0
     const static int CFI_ID = 19880616;
+#else
+    const static int CFI_ID = 0xbeefbeef;
+#endif
 
+#if 0
     const static bool JTOpt  = true; // jump table index optimization
     const static bool skipID = true; // skip prefetchnta 
+#else
+    const static bool JTOpt  = false; // jump table index optimization
+    const static bool skipID = false; // skip prefetchnta 
+#endif
   
   
     // The X86 target machine
@@ -43,6 +52,11 @@ namespace llvm{
     virtual const char *getPassName() const;  
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
+
+    // Flag whether we're compiling for 32-bit or 64-bit x86
+    bool is64Bit(void) {
+      return TM.getSubtarget<X86Subtarget>().is64Bit();
+    }
 
     // insert check before call32r
     void insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
