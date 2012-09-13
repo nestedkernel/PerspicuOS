@@ -236,7 +236,8 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
 void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
                     MachineBasicBlock* EMBB){
-  assert(MI->getOpcode() == X86::TAILJMPm && "opcode: TAILJMPm expected");
+  assert((MI->getOpcode() == X86::TAILJMPm ||
+          MI->getOpcode() == X86::TAILJMPm64) && "opcode: TAILJMPm expected");
   // movl mem_loc, %ecx, we use %ecx since %ecx is not used for return values
   BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
@@ -258,7 +259,8 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
 void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
                     MachineBasicBlock* EMBB){
-  assert(MI->getOpcode() == X86::TAILJMPr && "opcode TAILJMPr expected");
+  assert((MI->getOpcode() == X86::TAILJMPr ||
+          MI->getOpcode() == X86::TAILJMPr64) && "opcode TAILJMPr expected");
   unsigned reg = MI->getOperand(0).getReg();
   // CMP32mi 3(reg), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
@@ -671,18 +673,18 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::TAILJMPm:
-            insertCheckTailJmpm(MBB,MI,dl,TII, EMBB); break;
+            insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
+            break;
 
           case X86::TAILJMPm64:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
+            break;
 
           case X86::TAILJMPr:
             insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
 
           case X86::TAILJMPr64:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
 
           case X86::TCRETURNdi:
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
