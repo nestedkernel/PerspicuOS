@@ -67,9 +67,17 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
 // insert a check before CALL64r
 void X86CFIOptPass::insertCheckCall64r(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
-                     MachineBasicBlock* EMBB){
+                     MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::CALL64r && "opcode: CALL64r expected");
-  assert(false && "64 bit not supported");
+  unsigned reg = MI->getOperand(0).getReg();
+  // CMP32mi 3(reg), $CFI_ID
+  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
+  .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  // JNE_4 EMBB
+  BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+  // MBB.addSuccessor(EMBB);
+  // addl 7, reg to skip prefetchnta. prefetchnta has 7 bytes
+  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
 }
 
 // insert a check before CALL32m
@@ -618,8 +626,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 #endif
 
           case X86::CALL64r:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            insertCheckCall64r(MBB,MI,dl,TII,EMBB);
+            break;
 
           case X86::CALLpcrel16:
           case X86::CALLpcrel32:
