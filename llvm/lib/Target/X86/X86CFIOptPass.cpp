@@ -102,7 +102,24 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
                      MachineBasicBlock* EMBB){
   assert(MI->getOpcode() == X86::CALL64m && "opcode: CALL64m expected");
-  assert(false && "64 bit not supported");
+  // use %eax since %eax is caller-saved
+  // MOV32rm, %eax, mem_loc
+  BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),X86::EAX)
+  .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
+  .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
+  .addReg(MI->getOperand(4).getReg());
+  // CMP32mi 3(%eax), $CFI_ID
+  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::EAX)
+  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  // JNE_4 EMBB
+  BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+  // MBB.addSuccessor(EMBB);
+  // addl 7, %eax; to skip prefetchnta
+  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::EAX).addReg(X86::EAX).addImm(7);
+  // call %eax
+  BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
+  MBB.erase(MI);
+
 }
 
 // insert a check before JMP32r
@@ -260,11 +277,81 @@ unsigned X86CFIOptPass::getRegisterKilled(MachineInstr* const MI){
 // insert a check before JMP64m
 void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
-                    MachineBasicBlock* EMBB){
+                    MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::JMP64m && "opcode: JMP64m expected");
-  assert(false && "64 bit not supported");
+  const TargetRegisterInfo* TRI = MI->getParent()->getParent()->getTarget().getRegisterInfo();
+  //llvm::errs() << "insertCheckJmp32m\n";
+  //unsigned killed = getRegisterKilled(MI);
+  //
+
+  //
+  // For now, don't look for a dead register.  The code to look for the dead
+  // register does not work with LLVM 3.1 and needs to be updated.
+  //
+#if 0
+  unsigned killed = llvm::X86SFIOptPass::findDeadReg(MI, 0);
+#else
+  unsigned killed = 0;
+#endif
+
+  // if the JMP32m kills a register, use it for check
+  if(killed != 0){
+    // MOV32rm, %killed, mem_loc
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),killed)
+      .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
+      .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
+      .addReg(MI->getOperand(4).getReg());
+    // CMP32mi 3(%killed), $CFI_ID
+    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(killed)
+    .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+    // JNE_4 EMBB
+    BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+  // MBB.addSuccessor(EMBB);
+    // ADD32ri %killed, $7
+    if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),killed).addReg(killed).addImm(7);
+    // JMP32r %killed
+    BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
+    MBB.erase(MI);
+  } else { // spill a register onto stack
+  llvm::errs() << "Jmp32m needs a dead reg for CFI\n";
+  MI->getParent()->getParent()->dump();
+  abort();
+    unsigned reg = 0;
+    if(!MI->readsRegister(X86::AH, TRI) && !MI->readsRegister(X86::AL, TRI) &&
+     !MI->readsRegister(X86::AX, TRI) && !MI->readsRegister(X86::EAX, TRI))
+      reg = X86::EAX;
+    else if(!MI->readsRegister(X86::CH, TRI) && !MI->readsRegister(X86::CL, TRI) &&
+      !MI->readsRegister(X86::CX, TRI) && !MI->readsRegister(X86::ECX, TRI))
+      reg = X86::ECX;
+    else if(!MI->readsRegister(X86::DH, TRI) && !MI->readsRegister(X86::DL, TRI) &&
+      !MI->readsRegister(X86::DX, TRI) && !MI->readsRegister(X86::EDX, TRI))
+      reg = X86::EDX;
+    else if(!MI->readsRegister(X86::BH, TRI) && !MI->readsRegister(X86::BL, TRI) &&
+      !MI->readsRegister(X86::BX, TRI) && !MI->readsRegister(X86::EBX, TRI))
+      reg = X86::EBX;
+  else if(!MI->readsRegister(X86::SI, TRI) && !MI->readsRegister(X86::ESI, TRI))
+    reg = X86::ESI;
+  else if(!MI->readsRegister(X86::DI, TRI) && !MI->readsRegister(X86::EDI, TRI))
+    reg = X86::EDI;
+    else abort();
+    // pushl %reg
+    BuildMI(MBB,MI,dl,TII->get(X86::PUSH32r)).addReg(reg);
+    // MOV32rm  mem_loc, %reg
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),reg)
+      .addReg(MI->getOperand(0).getReg())  // base
+    .addImm(MI->getOperand(1).getImm())  // scale
+      .addReg(MI->getOperand(2).getReg())  // index
+    .addOperand(MI->getOperand(3))       // displacement
+      .addReg(MI->getOperand(4).getReg()); //segment register
+    // CMP32mi 3(%reg), $CFI_ID
+    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
+      .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+    // POP32r %reg
+    BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
+    // JNE_4 EMBB
+    BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+  } 
 }
-  
 //
 // Method: insertCheckRet()
 // 
@@ -344,11 +431,9 @@ void X86CFIOptPass::insertIDFunction(MachineFunction& F,DebugLoc & dl,
 
   MachineBasicBlock& MBB = *(F.begin());
   MachineInstr* MI = MBB.begin();
-#if 0
   // prefetchnta CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
-  .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
-#endif
+  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
 }
 
 // insert prefetchnta $CFI_ID at the beginning of MBB
@@ -356,7 +441,7 @@ void X86CFIOptPass::insertIDBasicBlock(MachineBasicBlock& MBB,
                      DebugLoc& dl, const TargetInstrInfo* TII){
   MachineInstr * MI = MBB.begin();
   BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
-  .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
 }
 
 // insert prefetchnta CFI_ID at the beginning of MBB's successors
@@ -368,7 +453,7 @@ void X86CFIOptPass::insertIDSuccessors(MachineBasicBlock & MBB,
       MachineBasicBlock& MBBS = (**SI);
       MachineInstr * MI = MBBS.begin();
       BuildMI(MBBS,MI,dl,TII->get(X86::PREFETCHNTA))
-    .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+    .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
     }
   } else { llvm::errs() << "error: jmp target not found\n"; abort(); }
 }
@@ -403,13 +488,8 @@ void X86CFIOptPass::insertIDCall(MachineBasicBlock & MBB,
   //
   // Add the label: prefetchnta $CFI_ID
   //
-#if 0
-  BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
-  .addReg(0).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
-#else
   BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
   .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
-#endif
   return;
 }
 
@@ -525,8 +605,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::CALL64m:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            insertIDCall(MBB,MI,nextMI,dl,TII);
+            insertCheckCall64m(MBB,MI,dl,TII,EMBB);
+            break;
 
           case X86::CALL64pcrel32:
             insertIDCall(MBB,MI,nextMI,dl,TII);
@@ -678,8 +759,17 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::JMP64m:
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            //
+            // If the jmp does not jump through a jump table index, insert
+            // checks and IDs.
+            //
+            if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
+              insertCheckJmp32m(MBB,MI,dl,TII,EMBB);
+ 
+              // insert prefetchnta CFI_ID at successors
+              insertIDSuccessors(MBB,dl,TII);
+            }
+            break;
 
           case X86::JMP64pcrel32:
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
@@ -698,11 +788,7 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 #endif
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-#if 0
             MI->dump(); abort(); break;
-#else
-            break;
-#endif
 
           case X86::RET:
             insertCheckRet(MBB,MI,dl,TII,EMBB); break;
