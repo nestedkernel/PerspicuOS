@@ -37,6 +37,26 @@ char X86CFIOptPass::ID = 0;
 
 X86CFIOptPass::X86CFIOptPass(X86TargetMachine &tm):MachineFunctionPass(ID), TM(tm) {}
 
+//
+// Function: addLabelInstruction()
+//
+// Description:
+//  Add a label instruction.
+//
+static inline void
+addLabelInstruction (MachineBasicBlock & MBB,
+                     MachineInstr * MI,
+                     DebugLoc & dl,
+                     const TargetInstrInfo * TII,
+                     int ID) {
+  //
+  // Build a prefetchnta instruction that uses a constant offset from a
+  // register.  The offset will be the label ID.
+  //
+  addLabelInstruction(MBB, MI, dl, TII, ID);
+  return;
+}
+
 const char *X86CFIOptPass::getPassName() const {
   return "X86 CFI optimizer";
 }
@@ -438,7 +458,7 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   if (skipID) {
     // Compute the length of the prefetch instruction in bytes
     unsigned char skipAmount = (is64Bit()) ? 8 : 7;
-    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(7);
+    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(skipAmount);
   }
 
   // jmp %ecx
@@ -485,17 +505,14 @@ void X86CFIOptPass::insertIDFunction(MachineFunction& F,DebugLoc & dl,
 
   MachineBasicBlock& MBB = *(F.begin());
   MachineInstr* MI = MBB.begin();
-  // prefetchnta CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
-  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+  addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
 }
 
 // insert prefetchnta $CFI_ID at the beginning of MBB
 void X86CFIOptPass::insertIDBasicBlock(MachineBasicBlock& MBB,
                      DebugLoc& dl, const TargetInstrInfo* TII){
   MachineInstr * MI = MBB.begin();
-  BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
-  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+  addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
 }
 
 // insert prefetchnta CFI_ID at the beginning of MBB's successors
@@ -506,8 +523,7 @@ void X86CFIOptPass::insertIDSuccessors(MachineBasicBlock & MBB,
     SI != E; ++SI){
       MachineBasicBlock& MBBS = (**SI);
       MachineInstr * MI = MBBS.begin();
-      BuildMI(MBBS,MI,dl,TII->get(X86::PREFETCHNTA))
-    .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+      addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
     }
   } else { llvm::errs() << "error: jmp target not found\n"; abort(); }
 }
@@ -542,8 +558,7 @@ void X86CFIOptPass::insertIDCall(MachineBasicBlock & MBB,
   //
   // Add the label: prefetchnta $CFI_ID
   //
-  BuildMI(MBB, next, dl, TII->get(X86::PREFETCHNTA))
-  .addReg(X86::EAX).addImm(0).addReg(0).addImm(CFI_ID).addReg(0);
+  addLabelInstruction(MBB, next, dl, TII, CFI_ID);
   return;
 }
 
