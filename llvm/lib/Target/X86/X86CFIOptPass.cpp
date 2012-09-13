@@ -146,11 +146,25 @@ void X86CFIOptPass::insertCheckJmp32r(MachineBasicBlock& MBB, MachineInstr *MI,
   if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
 }
 
+//
+// Method: insertCheckJmp64r()
+//
+// Description:
+//  This method adds a check to a 64-bit jump with a register.
+//
 void X86CFIOptPass::insertCheckJmp64r(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
-                    MachineBasicBlock* EMBB){
+                    MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::JMP64r && "opcode: JMP64r expected");
-  assert(false && "64 bit not supported");
+  const unsigned reg = MI->getOperand(0).getReg();
+  // CMP32mi 3(reg), $CFI_ID
+  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
+  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  // JNE_4 EMBB
+  BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+  // MBB.addSuccessor(EMBB);
+  // addl 7, reg
+  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
 }
 
 // insert a check before JMP32m
@@ -255,6 +269,7 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
   MBB.erase(MI);
 }
+
 // insert a check before TAILJMPr instruction
 void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
@@ -362,6 +377,7 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
   } 
 }
+
 //
 // Method: insertCheckRet()
 // 
@@ -384,22 +400,50 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   if ((MI->getParent()->getParent()->getFunction()->getName()).equals("main"))
     return;
 
-  // movl (%esp), %ecx, we use %ecx since %ecx is not used for return values
-  BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
-  .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0);
-  // addl 4, %esp
-  BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ESP)
-  .addReg(X86::ESP).addImm(4);
-  // cmpl $CFI_ID, 3(%ecx)
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::ECX)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  //
+  // Use different instructions and addressing modes depending on whether we're
+  // on a 32-bit or 64-bit system.
+  //
+  if (is64Bit()) {
+    // movq (%rsp), %rcx, we use %rcx since %rcx is not used for return values
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
+    .addReg(X86::RSP).addImm(1).addReg(0).addImm(0).addReg(0);
+
+    // addl 4, %rsp
+    BuildMI(MBB,MI,dl,TII->get(X86::ADD64ri32),X86::RSP)
+    .addReg(X86::RSP).addImm(4);
+
+    // cmpl $CFI_ID, 4(%rcx)
+    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::RCX)
+    .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+  } else {
+    // movl (%esp), %ecx, we use %ecx since %ecx is not used for return values
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
+    .addReg(X86::ESP).addImm(1).addReg(0).addImm(0).addReg(0);
+
+    // addl 4, %esp
+    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ESP)
+    .addReg(X86::ESP).addImm(4);
+
+    // cmpl $CFI_ID, 3(%ecx)
+    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::ECX)
+    .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  }
+
   // jne EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+
   // MBB.addSuccessor(EMBB);
   // addl $7, %ecx
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(7);
+  if (skipID) {
+    // Compute the length of the prefetch instruction in bytes
+    unsigned char skipAmount = (is64Bit()) ? 8 : 7;
+    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(7);
+  }
+
   // jmp %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
+
   // erase removes the node from the list and recycle the memory
   MI->eraseFromParent(); // MBB.erase(MI);
 }
@@ -520,7 +564,7 @@ MachineBasicBlock* X86CFIOptPass::insertBasicBlockBefore(MachineFunction &MF,
   // JNE_4 error_label
   // BuildMI(MBB,dl,TII->get(X86::JNE_4)).addExternalSymbol("error_label");
   // insert jmp 0
-  BuildMI(MBB,dl,TII->get(X86::JMP_1)).addImm(0);
+  BuildMI(MBB,dl,TII->get(X86::JMP_1)).addImm(0x0fea);
   // MOV32ri %eax, 0, causes problems
   // BuildMI(MBB,dl,TII->get(X86::MOV32ri),X86::EAX).addImm(0);
   // CALL32r %eax !!! this has problems when dump is used
@@ -786,19 +830,15 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             MI->dump(); abort(); break;
 
           case X86::JMP64r:
-#if 0
             //
             // If the JMP32r instruction is a jump table, the check can be
             // eliminated.
             //
             if (!JTOpt || !fromJmpTable(MI)){
               insertIDSuccessors(MBB,dl,TII);
-              insertCheckJmp32r(MBB,MI,dl,TII,EMBB);
+              insertCheckJmp64r(MBB,MI,dl,TII,EMBB);
             }
             break;
-#endif
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
 
           case X86::RET:
             insertCheckRet(MBB,MI,dl,TII,EMBB); break;
