@@ -659,8 +659,7 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::TAILJMPd64:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
+            break;
 
           case X86::TAILJMPm:
             insertCheckTailJmpm(MBB,MI,dl,TII, EMBB); break;
