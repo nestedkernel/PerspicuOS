@@ -49,6 +49,7 @@ sva_trapframe (struct trapframe * tf) {
   tf->tf_r9  = p->r9;
   tf->tf_rax = p->rax;
   tf->tf_rbx = p->rbx;
+  tf->tf_rdx = p->rdx;
   tf->tf_rbp = p->rbp;
   tf->tf_r10 = p->r10;
   tf->tf_r11 = p->r11;
@@ -107,6 +108,8 @@ sva_icontext (struct trapframe * tf) {
   p->r9  = tf->tf_r9;
   p->rax = tf->tf_rax;
   p->rbx = tf->tf_rbx;
+  p->rcx = tf->tf_rcx;
+  p->rdx = tf->tf_rdx;
   p->rbp = tf->tf_rbp;
   p->r10 = tf->tf_r10;
   p->r11 = tf->tf_r11;
