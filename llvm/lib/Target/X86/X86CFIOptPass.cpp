@@ -53,7 +53,8 @@ addLabelInstruction (MachineBasicBlock & MBB,
   // Build a prefetchnta instruction that uses a constant offset from a
   // register.  The offset will be the label ID.
   //
-  addLabelInstruction(MBB, MI, dl, TII, ID);
+  BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
+  .addReg(X86::EAX).addImm(0).addReg(0).addImm(ID).addReg(0);
   return;
 }
 
@@ -111,6 +112,38 @@ X86CFIOptPass::addSkipInstruction(MachineBasicBlock & MBB,
 }
 
 //
+// Method: addCheckInstruction()
+//
+// Description:
+//  Add an instruction to check the label.
+//
+// TODO:
+//  The check should compare against the *entire* label, including the bytes
+//  that encode the prefetchnta instruction.  Some other instruction may
+//  use the same constant operand used for the label.
+//
+void
+X86CFIOptPass::addCheckInstruction (MachineBasicBlock & MBB,
+                                    MachineInstr * MI,
+                                    DebugLoc & dl,
+                                    const TargetInstrInfo * TII,
+                                    const unsigned reg) {
+  //
+  // Determine the offset of the label within the instruction.  It is 3 bytes
+  // in 32-bit mode and 4 bytes in 64-bit mode.
+  //
+  unsigned char offset = (is64Bit()) ? 4 : 3;
+
+  //
+  // Add an instruction to compare the label:
+  // CMP32mi offset(reg), $CFI_ID
+  //
+  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
+  .addReg(reg).addImm(1).addReg(0).addImm(offset).addReg(0).addImm(CFI_ID);
+  return;
+}
+
+//
 // Method: insertCheckCall32r()
 //
 // Description:
@@ -125,12 +158,10 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB,
   assert(MI->getOpcode() == X86::CALL32r && "opcode: CALL32r expected");
 
   //
-  // Add an instruction to compare the label:
-  // CMP32mi 3(reg), $CFI_ID
+  // Add an instruction to compare the label
   //
   unsigned reg = MI->getOperand(0).getReg();
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-  .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  addCheckInstruction (MBB,MI,dl,TII, reg);
 
   //
   // Add an instruction to jump to the error handling code if the check fails:
@@ -150,11 +181,12 @@ void X86CFIOptPass::insertCheckCall64r(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
                      MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::CALL64r && "opcode: CALL64r expected");
-  unsigned reg = MI->getOperand(0).getReg();
 
-  // CMP32mi 4(reg), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-  .addReg(reg).addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+  //
+  // Add an instruction to perform the label check.
+  //
+  unsigned reg = MI->getOperand(0).getReg();
+  addCheckInstruction (MBB,MI,dl,TII, reg);
 
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
@@ -177,9 +209,12 @@ void X86CFIOptPass::insertCheckCall32m(MachineBasicBlock& MBB, MachineInstr* MI,
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
   .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
   .addReg(MI->getOperand(4).getReg());
-  // CMP32mi 3(%eax), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::EAX)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+  //
+  // Add an instruction to perform the label check.
+  //
+  addCheckInstruction (MBB,MI,dl,TII, X86::EAX);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -206,9 +241,12 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
   .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
   .addReg(MI->getOperand(4).getReg());
-  // CMP32mi 4(%eax), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::EAX)
-  .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+
+  //
+  // Add an instruction to perform the label check.
+  //
+  addCheckInstruction (MBB,MI,dl,TII, X86::EAX);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -227,10 +265,13 @@ void X86CFIOptPass::insertCheckJmp32r(MachineBasicBlock& MBB, MachineInstr *MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
                     MachineBasicBlock* EMBB){
   assert(MI->getOpcode() == X86::JMP32r && "opcode: JMP32r expected");
+
+  //
+  // Add an instruction to perform the label check.
+  //
   const unsigned reg = MI->getOperand(0).getReg();
-  // CMP32mi 3(reg), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  addCheckInstruction (MBB, MI, dl, TII, reg);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -251,10 +292,13 @@ void X86CFIOptPass::insertCheckJmp64r(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
                     MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::JMP64r && "opcode: JMP64r expected");
+
+  //
+  // Add an instruction to perform the label check.
+  //
   const unsigned reg = MI->getOperand(0).getReg();
-  // CMP32mi 4(reg), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
-  .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+  addCheckInstruction (MBB,MI,dl,TII, reg);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -300,9 +344,12 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
       .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
       .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
       .addReg(MI->getOperand(4).getReg());
-    // CMP32mi 3(%killed), $CFI_ID
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(killed)
-    .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, killed);
+
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -345,14 +392,17 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
       .addReg(MI->getOperand(2).getReg())  // index
     .addOperand(MI->getOperand(3))       // displacement
       .addReg(MI->getOperand(4).getReg()); //segment register
-    // CMP32mi 3(%reg), $CFI_ID
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-      .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, reg);
+
     // POP32r %reg
     BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  } 
+  }
 }
 
 void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI,
@@ -365,9 +415,12 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
   .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
   .addReg(MI->getOperand(4).getReg());
-  // CMP32mi 3(%ecx), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::ECX)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+  //
+  // Add an instruction to perform the label check.
+  //
+  addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -387,11 +440,15 @@ void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI
                     MachineBasicBlock* EMBB){
   assert((MI->getOpcode() == X86::TAILJMPr ||
           MI->getOpcode() == X86::TAILJMPr64) && "opcode TAILJMPr expected");
+
+  //
+  // Add an instruction to perform the label check.
+  //
   unsigned reg = MI->getOperand(0).getReg();
-  // CMP32mi 3(reg), $CFI_ID
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
-  BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB); // JNE_4 EMBB
+  addCheckInstruction (MBB, MI, dl, TII, reg);
+
+  // JNE_4 EMBB
+  BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
   //
   // Add code to skip the CFI label.
@@ -440,9 +497,12 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
       .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
       .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
       .addReg(MI->getOperand(4).getReg());
-    // CMP32mi 3(%killed), $CFI_ID
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(killed)
-    .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, killed);
+
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -485,9 +545,12 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
       .addReg(MI->getOperand(2).getReg())  // index
     .addOperand(MI->getOperand(3))       // displacement
       .addReg(MI->getOperand(4).getReg()); //segment register
-    // CMP32mi 3(%reg), $CFI_ID
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-      .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, reg);
+
     // POP32r %reg
     BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
     // JNE_4 EMBB
@@ -522,7 +585,7 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   // on a 32-bit or 64-bit system.
   //
   if (is64Bit()) {
-    // movq (%rsp), %rcx, we use %rcx since %rcx is not used for return values
+    // movl (%rsp), %ecx, we use %ecx since %ecx is not used for return values
     BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
     .addReg(X86::RSP).addImm(1).addReg(0).addImm(0).addReg(0);
 
@@ -530,9 +593,10 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
     BuildMI(MBB,MI,dl,TII->get(X86::ADD64ri32),X86::RSP)
     .addReg(X86::RSP).addImm(4);
 
-    // cmpl $CFI_ID, 4(%rcx)
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::RCX)
-    .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, X86::RCX);
   } else {
     // movl (%esp), %ecx, we use %ecx since %ecx is not used for return values
     BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
@@ -542,9 +606,10 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
     BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ESP)
     .addReg(X86::ESP).addImm(4);
 
-    // cmpl $CFI_ID, 3(%ecx)
-    BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::ECX)
-    .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+    //
+    // Add an instruction to perform the label check.
+    //
+    addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
   }
 
   // jne EMBB
@@ -574,9 +639,12 @@ void X86CFIOptPass::insertCheckReti(MachineBasicBlock& MBB, MachineInstr* MI,
   // add imm+4, %esp
   BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ESP)
   .addReg(X86::ESP).addImm(MI->getOperand(0).getImm()+4);
-  // cmpl $CFI_ID, 3(%ecx)
-  BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::ECX)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
+  //
+  // Add an instruction to perform the label check.
+  //
+  addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
+
   // jne EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
@@ -611,15 +679,23 @@ void X86CFIOptPass::insertIDBasicBlock(MachineBasicBlock& MBB,
   addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
 }
 
-// insert prefetchnta CFI_ID at the beginning of MBB's successors
+//
+// Method: insertIDSuccessors()
+//
+// Description:
+//  Insert a prefetchnta CFI label instruction at the beginning of MBB's
+//  successors.
+//
 void X86CFIOptPass::insertIDSuccessors(MachineBasicBlock & MBB,
-                     DebugLoc& dl, const TargetInstrInfo* TII){
-  if(!MBB.succ_empty()){ // insert prefetchnta ID at the beginning of successors
-    for(MachineBasicBlock::succ_iterator SI = MBB.succ_begin(), E = MBB.succ_end();
-    SI != E; ++SI){
+                                       DebugLoc& dl,
+                                       const TargetInstrInfo* TII) {
+  if (!MBB.succ_empty()) {
+    for (MachineBasicBlock::succ_iterator SI = MBB.succ_begin(),
+         E = MBB.succ_end();
+         SI != E; ++SI) {
       MachineBasicBlock& MBBS = (**SI);
       MachineInstr * MI = MBBS.begin();
-      addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
+      addLabelInstruction (MBBS, MI, dl, TII, CFI_ID);
     }
   } else { llvm::errs() << "error: jmp target not found\n"; abort(); }
 }

@@ -65,6 +65,13 @@ namespace llvm{
                              const TargetInstrInfo * TII,
                              unsigned reg);
 
+    // Add the code to check the CFI label
+    void addCheckInstruction (MachineBasicBlock & MBB,
+                              MachineInstr * MI,
+                              DebugLoc & dl,
+                              const TargetInstrInfo * TII,
+                              const unsigned reg);
+
     // insert check before call32r
     void insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
               DebugLoc& dl, const TargetInstrInfo* TII,
