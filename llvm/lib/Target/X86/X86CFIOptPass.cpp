@@ -94,12 +94,17 @@ X86CFIOptPass::addSkipInstruction(MachineBasicBlock & MBB,
     unsigned char labelLen = (is64Bit()) ? 8 : 7;
 
     //
+    // Determine whether to use a 32-bit or 64-bit add.
+    //
+    unsigned opcode = (is64Bit()) ? X86::ADD64ri32 : X86::ADD32ri;
+
+    //
     // Insert an instruction that adds the label length to the register
     // containing the address of the CFI label:
     //
-    // addl $labelLen, reg
+    // add[l|q] $labelLen, reg
     //
-    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(labelLen);
+    BuildMI(MBB,MI,dl,TII->get(opcode),reg).addReg(reg).addImm(labelLen);
   }
 
   return;
