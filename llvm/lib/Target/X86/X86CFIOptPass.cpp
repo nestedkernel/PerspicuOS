@@ -63,10 +63,8 @@ const char *X86CFIOptPass::getPassName() const {
 
 
 void X86CFIOptPass::getAnalysisUsage(AnalysisUsage &AU) const {
-  //llvm::errs() << "X86CFIOptPass::getAnalysisUsage()\n";
   MachineFunctionPass::getAnalysisUsage(AU);
 }
-
 
 // insert a check before CAll32r
 void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
@@ -80,7 +78,7 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
   // MBB.addSuccessor(EMBB);
-  // addl 7, reg to skip prefetchnta. prefetchnta has 7 bytes
+  // addl $7, reg to skip prefetchnta. prefetchnta has 7 bytes
   if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
 }
 
@@ -90,14 +88,14 @@ void X86CFIOptPass::insertCheckCall64r(MachineBasicBlock& MBB, MachineInstr* MI,
                      MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::CALL64r && "opcode: CALL64r expected");
   unsigned reg = MI->getOperand(0).getReg();
-  // CMP32mi 3(reg), $CFI_ID
+  // CMP32mi 4(reg), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-  .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  .addReg(reg).addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
   // MBB.addSuccessor(EMBB);
-  // addl 7, reg to skip prefetchnta. prefetchnta has 7 bytes
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
+  // addl $8, reg to skip prefetchnta. prefetchnta has 8 bytes
+  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(8);
 }
 
 // insert a check before CALL32m
@@ -136,18 +134,17 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
   .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
   .addReg(MI->getOperand(4).getReg());
-  // CMP32mi 3(%eax), $CFI_ID
+  // CMP32mi 4(%eax), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(X86::EAX)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
   // MBB.addSuccessor(EMBB);
-  // addl 7, %eax; to skip prefetchnta
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::EAX).addReg(X86::EAX).addImm(7);
+  // addl 8, %eax; to skip prefetchnta
+  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::EAX).addReg(X86::EAX).addImm(8);
   // call %eax
   BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
   MBB.erase(MI);
-
 }
 
 // insert a check before JMP32r
@@ -177,18 +174,25 @@ void X86CFIOptPass::insertCheckJmp64r(MachineBasicBlock& MBB, MachineInstr* MI,
                     MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::JMP64r && "opcode: JMP64r expected");
   const unsigned reg = MI->getOperand(0).getReg();
-  // CMP32mi 3(reg), $CFI_ID
+  // CMP32mi 4(reg), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
-  .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+  .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
   // MBB.addSuccessor(EMBB);
-  // addl 7, reg
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
+  // addl 8, reg
+  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(8);
 }
 
-// insert a check before JMP32m
-//!!!!!!!!!!! This function has a problem with the instructions inserted
+//
+// Method: insertCheckJmp32m()
+//
+// Description:
+//  Insert a check before JMP32m.
+//
+// TODO:
+//  This function has a problem with the instructions inserted
+//
 void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
                     DebugLoc& dl, const TargetInstrInfo* TII,
                     MachineBasicBlock* EMBB){
