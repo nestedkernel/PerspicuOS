@@ -510,9 +510,6 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
     BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
     MBB.erase(MI);
   } else { // spill a register onto stack
-  llvm::errs() << "Jmp32m needs a dead reg for CFI\n";
-  MI->getParent()->getParent()->dump();
-  abort();
     unsigned reg = 0;
     if(!MI->readsRegister(X86::AH, TRI) && !MI->readsRegister(X86::AL, TRI) &&
      !MI->readsRegister(X86::AX, TRI) && !MI->readsRegister(X86::EAX, TRI))
@@ -1007,7 +1004,7 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             // checks and IDs.
             //
             if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
-              insertCheckJmp32m(MBB,MI,dl,TII,EMBB);
+              insertCheckJmp64m(MBB,MI,dl,TII,EMBB);
  
               // insert prefetchnta CFI_ID at successors
               insertIDSuccessors(MBB,dl,TII);
