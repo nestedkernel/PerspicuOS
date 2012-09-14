@@ -110,17 +110,32 @@ X86CFIOptPass::addSkipInstruction(MachineBasicBlock & MBB,
   return;
 }
 
-// insert a check before CAll32r
-void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
-                     DebugLoc& dl, const TargetInstrInfo* TII,
-                     MachineBasicBlock* EMBB){
+//
+// Method: insertCheckCall32r()
+//
+// Description:
+//  Insert a check before a Call32r (which calls a function whose address is
+//  stored in a register).
+//
+void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB,
+                                       MachineInstr* MI,
+                                       DebugLoc& dl,
+                                       const TargetInstrInfo* TII,
+                                       MachineBasicBlock* EMBB){
   assert(MI->getOpcode() == X86::CALL32r && "opcode: CALL32r expected");
-  unsigned reg = MI->getOperand(0).getReg();
+
+  //
+  // Add an instruction to compare the label:
   // CMP32mi 3(reg), $CFI_ID
+  //
+  unsigned reg = MI->getOperand(0).getReg();
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
   .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
 
+  //
+  // Add an instruction to jump to the error handling code if the check fails:
   // JNE_4 EMBB
+  //
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
   //
