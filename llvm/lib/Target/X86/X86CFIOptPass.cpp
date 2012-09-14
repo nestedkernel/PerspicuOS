@@ -117,11 +117,6 @@ X86CFIOptPass::addSkipInstruction(MachineBasicBlock & MBB,
 // Description:
 //  Add an instruction to check the label.
 //
-// TODO:
-//  The check should compare against the *entire* label, including the bytes
-//  that encode the prefetchnta instruction.  Some other instruction may
-//  use the same constant operand used for the label.
-//
 void
 X86CFIOptPass::addCheckInstruction (MachineBasicBlock & MBB,
                                     MachineInstr * MI,
@@ -129,17 +124,17 @@ X86CFIOptPass::addCheckInstruction (MachineBasicBlock & MBB,
                                     const TargetInstrInfo * TII,
                                     const unsigned reg) {
   //
-  // Determine the offset of the label within the instruction.  It is 3 bytes
-  // in 32-bit mode and 4 bytes in 64-bit mode.
+  // Determine which label value to use for the check.  This differs between
+  // 32-bit and 64-bit code because the encoding of prefetchnta differs.
   //
-  unsigned char offset = (is64Bit()) ? 4 : 3;
+  unsigned label = (is64Bit()) ? 0x80180f67 : 0xef80180f;
 
   //
   // Add an instruction to compare the label:
   // CMP32mi offset(reg), $CFI_ID
   //
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
-  .addReg(reg).addImm(1).addReg(0).addImm(offset).addReg(0).addImm(CFI_ID);
+  .addReg(reg).addImm(1).addReg(0).addImm(0).addReg(0).addImm(label);
   return;
 }
 
@@ -585,13 +580,20 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   // on a 32-bit or 64-bit system.
   //
   if (is64Bit()) {
-    // movl (%rsp), %ecx, we use %ecx since %ecx is not used for return values
-    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
+    //
+    // Fetch the return address from the stack; we use %ecx since it is not
+    // used for return values:
+    // movl (%rsp), %ecx,
+    //
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::ECX)
     .addReg(X86::RSP).addImm(1).addReg(0).addImm(0).addReg(0);
 
-    // addl 4, %rsp
+    //
+    // Adjust the stack pointer to remove the return address:
+    // addl $8, %rsp
+    //
     BuildMI(MBB,MI,dl,TII->get(X86::ADD64ri32),X86::RSP)
-    .addReg(X86::RSP).addImm(4);
+    .addReg(X86::RSP).addImm(8);
 
     //
     // Add an instruction to perform the label check.
