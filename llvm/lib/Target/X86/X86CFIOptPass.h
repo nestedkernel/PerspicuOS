@@ -58,6 +58,13 @@ namespace llvm{
       return TM.getSubtarget<X86Subtarget>().is64Bit();
     }
 
+    // Add the code to skip over a prefetchnta CFI label
+    void addSkipInstruction (MachineBasicBlock & MBB,
+                             MachineInstr * MI,
+                             DebugLoc & dl,
+                             const TargetInstrInfo * TII,
+                             unsigned reg);
+
     // insert check before call32r
     void insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
               DebugLoc& dl, const TargetInstrInfo* TII,

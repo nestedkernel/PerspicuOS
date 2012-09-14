@@ -66,6 +66,45 @@ void X86CFIOptPass::getAnalysisUsage(AnalysisUsage &AU) const {
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
+//
+// Method: addSkipInstruction()
+//
+// Description:
+//  Add code at the specified location to skip over the prefetchnta instruction
+//  the provides the control-flow integrity label.
+//
+// Inputs:
+//  reg - The register containing the address of the prefetchnta instruction.
+//
+void
+X86CFIOptPass::addSkipInstruction(MachineBasicBlock & MBB,
+                                  MachineInstr * MI,
+                                  DebugLoc & dl,
+                                  const TargetInstrInfo * TII,
+                                  unsigned reg) {
+  //
+  // Only add the code if we're doing the optimizaton that skips the
+  // prefetchnta labels.
+  //
+  if (skipID) {
+    //
+    // Determine the length of the label instruction in bytes.  In 32-bit mode,
+    // it is 7 bytes.  In 64-bit mode, it is 8 bytes.
+    //
+    unsigned char labelLen = (is64Bit()) ? 8 : 7;
+
+    //
+    // Insert an instruction that adds the label length to the register
+    // containing the address of the CFI label:
+    //
+    // addl $labelLen, reg
+    //
+    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(labelLen);
+  }
+
+  return;
+}
+
 // insert a check before CAll32r
 void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
@@ -75,11 +114,15 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB, MachineInstr* MI,
   // CMP32mi 3(reg), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
   .addReg(reg).addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl $7, reg to skip prefetchnta. prefetchnta has 7 bytes
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, reg);
+  return;
 }
 
 // insert a check before CALL64r
@@ -88,14 +131,19 @@ void X86CFIOptPass::insertCheckCall64r(MachineBasicBlock& MBB, MachineInstr* MI,
                      MachineBasicBlock* EMBB) {
   assert(MI->getOpcode() == X86::CALL64r && "opcode: CALL64r expected");
   unsigned reg = MI->getOperand(0).getReg();
+
   // CMP32mi 4(reg), $CFI_ID
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi))
   .addReg(reg).addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
+
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl $8, reg to skip prefetchnta. prefetchnta has 8 bytes
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(8);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, reg);
+  return;
 }
 
 // insert a check before CALL32m
@@ -114,12 +162,16 @@ void X86CFIOptPass::insertCheckCall32m(MachineBasicBlock& MBB, MachineInstr* MI,
   .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl 7, %eax; to skip prefetchnta
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::EAX).addReg(X86::EAX).addImm(7);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, X86::EAX);
+
   // call %eax
   BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
   MBB.erase(MI);
+  return;
 }
 
   
@@ -139,9 +191,12 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
   .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl 8, %eax; to skip prefetchnta
-  if(skipID)BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::EAX).addReg(X86::EAX).addImm(8);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, X86::EAX);
+
   // call %eax
   BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
   MBB.erase(MI);
@@ -158,9 +213,12 @@ void X86CFIOptPass::insertCheckJmp32r(MachineBasicBlock& MBB, MachineInstr *MI,
   .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl 7, reg
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, reg);
+  return;
 }
 
 //
@@ -179,9 +237,12 @@ void X86CFIOptPass::insertCheckJmp64r(MachineBasicBlock& MBB, MachineInstr* MI,
   .addImm(1).addReg(0).addImm(4).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl 8, reg
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(8);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, reg);
+  return;
 }
 
 //
@@ -224,9 +285,12 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
     .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-    // ADD32ri %killed, $7
-    if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),killed).addReg(killed).addImm(7);
+
+    //
+    // Add code to skip the CFI label.
+    //
+    addSkipInstruction (MBB, MI, dl, TII, killed);
+
     // JMP32r %killed
     BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
     MBB.erase(MI);
@@ -286,9 +350,12 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
   .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // ADD32ri %ecx, $7
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(7);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
+
   // JMP32r %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
   MBB.erase(MI);
@@ -305,9 +372,12 @@ void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI
   BuildMI(MBB,MI,dl,TII->get(X86::CMP32mi)).addReg(reg)
   .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB); // JNE_4 EMBB
-  // MBB.addSuccessor(EMBB);
-  //addl 7, reg
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),reg).addReg(reg).addImm(7); 
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, reg);
+  return;
 }
 
   
@@ -355,9 +425,12 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
     .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-    // ADD32ri %killed, $7
-    if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),killed).addReg(killed).addImm(7);
+
+    //
+    // Add code to skip the CFI label.
+    //
+    addSkipInstruction (MBB, MI, dl, TII, killed);
+
     // JMP32r %killed
     BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
     MBB.erase(MI);
@@ -457,13 +530,10 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   // jne EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
 
-  // MBB.addSuccessor(EMBB);
-  // addl $7, %ecx
-  if (skipID) {
-    // Compute the length of the prefetch instruction in bytes
-    unsigned char skipAmount = (is64Bit()) ? 8 : 7;
-    BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX).addReg(X86::ECX).addImm(skipAmount);
-  }
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
 
   // jmp %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
@@ -489,10 +559,12 @@ void X86CFIOptPass::insertCheckReti(MachineBasicBlock& MBB, MachineInstr* MI,
   .addImm(1).addReg(0).addImm(3).addReg(0).addImm(CFI_ID);
   // jne EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-  // MBB.addSuccessor(EMBB);
-  // addl $7, %ecx
-  if(skipID) BuildMI(MBB,MI,dl,TII->get(X86::ADD32ri),X86::ECX)
-  .addReg(X86::ECX).addImm(7);
+
+  //
+  // Add code to skip the CFI label.
+  //
+  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
+
   // jmp %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
   // delete reti instruction
