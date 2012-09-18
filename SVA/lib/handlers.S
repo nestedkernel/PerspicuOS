@@ -33,73 +33,21 @@
   .type   trap##x, @function ; \
 ; \
 trap##x: \
-  /* \
-   * Determine whether we interrupted user or supervisor mode execution. \
-   */ \
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $KERNELCS, 8(%rsp) ; \
   jz 1f ; \
  \
-  /* \
-   * We came from user mode.  First switch to the kernel %GS register. \
-   */ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
- \
-  /* \
-   * Save the processor state in the per-processor user interrrupt context \
-   * structure. \
-   */ \
-  call SVAsyscall ; \
- \
-  /* \
-   * Get the current interrupt context link from the per-CPU data structure \
-   * and put it into our new interrupt context and put our new interrupt \
-   * context at the head of the list. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call linkNewIC ; \
-  \
-  /* \
-   * Call the trap handler registered by the OS for this trap. \
-   */ \
-  movq %gs:0x260, %rbp ; \
-  movq $x, %rdi ; \
-  call *(interrupt_table+(8*x)) ; \
-  \
-  /* \
-   * Unlink the interrupt context. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call unlinkIC ; \
-  \
-  /* \
-   * Restore the processor state. \
-   */ \
-  call SVAsysret ; \
- \
-  /* \
-   * Increment the PC by 2 to move past the idiv instruction. \
-   */ \
-  /* addq $2, 0(%rsp) ; */ \
- \
-  /* \
-   * Restore the user-space %GS register and return to user-space. \
-   */ \
-  swapgs ; \
-  iretq ; \
- \
 1: \
-  /* \
-   * We are in kernel mode.  Save the state on the kernel stack instead of \
-   * in the SVA virtual memory. \
-   */ \
  \
-  /* Push an error code on to the stack */ \
+  /* Push a zero code */ \
   pushq $0 ; \
- \
+\
   /* Push the trap number */ \
   pushq $x ; \
 \
-  /* Run common code for interrupts with error codes */ \
+  /* Call the common trap code. */ \
   jmp Trap
 
 /*
@@ -114,65 +62,18 @@ trap##x: \
   .type   trap##x, @function ; \
 ; \
 trap##x: \
-  /* \
-   * Determine whether we interrupted user or supervisor mode execution. \
-   */ \
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $KERNELCS, 8(%rsp) ; \
   jz 1f ; \
  \
-  /* \
-   * We came from user mode.  First switch to the kernel %GS register. \
-   */ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
- \
-  /* \
-   * Save the processor state in the per-processor user interrrupt context \
-   * structure. \
-   */ \
-  call SVAsyscall ; \
- \
-  /* \
-   * Get the current interrupt context link from the per-CPU data structure \
-   * and put it into our new interrupt context and put our new interrupt \
-   * context at the head of the list. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call linkNewIC ; \
-  \
-  /* \
-   * Call the trap handler registered by the OS for this trap. \
-   */ \
-  movq %gs:0x260, %rbp ; \
-  movq $x, %rdi ; \
-  call *(interrupt_table+(8*x)) ; \
- \
-  /* \
-   * Restore the processor state. \
-   */ \
-  call SVAsysret ; \
- \
-  /* \
-   * Unlink the interrupt context. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call unlinkIC ; \
-  \
-  /* \
-   * Restore the user-space %GS register and return to user-space. \
-   */ \
-  swapgs ; \
-  iretq ; \
- \
 1: \
-  /* \
-   * We are in kernel mode.  Save the state on the kernel stack instead of \
-   * in the SVA virtual memory. \
-   */ \
  \
   /* Push the trap number */ \
   pushq $x ; \
 \
-  /* Run common code for interrupts with error codes */ \
+  /* Call the common trap code. */ \
   jmp Trap
 
 /*
@@ -189,70 +90,22 @@ trap##x: \
   .type   interrupt##x, @function ; \
 ; \
 interrupt##x: \
-  /* \
-   * Determine whether we interrupted user or supervisor mode execution. \
-   */ \
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $KERNELCS, 8(%rsp) ; \
   jz 1f ; \
  \
-  /* \
-   * We came from user mode.  First switch to the kernel %GS register. \
-   */ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
- \
-  /* \
-   * Save the processor state in the per-processor user interrrupt context \
-   * structure. \
-   */ \
-  call SVAsyscall ; \
- \
-  /* \
-   * Get the current interrupt context link from the per-CPU data structure \
-   * and put it into our new interrupt context and put our new interrupt \
-   * context at the head of the list. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call linkNewIC ; \
-  \
-  /* \
-   * Call the trap handler registered by the OS for this trap. \
-   */ \
-  movq %gs:0x260, %rbp ; \
-  movq $x, %rdi ; \
-  call *(interrupt_table+(8*x)) ; \
- \
-  /* \
-   * Unlink the interrupt context. \
-   */ \
-  movq %gs:0x260, %rdi ; \
-  call unlinkIC ; \
-  \
-  /* \
-   * Restore the processor state. \
-   */ \
-  call SVAsysret ; \
- \
-  /* \
-   * Restore the user-space %GS register and return to user-space. \
-   */ \
-  swapgs ; \
-  iretq ; \
- \
 1: \
-  /* \
-   * We are in kernel mode.  Save the state on the kernel stack instead of \
-   * in the SVA virtual memory. \
-   */ \
  \
-  /* Push an error code on to the stack */ \
+  /* Push a zero code */ \
   pushq $0 ; \
- \
+\
   /* Push the trap number */ \
   pushq $x ; \
 \
-  /* Run common code for interrupts with error codes */ \
+  /* Call the common trap code. */ \
   jmp Trap
-
 
 /*****************************************************************************
  * Data Section
@@ -289,8 +142,7 @@ interrupt##x: \
  */
 SVAbadtrap:
   movq $0xbeefbeef, %rbx
-  movq $0, %rax
-  movq (%rax), %rax
+  movq %rax, 0xbad
   iretq
 
 /*
@@ -363,48 +215,104 @@ restoreRegs:
  * Description:
  *  This code is common code for all trap handlers that handle traps with
  *  no x86_64 error code.
+ *
+ * Preconditions:
+ *  o The GS register should be pointing to the base of the interrupt context
+ *    for the current processor.
+ *  o The error code and trap number should have been pushed on to the stack. 
  */
 Trap:
-  /* Save the %rbp register since we'll need to use it */
+  /*
+   * Get a pointer to the current processor's interrupt context.
+   */
   pushq %rbp
-
-  /* Allocate an interrupt context on the stack and fill it in */
-  subq $136, %rsp
-
-  /* Save the registers into the interrupt context */
-  movq %rsp, %rbp
-  callq saveRegs
+  movq %gs:0x260, %rbp
+  movq (%rbp), %rbp
 
   /*
-   * Get the current interrupt context link from the per-CPU data structure
-   * and put it into our new interrupt context and put our new interrupt
-   * context at the head of the list.
+   * Save a copy of the interrupt context into SVA memory.
    */
-  movq %rsp, %rdi
-  call linkNewIC
+  callq saveRegs
+
+  /* Increment the interrupt context pointer */
+  callq incrementNextIC
+
+  /*
+   * Copy the registers saved by the processor into the user-space interupt
+   * context.
+   */
+  movq 0x00(%rsp), %r8
+  movq 0x08(%rsp), %rdi /* Use %rdi to make argument setup faster */
+  movq 0x10(%rsp), %r10
+  movq 0x18(%rsp), %r11
+  movq 0x20(%rsp), %r12
+  movq 0x28(%rsp), %r13
+  movq 0x30(%rsp), %r14
+  movq 0x38(%rsp), %r15
+  movq %r8,  0x88(%rbp)
+  movq %rdi, 0x90(%rbp)
+  movq %r10, 0x98(%rbp)
+  movq %r11, 0xa0(%rbp)
+  movq %r12, 0xa8(%rbp)
+  movq %r13, 0xb0(%rbp)
+  movq %r14, 0xb8(%rbp)
+  movq %r15, 0xc0(%rbp)
 
   /*
    * Call the trap handler registered by the OS for this trap.
    */
-  movq 0x90(%rsp), %rdi
   movq $interrupt_table, %rax
-  call *(%rax,%rdi,8)
+  callq *(%rax,%rdi,8)
+
+  /* Decrement the interrupt context pointer */
+  call decrementNextIC
 
   /*
-   * Unlink the interrupt context.
+   * Copy changes made to the interrupt context back on to the kernel stack.
    */
-  movq %rsp, %rdi
-  call unlinkIC
+  movq 0x88(%rbp), %r8
+  movq 0x90(%rbp), %r9
+  movq 0x98(%rbp), %r10
+  movq 0xa0(%rbp), %r11
+  movq 0xa8(%rbp), %r12
+  movq 0xb0(%rbp), %r13
+  movq 0xb8(%rbp), %r14
+  movq 0xc0(%rbp), %r15
+  movq %r8,  0x00(%rsp)
+  movq %r9,  0x08(%rsp)
+  movq %r10, 0x10(%rsp)
+  movq %r11, 0x18(%rsp)
+  movq %r12, 0x20(%rsp)
+  movq %r13, 0x28(%rsp)
+  movq %r14, 0x30(%rsp)
+  movq %r15, 0x38(%rsp)
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
   call restoreRegs
 
-  /* Remove the interrupt context and the error code */
-  addq $136, %rsp
+  /*
+   * Remove the saved %rbp from the stack.
+   */
   popq %rbp
+
+  /*
+   * Remove the error code and trap number.
+   */
   addq $16, %rsp
+
+  /* Determine whether we interrupted user or supervisor mode execution. */
+  testw $KERNELCS, 8(%rsp)
+  jz 1f
+
+  /* We came from user mode.  First switch to the kernel %GS register. */
+  swapgs
+
+1:
+  /*
+   * Return to the calling code.
+   */
   iretq
 
 /*
@@ -413,9 +321,10 @@ Trap:
  * Description:
  *  This trap handles system call entry.
  *
- * Notes:
- *  The GS register should be pointing to the base of the interrupt context
- *  for the current processor.
+ * Preconditions:
+ *  o The GS register should be pointing to the base of the interrupt context
+ *    for the current processor.
+ *  o The error code and trap number should have been pushed on to the stack. 
  */
 SVAsyscall:
   /*
@@ -423,6 +332,7 @@ SVAsyscall:
    */
   pushq %rbp
   movq %gs:0x260, %rbp
+  movq (%rbp), %rbp
 
   /*
    * Set the next link to NULL (the user-space interrupt context should always
@@ -469,6 +379,7 @@ SVAsysret:
    * Get a pointer to the current processor's interrupt context.
    */
   movq %gs:0x260, %rbp
+  movq (%rbp), %rbp
 
   /*
    * Copy the registers from the interrupt context back on to the processor.

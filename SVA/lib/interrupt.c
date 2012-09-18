@@ -32,7 +32,11 @@ extern void * interrupt_table[256];
  */
 void
 default_interrupt (unsigned int number, void * state) {
+#if 1
   printf ("SVA: default interrupt handler: %p\n", interrupt_table);
+#else
+  __asm__ __volatile__ ("hlt");
+#endif
   return;
 }
 
@@ -47,10 +51,11 @@ default_interrupt (unsigned int number, void * state) {
 static struct CPUState CPUState[numProcessors];
 
 /*
- * Intrinsic: sva_get_uicontext()
+ * Intrinsic: sva_getCPUState()
  *
  * Description:
- *  Return a pointer to the user interrupt context for this processor.
+ *  Initialize and return a pointer to the per-processor CPU state for this
+ *  processor.
  *
  * Notes:
  *  This intrinsic is only here to bootstrap the implementation of SVA.  Once
@@ -58,14 +63,25 @@ static struct CPUState CPUState[numProcessors];
  *  be removed.
  */
 void *
-sva_get_uicontext (void) {
-  static int index=0;
-#if 0
-  return &(userContexts[getProcessorID()]);
-#else
-  CPUState[index].currentIContext = 0;
-  return &(CPUState[index++].userContexts);
-#endif
+sva_getCPUState (void) {
+  /* Index of next available CPU state */
+  static int nextIndex=0;
+  int index;
+
+  /*
+   * Fetch an unused CPUState from the set of those available.
+   */
+  index = __sync_fetch_and_add (&nextIndex, 1);
+
+  /*
+   * Initialize the interrupt context link list pointer.
+   */
+  CPUState[index].currentIC = CPUState[index].interruptContexts;
+
+  /*
+   * Return the CPU State to the caller.
+   */
+  return &(CPUState[index]);
 }
 
 /*
@@ -134,17 +150,53 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
 }
 
 void
+incrementNextIC (void) {
+  /*
+   * Get the current processor's SVA state.
+   */
+  struct CPUState * cpuState = getCPUState();
+
+  /*
+   * Increment to the next interrupt context.
+   */
+  ++(cpuState->currentIC);
+
+  /*
+   * Make sure we haven't overflowed.
+   */
+  if (cpuState->currentIC == &(cpuState->interruptContexts[maxIC - 2])) {
+    ((char *)(0xbeef))[0] = 'a';
+  }
+
+  return;
+}
+
+void
+decrementNextIC (void) {
+  /*
+   * Get the current processor's SVA state.
+   */
+  struct CPUState * cpuState = getCPUState();
+
+  /*
+   * Decrement the next interrupt context pointer.
+   */
+  --(cpuState->currentIC);
+  return;
+}
+
+void
 linkNewIC (sva_icontext_t * icp) {
   /*
    * Get the current processor's SVA state.
    */
-  struct CPUState * cpuState = (struct CPUState *)get_uicontext();
+  struct CPUState * cpuState = getCPUState();
 
   /*
    * Link icp at the head of the interrupt context list.
    */
-  icp->next = cpuState->currentIContext;
-  cpuState->currentIContext = icp;
+  icp->next = cpuState->currentIC;
+  cpuState->currentIC = icp;
   return;
 }
 
@@ -153,14 +205,14 @@ unlinkIC (sva_icontext_t * icp) {
   /*
    * Get the current processor's SVA state.
    */
-  struct CPUState * cpuState = (struct CPUState *)get_uicontext();
+  struct CPUState * cpuState = getCPUState();
 
   /*
    * Link icp at the head of the interrupt context list.
    */
-  icp->next = cpuState->currentIContext;
-  if (cpuState->currentIContext)
-    cpuState->currentIContext = cpuState->currentIContext->next;
+  icp->next = cpuState->currentIC;
+  if (cpuState->currentIC)
+    cpuState->currentIC = cpuState->currentIC->next;
   return;
 }
 

@@ -166,6 +166,9 @@ struct invoke_frame
   unsigned int cpinvoke;
 };
 
+/* The maximum number of interrupt contexts per CPU */
+static const unsigned char maxIC = 32;
+
 /*
  * Structure: CPUState
  *
@@ -175,17 +178,11 @@ struct invoke_frame
  *  register.
  */
 struct CPUState {
-  /*
-   * Interrupt contexts of user-space applications.  We are guaranteed to
-   * only enter user-space to kernel-space once per processor, so all of these
-   * interrupt icontexts will be stored in SVA memory here.
-   *
-   *  Kernel-space interrupt contexts will be stored on the kernel stack.
-   */
-  sva_icontext_t userContexts;
+  /* Pointer to the currently available IC */
+  sva_icontext_t * currentIC;
 
-  /* Current interrupt context pointer */
-  sva_icontext_t * currentIContext;
+  /* Interrupt contexts for this CPU */
+  sva_icontext_t interruptContexts[maxIC];
 };
 
 
@@ -196,7 +193,7 @@ struct CPUState {
  *  This function finds the CPU state for the current process.
  */
 static inline struct CPUState *
-get_CPUState(void) {
+getCPUState(void) {
   /*
    * Use an offset from the GS register to look up the processor CPU state for
    * this processor.
@@ -222,9 +219,9 @@ sva_was_privileged (void) {
   /*
    * Get the current processor's SVA state.
    */
-  struct CPUState * cpuState = get_CPUState();
+  struct CPUState * cpuState = getCPUState();
 
-  return (((cpuState->currentIContext->cs) & KERNELCS) == KERNELCS);
+  return (((cpuState->currentIC->cs) & KERNELCS) == KERNELCS);
 }
 
 #if 0

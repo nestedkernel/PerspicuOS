@@ -35,9 +35,14 @@
 void
 sva_trapframe (struct trapframe * tf) {
   /*
-   * Fetch the interrupt context.
+   * Fetch the currently available interrupt context.
    */
-  sva_icontext_t * p = get_CPUState()->currentIContext;
+  sva_icontext_t * p = getCPUState()->currentIC;
+
+  /*
+   * Decrement to the currently active interrupt context.
+   */
+  --p;
 
   /*
    * Store the fields into the trap frame.
@@ -94,9 +99,14 @@ sva_trapframe (struct trapframe * tf) {
 void
 sva_icontext (struct trapframe * tf) {
   /*
-   * Fetch the interrupt context.
+   * Fetch the currently free interrupt context.
    */
-  sva_icontext_t * p = get_CPUState()->currentIContext;
+  sva_icontext_t * p = getCPUState()->currentIC;
+
+  /*
+   * Decrement to the currently active interrupt context.
+   */
+  --p;
 
   /*
    * Store the fields into the trap frame.
@@ -179,8 +189,8 @@ llva_get_eip (void * icontext)
 
 int
 sva_print_icontext (void) {
-  sva_icontext_t * p = get_CPUState()->currentIContext;
-  if (p) {
+  sva_icontext_t * p = getCPUState()->currentIC;
+  if (--p) {
     printf ("SVA: icontext: %p\n", p);
     printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
 #if 0

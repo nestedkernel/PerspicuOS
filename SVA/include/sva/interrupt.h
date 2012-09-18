@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-extern void * sva_get_uicontext (void);
+extern void * sva_getCPUState (void);
 
 void sva_icontext_setretval (unsigned long, unsigned long, unsigned char error);
 void sva_icontext_restart (unsigned long, unsigned long);
@@ -40,7 +40,7 @@ void sva_icontext_restart (unsigned long, unsigned long);
  */
 static inline sva_icontext_t *
 get_uicontext(void) {
-  return &(get_CPUState()->userContexts);
+  return &(getCPUState()->interruptContexts[0]);
 }
 
 /* Types for handlers */
