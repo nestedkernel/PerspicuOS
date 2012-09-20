@@ -68,20 +68,24 @@ sva_getCPUState (void) {
   static int nextIndex=0;
   int index;
 
-  /*
-   * Fetch an unused CPUState from the set of those available.
-   */
-  index = __sync_fetch_and_add (&nextIndex, 1);
+  if (nextIndex < numProcessors) {
+    /*
+     * Fetch an unused CPUState from the set of those available.
+     */
+    index = __sync_fetch_and_add (&nextIndex, 1);
 
-  /*
-   * Initialize the interrupt context link list pointer.
-   */
-  CPUState[index].currentIC = CPUState[index].interruptContexts;
+    /*
+     * Initialize the interrupt context link list pointer.
+     */
+    CPUState[index].currentIC = CPUState[index].interruptContexts;
 
-  /*
-   * Return the CPU State to the caller.
-   */
-  return &(CPUState[index]);
+    /*
+     * Return the CPU State to the caller.
+     */
+    return &(CPUState[index]);
+  }
+
+  return (void *)1;
 }
 
 /*
