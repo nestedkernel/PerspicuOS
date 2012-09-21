@@ -85,7 +85,7 @@ sva_getCPUState (void) {
     return &(CPUState[index]);
   }
 
-  return (void *)1;
+  return 0;
 }
 
 /*
@@ -188,38 +188,6 @@ decrementNextIC (void) {
   --(cpuState->currentIC);
   return;
 }
-
-void
-linkNewIC (sva_icontext_t * icp) {
-  /*
-   * Get the current processor's SVA state.
-   */
-  struct CPUState * cpuState = getCPUState();
-
-  /*
-   * Link icp at the head of the interrupt context list.
-   */
-  icp->next = cpuState->currentIC;
-  cpuState->currentIC = icp;
-  return;
-}
-
-void
-unlinkIC (sva_icontext_t * icp) {
-  /*
-   * Get the current processor's SVA state.
-   */
-  struct CPUState * cpuState = getCPUState();
-
-  /*
-   * Link icp at the head of the interrupt context list.
-   */
-  icp->next = cpuState->currentIC;
-  if (cpuState->currentIC)
-    cpuState->currentIC = cpuState->currentIC->next;
-  return;
-}
-
 
 /*
  * Intrinsic: sva_register_general_exception()
