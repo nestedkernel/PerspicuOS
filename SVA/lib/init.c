@@ -136,7 +136,7 @@ struct  gate_descriptor {
   unsigned long gd_type:5;    /* segment type */
   unsigned long gd_dpl:2;   /* segment descriptor priority level */
   unsigned long gd_p:1;   /* segment descriptor present */
-  unsigned long gd_hioffset:48 __packed;  /* gate offset (msb) */
+  unsigned long gd_hioffset:48 __attribute__ ((__packed__));  /* gate offset (msb) */
   unsigned long sd_xx1:32;
 } __attribute__ ((packed));
 
