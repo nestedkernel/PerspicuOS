@@ -19,7 +19,7 @@
 #include <limits.h>
 
 /* Total number of processors supported by this SVA Execution Engine */
-static const unsigned int numProcessors=4;
+static const unsigned int numProcessors=64;
 
 /* Structure for describing processors */
 struct procMap {
