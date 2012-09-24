@@ -227,7 +227,7 @@ register_x86_trap (int number, void *trap) {
   ip->gd_selector = GSEL(GCODE_SEL, 3);
   ip->gd_ist = 0;
   ip->gd_xx = 0;
-  ip->gd_type = SDT_SYSIGT;
+  ip->gd_type = SDT_SYSTGT;
   ip->gd_dpl = 3;
   ip->gd_p = 1;
   ip->gd_hioffset = ((uintptr_t)trap)>>16 ;
