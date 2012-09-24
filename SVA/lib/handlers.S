@@ -33,20 +33,19 @@
   .type   trap##x, @function ; \
 ; \
 trap##x: \
-  /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 8(%rsp) ; \
-  jz 1f ; \
- \
-  /* We came from user mode.  First switch to the kernel %GS register. */ \
-  swapgs ; \
-1: \
- \
   /* Push a zero code */ \
   pushq $0 ; \
 \
   /* Push the trap number */ \
   pushq $x ; \
 \
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
+  testw $KERNELCS, 24(%rsp) ; \
+  jz 1f ; \
+ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
+  swapgs ; \
+1: \
   /* Call the common trap code. */ \
   jmp Trap
 
@@ -62,17 +61,17 @@ trap##x: \
   .type   trap##x, @function ; \
 ; \
 trap##x: \
+  /* Push the trap number */ \
+  pushq $x ; \
+\
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 8(%rsp) ; \
+  testw $KERNELCS, 24(%rsp) ; \
   jz 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
 1: \
  \
-  /* Push the trap number */ \
-  pushq $x ; \
-\
   /* Call the common trap code. */ \
   jmp Trap
 
@@ -90,20 +89,20 @@ trap##x: \
   .type   interrupt##x, @function ; \
 ; \
 interrupt##x: \
-  /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 8(%rsp) ; \
-  jz 1f ; \
- \
-  /* We came from user mode.  First switch to the kernel %GS register. */ \
-  swapgs ; \
-1: \
- \
   /* Push a zero code */ \
   pushq $0 ; \
 \
   /* Push the trap number */ \
   pushq $x ; \
 \
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
+  testw $KERNELCS, 24(%rsp) ; \
+  jz 1f ; \
+ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
+  swapgs ; \
+1: \
+ \
   /* Call the common trap code. */ \
   jmp Trap
 
@@ -264,9 +263,6 @@ Trap:
   movq $interrupt_table, %rax
   callq *(%rax,%rdi,8)
 
-  /* Decrement the interrupt context pointer */
-  call decrementNextIC
-
   /*
    * Copy changes made to the interrupt context back on to the kernel stack.
    */
@@ -286,6 +282,9 @@ Trap:
   movq %r13, 0x28(%rsp)
   movq %r14, 0x30(%rsp)
   movq %r15, 0x38(%rsp)
+
+  /* Decrement the interrupt context pointer */
+  call decrementNextIC
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
