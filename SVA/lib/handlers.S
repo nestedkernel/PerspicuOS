@@ -19,7 +19,7 @@
  ****************************************************************************/
 
 /* FreeBSD segment selector for kernel code segment */
-#define KERNELCS 0x03
+#define USERCS 0x03
 
 /*
  * Macro: TRAP
@@ -40,7 +40,7 @@ trap##x: \
   pushq $x ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 24(%rsp) ; \
+  testw $USERCS, 24(%rsp) ; \
   jz 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -65,7 +65,7 @@ trap##x: \
   pushq $x ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 24(%rsp) ; \
+  testw $USERCS, 24(%rsp) ; \
   jz 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -96,7 +96,7 @@ interrupt##x: \
   pushq $x ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $KERNELCS, 24(%rsp) ; \
+  testw $USERCS, 24(%rsp) ; \
   jz 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -302,7 +302,7 @@ Trap:
   addq $16, %rsp
 
   /* Determine whether we interrupted user or supervisor mode execution. */
-  testw $KERNELCS, 8(%rsp)
+  testw $USERCS, 8(%rsp)
   jz 1f
 
   /* We came from user mode.  First switch to the kernel %GS register. */
