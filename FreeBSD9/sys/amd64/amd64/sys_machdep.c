@@ -318,6 +318,8 @@ amd64_set_ioperm(td, uap)
 	if (uap->start + uap->length > IOPAGES * PAGE_SIZE * NBBY)
 		return (EINVAL);
 
+  panic ("SVA: No support for I/O Permissions!\n");
+
 	/*
 	 * XXX
 	 * While this is restricted to root, we should probably figure out
