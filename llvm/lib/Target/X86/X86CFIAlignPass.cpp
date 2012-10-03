@@ -88,6 +88,7 @@ X86CFIAlignPass::runOnMachineFunction (MachineFunction &F) {
   //
   // TODO: Align the beginning of the machine function.
   //
+  if (F.getAlignment() < 3) F.setAlignment(3);
 
   //
   // Process each machine basic block.
