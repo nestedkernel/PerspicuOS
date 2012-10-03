@@ -140,8 +140,10 @@ interrupt##x: \
  *  isn't fielding.
  */
 SVAbadtrap:
-  movq $0xbeefbeef, %rbx
-  movq %rax, 0xbad
+  /* Cause a breakpoint */
+  int $0x03
+
+  /* Return from the interrupt */
   iretq
 
 /*
