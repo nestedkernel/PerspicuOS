@@ -231,6 +231,7 @@ register_x86_trap (int number, void *trap) {
   ip->gd_dpl = 3;
   ip->gd_p = 1;
   ip->gd_hioffset = ((uintptr_t)trap)>>16 ;
+
   return;
 }
 
@@ -524,8 +525,6 @@ init_dispatcher ()
   extern void secmemtrap(void);
   extern void secfreetrap(void);
   extern void SVAbadtrap(void);
-  register_x86_trap (0x7e, secfreetrap);
-  register_x86_trap (0x7f, secmemtrap);
 
   /*
    * Register the bad trap handler for all interrupts and traps.
@@ -534,6 +533,11 @@ init_dispatcher ()
     register_x86_interrupt (index, SVAbadtrap, 0);
   }
 
+  /*
+   * Register the secure memory allocation and deallocation handlers.
+   */
+  register_x86_trap (0x7e, secfreetrap);
+  register_x86_trap (0x7f, secmemtrap);
 #if 0
   /* Page Fault and Memory Alignment Trap, respectively */
   register_x86_interrupt (0x0e, mem_trap14, 0);
