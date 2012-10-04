@@ -21,6 +21,7 @@
 /* FreeBSD segment selector for kernel code segment */
 #define KERNELCS 0x03
 
+#include "sva/x86.h"
 #if 0
 #include "sva/util.h"
 #include "sva/exceptions.h"
@@ -183,8 +184,13 @@ struct CPUState {
 
   /* Interrupt contexts for this CPU */
   sva_icontext_t interruptContexts[maxIC];
-};
 
+  /* Pointer to kernel stack */
+  sva_sp_t kstackp;
+
+  /* Per-processor TSS segment */
+  tss_t * tssp;
+};
 
 /*
  * Function: get_cpuState()

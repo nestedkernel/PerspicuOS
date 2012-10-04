@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-extern void * sva_getCPUState (void);
+extern void * sva_getCPUState (tss_t * tssp);
 
 void sva_icontext_setretval (unsigned long, unsigned long, unsigned char error);
 void sva_icontext_restart (unsigned long, unsigned long);

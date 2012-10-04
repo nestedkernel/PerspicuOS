@@ -57,13 +57,17 @@ static struct CPUState CPUState[numProcessors];
  *  Initialize and return a pointer to the per-processor CPU state for this
  *  processor.
  *
+ * Input:
+ *  tssp - A pointer to the TSS that is currently maintained by the system
+ *         software.
+ *
  * Notes:
  *  This intrinsic is only here to bootstrap the implementation of SVA.  Once
  *  the SVA interrupt handling code is working properly, this intrinsic should
  *  be removed.
  */
 void *
-sva_getCPUState (void) {
+sva_getCPUState (tss_t * tssp) {
   /* Index of next available CPU state */
   static int nextIndex=0;
   int index;
@@ -79,6 +83,16 @@ sva_getCPUState (void) {
      */
     CPUState[index].currentIC = CPUState[index].interruptContexts;
 
+    /*
+     * Initialize the TSS pointer so that the SVA VM can find it when needed.
+     */
+    CPUState[index].tssp = tssp;
+
+    /*
+     * Setup the Interrupt Stack Table (IST) entry so that the hardware places
+     * the stack frame inside SVA memory.
+     */
+    tssp->ist3 = ((uintptr_t)CPUState[index].currentIC)+sizeof (sva_icontext_t); 
     /*
      * Return the CPU State to the caller.
      */
