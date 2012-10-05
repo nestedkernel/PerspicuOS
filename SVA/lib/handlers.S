@@ -22,6 +22,35 @@
 #define USERCS 0x03
 
 /*
+ * Macro: NEWTRAP
+ *
+ * Description:
+ *  Create an assembly language routine that can dispatch the specified trap.
+ *  This version is for traps that do not generate their own error code.
+ */
+#define NEWTRAP(x) \
+  .global trap##x ; \
+  .type   trap##x, @function ; \
+; \
+trap##x: \
+  /* Push a zero code */ \
+  pushq $0 ; \
+\
+  /* Push the trap number */ \
+  pushq $x ; \
+\
+  /* Determine whether we interrupted user or supervisor mode execution. */ \
+  testw $USERCS, 24(%rsp) ; \
+  jz 1f ; \
+ \
+  /* We came from user mode.  First switch to the kernel %GS register. */ \
+  swapgs ; \
+1: \
+  /* Call the common trap code. */ \
+  jmp NewTrap
+
+
+/*
  * Macro: TRAP
  *
  * Description:
@@ -316,6 +345,121 @@ Trap:
    */
   iretq
 
+NewTrap:
+  /*
+   * Save a copy of the interrupt context into SVA memory.
+   */
+  pushq %r15
+  pushq %r14
+  pushq %r13
+  pushq %r12
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
+
+  pushq %rdx
+  pushq %rcx
+  pushq %rbx
+  pushq %rax
+
+  pushq %rsi
+  pushq %rdi
+
+  pushw $0
+  movw  %es, 0(%rsp)
+  subq $2, %rsp
+  pushw %gs
+  pushw %fs
+
+  pushq $0
+  pushq $0
+
+  /*
+   * Move the trap number into the %rdi register.
+   */
+  movq 0x90(%rsp), %rdi
+
+  /*
+   * Save the address of the current interrupt context into this processor's
+   * CPU state.
+   */
+  movq %gs:0x260, %rbp
+  movq %rsp, 16(%rbp)
+
+  /*
+   * Switch to the kernel stack.
+   */
+  movq 8(%rbp), %rbp
+  movq 4(%rbp), %rsp
+
+  /*
+   * Call the trap handler registered by the OS for this trap.
+   */
+  movq $interrupt_table, %rax
+  callq *(%rax,%rdi,8)
+
+  /*
+   * Get a copy of the interrupt context back into %rbp and pop off one
+   * interrupt context.
+   */
+  movq %gs:0x260, %rax
+  movq 16(%rax), %rbp
+  addq $0xc8, 16(%rax)
+
+  /*
+   * Copy the registers from the interrupt context back on to the processor.
+   */
+#if 0
+  movw 0x10(%rbp), %fs
+  movw 0x12(%rbp), %gs
+  movw 0x14(%rbp), %es
+#endif
+
+  movq 0x18(%rbp), %rdi
+  movq 0x20(%rbp), %rsi
+
+  movq 0x28(%rbp), %rax
+  movq 0x30(%rbp), %rbx
+  movq 0x38(%rbp), %rcx
+  movq 0x40(%rbp), %rdx
+
+  movq 0x48(%rbp), %r8
+  movq 0x50(%rbp), %r9
+  movq 0x58(%rbp), %r10
+  movq 0x60(%rbp), %r11
+  movq 0x68(%rbp), %r12
+  movq 0x70(%rbp), %r13
+  movq 0x78(%rbp), %r14
+  movq 0x80(%rbp), %r15
+
+  /*
+   * Move the stack pointer back into the SVA memory.
+   */
+  movq %rbp, %rsp
+  addq $0xa0, %rsp
+  int $3
+
+  /*
+   * Remove the saved %rbp from the stack.
+   */
+  movq 0x80(%rbp), %rbp
+
+#if 0
+  /* Determine whether we interrupted user or supervisor mode execution. */
+  testw $USERCS, 8(%rsp)
+  jz 1f
+#endif
+
+  /* We came from user mode.  First switch to the kernel %GS register. */
+  swapgs
+
+1:
+  /*
+   * Return to the calling code.
+   */
+  iretq
+
 /*
  * Trap: SVAsyscall
  *
@@ -445,7 +589,7 @@ secfreetrap:
   iretq
 
 /* Define the trap handlers */
-TRAP(0)
+NEWTRAP(0)
 TRAP(1)
 TRAP(2)
 TRAP(3)
