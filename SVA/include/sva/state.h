@@ -182,14 +182,14 @@ struct CPUState {
   /* Pointer to the currently available IC */
   sva_icontext_t * currentIC;
 
-  /* Interrupt contexts for this CPU */
-  sva_icontext_t interruptContexts[maxIC];
-
-  /* Pointer to kernel stack */
-  sva_sp_t kstackp;
-
   /* Per-processor TSS segment */
   tss_t * tssp;
+
+  /* New current interrupt Context */
+  sva_icontext_t * newCurrentIC;
+
+  /* Interrupt contexts for this CPU */
+  sva_icontext_t interruptContexts[maxIC * 2];
 };
 
 /*
