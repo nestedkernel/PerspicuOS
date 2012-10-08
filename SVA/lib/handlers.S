@@ -345,6 +345,17 @@ Trap:
    */
   iretq
 
+/*
+ * Function: NewTrap
+ *
+ * Description:
+ *  This code is common code for all trap and interrupt handlers.
+ *
+ * Preconditions:
+ *  o The GS register should be pointing to the base of the interrupt context
+ *    for the current processor.
+ *  o The error code and trap number should have been pushed on to the stack. 
+ */
 NewTrap:
   /*
    * Save a copy of the interrupt context into SVA memory.
@@ -389,10 +400,14 @@ NewTrap:
   movq %rsp, 16(%rbp)
 
   /*
-   * Switch to the kernel stack.
+   * Switch to the kernel stack.  If coming from user space, use the kernel
+   * stack pointer specified by the kernel.  Otherwise, use the previous
+   * kernel stack pointer.
    */
   movq 8(%rbp), %rbp
-  movq 4(%rbp), %rsp
+  cmpw $USERCS, 0xa8(%rsp)
+  cmoveq 4(%rbp), %rsp
+  cmovneq 0xb8(%rsp), %rsp
 
   /*
    * Call the trap handler registered by the OS for this trap.
@@ -405,6 +420,11 @@ NewTrap:
    */
   movq %gs:0x260, %rbp
   movq 16(%rbp), %rsp
+
+  /*
+   * Pop off the most recent interrupt context.
+   */
+  addq $0xc8, 16(%rbp)
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
@@ -431,25 +451,24 @@ NewTrap:
   movq 0x70(%rsp), %r13
   movq 0x78(%rsp), %r14
   movq 0x80(%rsp), %r15
-  movq 0x88(%rbp), %rbp
+  movq 0x88(%rsp), %rbp
 
   /*
    * Remove the current interrupt context.
    */
   addq $0xa0, %rsp
 
-#if 0
   /* Determine whether we interrupted user or supervisor mode execution. */
   testw $USERCS, 8(%rsp)
   jz 1f
-#endif
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
 
 1:
   /*
-   * Return to the calling code.
+   * Return to the calling code.  On x86_64, this will restore the stack
+   * pointer regardless of whether we came from user mode or kernel mode.
    */
   iretq
 
