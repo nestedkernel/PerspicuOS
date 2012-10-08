@@ -346,8 +346,6 @@ Trap:
   iretq
 
 NewTrap:
-  int $3
-
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
@@ -445,8 +443,6 @@ NewTrap:
   testw $USERCS, 8(%rsp)
   jz 1f
 #endif
-
-  int $3
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
