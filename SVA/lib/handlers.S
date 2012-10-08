@@ -346,9 +346,12 @@ Trap:
   iretq
 
 NewTrap:
+  int $3
+
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
+  pushq %rbp
   pushq %r15
   pushq %r14
   pushq %r13
@@ -400,56 +403,50 @@ NewTrap:
   callq *(%rax,%rdi,8)
 
   /*
-   * Get a copy of the interrupt context back into %rbp and pop off one
-   * interrupt context.
+   * Switch the stack pointer back to the interrupt context.
    */
-  movq %gs:0x260, %rax
-  movq 16(%rax), %rbp
-  addq $0xc8, 16(%rax)
+  movq %gs:0x260, %rbp
+  movq 16(%rbp), %rsp
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
 #if 0
-  movw 0x10(%rbp), %fs
-  movw 0x12(%rbp), %gs
-  movw 0x14(%rbp), %es
+  movw 0x10(%rsp), %fs
+  movw 0x12(%rsp), %gs
+  movw 0x14(%rsp), %es
 #endif
 
-  movq 0x18(%rbp), %rdi
-  movq 0x20(%rbp), %rsi
+  movq 0x18(%rsp), %rdi
+  movq 0x20(%rsp), %rsi
 
-  movq 0x28(%rbp), %rax
-  movq 0x30(%rbp), %rbx
-  movq 0x38(%rbp), %rcx
-  movq 0x40(%rbp), %rdx
+  movq 0x28(%rsp), %rax
+  movq 0x30(%rsp), %rbx
+  movq 0x38(%rsp), %rcx
+  movq 0x40(%rsp), %rdx
 
-  movq 0x48(%rbp), %r8
-  movq 0x50(%rbp), %r9
-  movq 0x58(%rbp), %r10
-  movq 0x60(%rbp), %r11
-  movq 0x68(%rbp), %r12
-  movq 0x70(%rbp), %r13
-  movq 0x78(%rbp), %r14
-  movq 0x80(%rbp), %r15
+  movq 0x48(%rsp), %r8
+  movq 0x50(%rsp), %r9
+  movq 0x58(%rsp), %r10
+  movq 0x60(%rsp), %r11
+  movq 0x68(%rsp), %r12
+  movq 0x70(%rsp), %r13
+  movq 0x78(%rsp), %r14
+  movq 0x80(%rsp), %r15
+  movq 0x88(%rbp), %rbp
 
   /*
-   * Move the stack pointer back into the SVA memory.
+   * Remove the current interrupt context.
    */
-  movq %rbp, %rsp
   addq $0xa0, %rsp
-  int $3
-
-  /*
-   * Remove the saved %rbp from the stack.
-   */
-  movq 0x80(%rbp), %rbp
 
 #if 0
   /* Determine whether we interrupted user or supervisor mode execution. */
   testw $USERCS, 8(%rsp)
   jz 1f
 #endif
+
+  int $3
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
