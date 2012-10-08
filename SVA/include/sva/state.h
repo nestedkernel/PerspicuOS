@@ -107,7 +107,7 @@ typedef struct sva_icontext {
  *  control flow, stack pointer, and integer registers.
  *
  * TODO:
- *  The stack pointer should probably be removed).
+ *  The stack pointer should probably be removed.
  */
 typedef struct
 {
