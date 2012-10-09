@@ -400,6 +400,19 @@ NewTrap:
   movq %rsp, 16(%rbp)
 
   /*
+   * Modify the value in the Task State Segment (TSS) so that the next trap
+   * or interrupt on this processor saves state into the next interrupt
+   * context.
+   */
+  movq 8(%rbp), %rbx
+  movq %rsp, 52(%rbx)
+
+  /*
+   * Adjust it to point to the first byte of the current interrupt context
+   */
+  addq $8, 52(%rbx)
+
+  /*
    * Switch to the kernel stack.  If coming from user space, use the kernel
    * stack pointer specified by the kernel.  Otherwise, use the previous
    * kernel stack pointer.
@@ -422,9 +435,13 @@ NewTrap:
   movq 16(%rbp), %rsp
 
   /*
-   * Pop off the most recent interrupt context.
+   * Pop off the most recent interrupt context.  This requires modifying
+   * the newCurrentIC field of the CPUState as well as modifying the IST
+   * in the TSS.
    */
   addq $0xc8, 16(%rbp)
+  movq 8(%rbp), %rbx
+  addq $0xc8, 52(%rbx)
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
