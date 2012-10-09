@@ -21,6 +21,13 @@
 /* FreeBSD segment selector for kernel code segment */
 #define USERCS 0x03
 
+/* Offsets for various fields in the SVA Interrupt Context */
+#define IC_TRAPNO 0x90
+
+/* Offsets for various fields in the CPU State Structure */
+#define CPU_TSSP  0x08
+#define CPU_NEWIC 0x10
+
 /*
  * Macro: NEWTRAP
  *
@@ -390,21 +397,21 @@ NewTrap:
   /*
    * Move the trap number into the %rdi register.
    */
-  movq 0x90(%rsp), %rdi
+  movq IC_TRAPNO(%rsp), %rdi
 
   /*
    * Save the address of the current interrupt context into this processor's
    * CPU state.
    */
   movq %gs:0x260, %rbp
-  movq %rsp, 16(%rbp)
+  movq %rsp, CPU_NEWIC(%rbp)
 
   /*
    * Modify the value in the Task State Segment (TSS) so that the next trap
    * or interrupt on this processor saves state into the next interrupt
    * context.
    */
-  movq 8(%rbp), %rbx
+  movq CPU_TSSP(%rbp), %rbx
   movq %rsp, 52(%rbx)
 
   /*
@@ -432,15 +439,15 @@ NewTrap:
    * Switch the stack pointer back to the interrupt context.
    */
   movq %gs:0x260, %rbp
-  movq 16(%rbp), %rsp
+  movq CPU_NEWIC(%rbp), %rsp
 
   /*
    * Pop off the most recent interrupt context.  This requires modifying
    * the newCurrentIC field of the CPUState as well as modifying the IST
    * in the TSS.
    */
-  addq $0xc8, 16(%rbp)
-  movq 8(%rbp), %rbx
+  addq $0xc8, CPU_NEWIC(%rbp)
+  movq CPU_TSSP(%rbp), %rbx
   addq $0xc8, 52(%rbx)
 
   /*
