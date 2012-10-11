@@ -49,8 +49,10 @@ typedef uintptr_t * sva_sp_t;
  *  forgo it at all.
  */
 typedef struct sva_icontext {
+#if 0
   /* Next Interrupt Context Pointer */
   struct sva_icontext * next;         // 0x00
+#endif
 
   /* Invoke Pointer */
   void * invokep;                     // 0x08
