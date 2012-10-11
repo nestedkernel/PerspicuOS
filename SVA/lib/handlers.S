@@ -22,7 +22,38 @@
 #define USERCS 0x03
 
 /* Offsets for various fields in the SVA Interrupt Context */
-#define IC_TRAPNO 0x90
+#define IC_INVOKEP 0x08
+#define IC_FS      0x10
+#define IC_GS      0x12
+#define IC_ES      0x14
+
+#define IC_RDI     0x18
+#define IC_RSI     0x20
+
+#define IC_RAX     0x28
+#define IC_RBX     0x30
+#define IC_RCX     0x38
+#define IC_RDX     0x40
+
+#define IC_R8      0x48
+#define IC_R9      0x50
+#define IC_R10     0x58
+#define IC_R11     0x60
+#define IC_R12     0x68
+#define IC_R13     0x70
+#define IC_R14     0x78
+#define IC_R15     0x80
+
+#define IC_RBP     0x88
+
+#define IC_TRAPNO  0x90
+
+#define IC_CODE    0x98
+#define IC_RIP     0xa0
+#define IC_CS      0xa8
+#define IC_RFLAGS  0xb0
+#define IC_RSP     0xb8
+#define IC_SS      0xc0
 
 /* Offsets for various fields in the CPU State Structure */
 #define CPU_TSSP  0x08
@@ -191,26 +222,26 @@ SVAbadtrap:
  */
 saveRegs:
   /* Save the registers into the interrupt context */
-  movw %fs,  0x10(%rbp)
-  movw %gs,  0x12(%rbp)
-  movw %es,  0x14(%rbp)
+  movw %fs,  IC_FS(%rbp)
+  movw %gs,  IC_GS(%rbp)
+  movw %es,  IC_ES(%rbp)
 
-  movq %rdi, 0x18(%rbp)
-  movq %rsi, 0x20(%rbp)
+  movq %rdi, IC_RDI(%rbp)
+  movq %rsi, IC_RSI(%rbp)
 
-  movq %rax, 0x28(%rbp)
-  movq %rbx, 0x30(%rbp)
-  movq %rcx, 0x38(%rbp)
-  movq %rdx, 0x40(%rbp)
+  movq %rax, IC_RAX(%rbp)
+  movq %rbx, IC_RBX(%rbp)
+  movq %rcx, IC_RCX(%rbp)
+  movq %rdx, IC_RDX(%rbp)
 
-  movq %r8,  0x48(%rbp)
-  movq %r9,  0x50(%rbp)
-  movq %r10, 0x58(%rbp)
-  movq %r11, 0x60(%rbp)
-  movq %r12, 0x68(%rbp)
-  movq %r13, 0x70(%rbp)
-  movq %r14, 0x78(%rbp)
-  movq %r15, 0x80(%rbp)
+  movq %r8,   IC_R8(%rbp)
+  movq %r9,   IC_R9(%rbp)
+  movq %r10, IC_R10(%rbp)
+  movq %r11, IC_R11(%rbp)
+  movq %r12, IC_R12(%rbp)
+  movq %r13, IC_R13(%rbp)
+  movq %r14, IC_R14(%rbp)
+  movq %r15, IC_R15(%rbp)
 
   retq
 
@@ -222,27 +253,27 @@ saveRegs:
  */
 restoreRegs:
 #if 0
-  movw 0x10(%rbp), %fs
-  movw 0x12(%rbp), %gs
-  movw 0x14(%rbp), %es
+  movw IC_FS(%rbp), %fs
+  movw IC_GS(%rbp), %gs
+  movw IC_ES(%rbp), %es
 #endif
 
-  movq 0x18(%rbp), %rdi
-  movq 0x20(%rbp), %rsi
+  movq IC_RDI(%rbp), %rdi
+  movq IC_RSI(%rbp), %rsi
 
-  movq 0x28(%rbp), %rax
-  movq 0x30(%rbp), %rbx
-  movq 0x38(%rbp), %rcx
-  movq 0x40(%rbp), %rdx
+  movq IC_RAX(%rbp), %rax
+  movq IC_RBX(%rbp), %rbx
+  movq IC_RCX(%rbp), %rcx
+  movq IC_RDX(%rbp), %rdx
 
-  movq 0x48(%rbp), %r8
-  movq 0x50(%rbp), %r9
-  movq 0x58(%rbp), %r10
-  movq 0x60(%rbp), %r11
-  movq 0x68(%rbp), %r12
-  movq 0x70(%rbp), %r13
-  movq 0x78(%rbp), %r14
-  movq 0x80(%rbp), %r15
+  movq  IC_R8(%rbp), %r8
+  movq  IC_R9(%rbp), %r9
+  movq IC_R10(%rbp), %r10
+  movq IC_R11(%rbp), %r11
+  movq IC_R12(%rbp), %r12
+  movq IC_R13(%rbp), %r13
+  movq IC_R14(%rbp), %r14
+  movq IC_R15(%rbp), %r15
 
   ret
 
@@ -414,17 +445,19 @@ NewTrap:
   movq CPU_TSSP(%rbp), %rbx
   movq %rsp, 52(%rbx)
 
+#if 1
   /*
    * Adjust it to point to the first byte of the current interrupt context
    */
   addq $8, 52(%rbx)
+#endif
 
   /*
    * Switch to the kernel stack.  If coming from user space, use the kernel
    * stack pointer specified by the kernel.  Otherwise, use the previous
    * kernel stack pointer.
    */
-  movq 8(%rbp), %rbp
+  movq CPU_TSSP(%rbp), %rbp
   cmpw $USERCS, 0xa8(%rsp)
   cmoveq 4(%rbp), %rsp
   cmovneq 0xb8(%rsp), %rsp
@@ -454,28 +487,28 @@ NewTrap:
    * Copy the registers from the interrupt context back on to the processor.
    */
 #if 0
-  movw 0x10(%rsp), %fs
-  movw 0x12(%rsp), %gs
-  movw 0x14(%rsp), %es
+  movw IC_FS(%rsp), %fs
+  movw IC_GS(%rsp), %gs
+  movw IC_ES(%rsp), %es
 #endif
 
-  movq 0x18(%rsp), %rdi
-  movq 0x20(%rsp), %rsi
+  movq IC_RDI(%rsp), %rdi
+  movq IC_RSI(%rsp), %rsi
 
-  movq 0x28(%rsp), %rax
-  movq 0x30(%rsp), %rbx
-  movq 0x38(%rsp), %rcx
-  movq 0x40(%rsp), %rdx
+  movq IC_RAX(%rsp), %rax
+  movq IC_RBX(%rsp), %rbx
+  movq IC_RCX(%rsp), %rcx
+  movq IC_RDX(%rsp), %rdx
 
-  movq 0x48(%rsp), %r8
-  movq 0x50(%rsp), %r9
-  movq 0x58(%rsp), %r10
-  movq 0x60(%rsp), %r11
-  movq 0x68(%rsp), %r12
-  movq 0x70(%rsp), %r13
-  movq 0x78(%rsp), %r14
-  movq 0x80(%rsp), %r15
-  movq 0x88(%rsp), %rbp
+  movq  IC_R8(%rsp), %r8
+  movq  IC_R9(%rsp), %r9
+  movq IC_R10(%rsp), %r10
+  movq IC_R11(%rsp), %r11
+  movq IC_R12(%rsp), %r12
+  movq IC_R13(%rsp), %r13
+  movq IC_R14(%rsp), %r14
+  movq IC_R15(%rsp), %r15
+  movq IC_RBP(%rsp), %rbp
 
   /*
    * Remove the current interrupt context.
