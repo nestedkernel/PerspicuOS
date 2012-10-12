@@ -48,7 +48,7 @@ default_interrupt (unsigned int number, void * state) {
  *  system.  We gather this here so that it's easy to find them from the %GS
  *  register.
  */
-static struct CPUState CPUState[numProcessors];
+struct CPUState CPUState[numProcessors] __attribute__((aligned(16)));
 
 /*
  * Intrinsic: sva_getCPUState()
@@ -92,7 +92,11 @@ sva_getCPUState (tss_t * tssp) {
      * Setup the Interrupt Stack Table (IST) entry so that the hardware places
      * the stack frame inside SVA memory.
      */
+#if 0
     tssp->ist3 = (uintptr_t) (CPUState[index].interruptContexts + (maxIC - 1));
+#else
+    tssp->ist3 = (uintptr_t) ((CPUState[index].interruptContexts + 2)) - 0x10;
+#endif
 
     /*
      * Return the CPU State to the caller.
