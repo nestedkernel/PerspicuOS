@@ -14,6 +14,7 @@
  */
 
 #include <sva/callbacks.h>
+#include <sva/config.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
 #include <machine/frame.h>
@@ -189,11 +190,14 @@ llva_get_eip (void * icontext)
 
 int
 sva_print_icontext (void) {
-  sva_icontext_t * p = getCPUState()->currentIC;
-  if (--p) {
-    printf ("SVA: icontext: %p\n", p);
-    printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
+  struct CPUState * cpup = getCPUState();
+  if (cpup->tssp) {
+    printf ("SVA: (%p): %p: %p %p\n\n", cpup,
+                                        cpup->newCurrentIC,
+                                        cpup->interruptContexts + 1,
+                                        cpup->interruptContexts + 0);
 #if 0
+    printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
     printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
     printf("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
     printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
@@ -202,8 +206,6 @@ sva_print_icontext (void) {
     printf("es: 0x%x   ds: 0x%x   gs: 0x%x \n", p->es, 0, p->gs);
     printf ("--------------------------------\n");
 #endif
-  } else {
-    printf ("SVA: icontext is NULL\n");
   }
   return 0;
 }
