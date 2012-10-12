@@ -619,7 +619,18 @@ init_secondary(void)
 	cpu = bootAP;
 
 	/* Init tss */
+#if 0
 	common_tss[cpu] = common_tss[0];
+#else
+  /*
+   * SVA: Don't reconfigure the SVA IST configuration.
+   */
+  {
+    uintptr_t ist = common_tss[cpu].tss_ist3;
+    common_tss[cpu] = common_tss[0];
+    common_tss[cpu].tss_ist3 = ist;
+  }
+#endif
 	common_tss[cpu].tss_rsp0 = 0;   /* not used until after switch */
 	common_tss[cpu].tss_iobase = sizeof(struct amd64tss) +
 	    IOPAGES * PAGE_SIZE;
