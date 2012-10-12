@@ -969,6 +969,10 @@ CTASSERT(sizeof(struct nmi_pcpu) == 16);
 
 struct amd64tss common_tss[MAXCPU];
 
+#if 1
+static uintptr_t svaArray[1024];
+#endif
+
 /*
  * Software prototypes -- in more palatable form.
  *
@@ -1655,6 +1659,17 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
 	wrmsr(MSR_KGSBASE, 0);		/* User value while in the kernel */
 
+#if 1
+  /*
+   * Initialize the rest of the PCPU structures because we need them for
+   * proper SVA interrupt handling.
+   */
+  for (unsigned index = 0; index < MAXCPU; ++index) {
+    if ((__pcpu[index].svaIContext = sva_getCPUState(&(common_tss[index]))) == 0) {
+      panic ("SVA: Unable to setup interrupt context for this processor\n");
+    }
+  }
+#endif
 	pcpu_init(pc, 0, sizeof(struct pcpu));
 	dpcpu_init((void *)(physfree + KERNBASE), 0);
 	physfree += DPCPU_SIZE;
@@ -1685,6 +1700,16 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
    * Initialize the SVA virtual machine on the primary processor.
    */
   sva_init_primary();
+
+#if 0
+  /*
+   * XXX: Experiment: See if the IST works the way we think it does.
+   */
+  for (unsigned index = 0; index < MAXCPU; ++index) {
+    printf ("SVA: Setting IST to %p\n",&(svaArray[1023])); 
+    common_tss[index].tss_ist3 = &(svaArray[1023]);
+  }
+#endif
 #endif
 
 	/* exceptions */
@@ -1692,8 +1717,14 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	for (x = 0; x < NIDT; x++)
 		setidt(x, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
 #endif
+#if 1
+	extern void fr_sva_trap(int type);
+#endif
 #if 0
 	setidt(IDT_DE, &IDTVEC(div),  SDT_SYSIGT, SEL_KPL, 0);
+#else
+	sva_register_general_exception(IDT_DE, fr_sva_trap);
+#endif
 	setidt(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
  	setidt(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
 	setidt(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
@@ -1705,30 +1736,11 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_SS, &IDTVEC(stk),  SDT_SYSIGT, SEL_KPL, 0);
-#else
-	extern void fr_sva_trap(int type);
-	sva_register_general_exception(IDT_DE, fr_sva_trap);
-	sva_register_general_exception(IDT_DB, fr_sva_trap);
-#if 0
-	sva_register_general_exception(IDT_NMI, fr_sva_trap);
-#else
 	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
-#endif
-	sva_register_general_exception(IDT_BP, fr_sva_trap);
-	sva_register_general_exception(IDT_OF, fr_sva_trap);
-	sva_register_general_exception(IDT_BR, fr_sva_trap);
-	sva_register_general_exception(IDT_UD, fr_sva_trap);
-	sva_register_general_exception(IDT_NM, fr_sva_trap);
-	sva_register_general_exception(IDT_DF, fr_sva_trap);
-	sva_register_general_exception(IDT_FPUGP, fr_sva_trap);
-	sva_register_general_exception(IDT_TS, fr_sva_trap);
-	sva_register_general_exception(IDT_NP, fr_sva_trap);
-	sva_register_general_exception(IDT_SS, fr_sva_trap);
-#endif
 	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MF, &IDTVEC(fpu),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
+#if 1
 	setidt(IDT_AC, &IDTVEC(align), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MC, &IDTVEC(mchk),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_XF, &IDTVEC(xmm), SDT_SYSIGT, SEL_KPL, 0);
