@@ -55,9 +55,15 @@
 #define IC_RSP     0xb0
 #define IC_SS      0xb8
 
+/* Size of the interrupt context */
+#define IC_SIZE    0xd0
+
 /* Offsets for various fields in the CPU State Structure */
 #define CPU_TSSP  0x08
 #define CPU_NEWIC 0x10
+
+/* Offsets for the TSS */
+#define TSS_IST3 52
 
 /*
  * Macro: NEWTRAP
@@ -423,10 +429,6 @@ NewTrap:
   pushw %fs
 
   pushq $0
-#if 0
-  /* Interrupt Context next field */
-  pushq $0
-#endif
 
   /*
    * Move the trap number into the %rdi register.
@@ -446,14 +448,12 @@ NewTrap:
    * context.
    */
   movq CPU_TSSP(%rbp), %rbx
-  movq %rsp, 52(%rbx)
+  movq %rsp, TSS_IST3(%rbx)
 
-#if 0
   /*
-   * Adjust it to point to the first byte of the current interrupt context
+   * Adjust it to point to the first byte of the current interrupt context.
    */
-  addq $8, 52(%rbx)
-#endif
+  subq $0x10, TSS_IST3(%rbx)
 
   /*
    * Switch to the kernel stack.  If coming from user space, use the kernel
@@ -482,9 +482,9 @@ NewTrap:
    * the newCurrentIC field of the CPUState as well as modifying the IST
    * in the TSS.
    */
-  addq $0xc0, CPU_NEWIC(%rbp)
+  addq $IC_SIZE, CPU_NEWIC(%rbp)
   movq CPU_TSSP(%rbp), %rbx
-  addq $0xc0, 52(%rbx)
+  addq $IC_SIZE, TSS_IST3(%rbx)
 
   /*
    * Copy the registers from the interrupt context back on to the processor.
@@ -516,11 +516,7 @@ NewTrap:
   /*
    * Remove the current interrupt context.
    */
-#if 0
-  addq $0xa0, %rsp
-#else
   addq $0x98, %rsp
-#endif
 
   /* Determine whether we interrupted user or supervisor mode execution. */
   testw $USERCS, 8(%rsp)

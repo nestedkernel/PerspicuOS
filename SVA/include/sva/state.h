@@ -47,58 +47,60 @@ typedef uintptr_t * sva_sp_t;
  *  As the Execution Engine gets smarter, we might be able to skip saving some
  *  of these, or on hardware with shadow register sets, we might be able to
  *  forgo it at all.
+ *
+ * Notes:
+ *  o) This structure *must* have a length equal to an even number of quad
+ *     words.  The SVA interrupt handling code depends upon this behavior.
  */
 typedef struct sva_icontext {
-#if 0
-  /* Next Interrupt Context Pointer */
-  struct sva_icontext * next;         // 0x00
-#endif
-
   /* Invoke Pointer */
-  void * invokep;                     // 0x08
+  void * invokep;                     // 0x00
 
   /* Segment selector registers */
-  unsigned short fs;                  // 0x10
+  unsigned short fs;                  // 0x08
   unsigned short gs;
   unsigned short es;
   unsigned short pad1;
 
-  unsigned long rdi;                  // 0x18
-  unsigned long rsi;                  // 0x20
+  unsigned long rdi;                  // 0x10
+  unsigned long rsi;                  // 0x18
 
-  unsigned long rax;                  // 0x28
-  unsigned long rbx;                  // 0x30
-  unsigned long rcx;                  // 0x38
-  unsigned long rdx;                  // 0x40
+  unsigned long rax;                  // 0x20
+  unsigned long rbx;                  // 0x28
+  unsigned long rcx;                  // 0x30
+  unsigned long rdx;                  // 0x38
 
-  unsigned long r8;                   // 0x48
-  unsigned long r9;                   // 0x50
-  unsigned long r10;                  // 0x58
-  unsigned long r11;                  // 0x60
-  unsigned long r12;                  // 0x68
-  unsigned long r13;                  // 0x70
-  unsigned long r14;                  // 0x78
-  unsigned long r15;                  // 0x80
+  unsigned long r8;                   // 0x40
+  unsigned long r9;                   // 0x48
+  unsigned long r10;                  // 0x50
+  unsigned long r11;                  // 0x58
+  unsigned long r12;                  // 0x60
+  unsigned long r13;                  // 0x68
+  unsigned long r14;                  // 0x70
+  unsigned long r15;                  // 0x78
 
   /*
    * Keep this register right here.  We'll use it in assembly code, and we
    * place it here for easy saving and recovery.
    */
-  unsigned long rbp;                  // 0x88
+  unsigned long rbp;                  // 0x80
 
   /* Hardware trap number */
-  unsigned long trapno;               // 0x90
+  unsigned long trapno;               // 0x88
 
   /*
    * These values are automagically saved by the x86_64 hardware upon an
    * interrupt or exception.
    */
-  unsigned long code;                 // 0x98
-  unsigned long rip;                  // 0xa0
-  unsigned long cs;                   // 0xa8
-  unsigned long rflags;               // 0xb0
-  unsigned long * rsp;                // 0xb8
-  unsigned long ss;                   // 0xc0
+  unsigned long code;                 // 0x90
+  unsigned long rip;                  // 0x98
+  unsigned long cs;                   // 0xa0
+  unsigned long rflags;               // 0xa8
+  unsigned long * rsp;                // 0xb0
+  unsigned long ss;                   // 0xb8
+
+  unsigned long skip;                 // 0xc0
+  unsigned long start;                // 0xc8
 } sva_icontext_t;
 
 /*
@@ -190,7 +192,18 @@ struct CPUState {
   /* New current interrupt Context */
   sva_icontext_t * newCurrentIC;
 
-  /* Interrupt contexts for this CPU */
+  void * padding;
+
+  /*
+   * Array of Interrupt Contexts for this CPU:
+   * This field must be placed at a non-0x10 aligned boundary within the
+   * CPUState structure.  This ensures that each interrupt context is not
+   * aligned at a 16-byte boundary, which in tern prevents the x86 from
+   * subtracting 3 64-bit words from the stack pointer on interrupts.
+   *
+   * This is because the x86 will first set the stack pointer to the value
+   * in the IST, then decrement it, and *then* align it if necessary.
+   */
   sva_icontext_t interruptContexts[maxIC * 2];
 };
 
