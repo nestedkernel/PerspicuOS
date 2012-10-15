@@ -969,10 +969,6 @@ CTASSERT(sizeof(struct nmi_pcpu) == 16);
 
 struct amd64tss common_tss[MAXCPU];
 
-#if 1
-static uintptr_t svaArray[1024];
-#endif
-
 /*
  * Software prototypes -- in more palatable form.
  *
@@ -1700,16 +1696,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
    * Initialize the SVA virtual machine on the primary processor.
    */
   sva_init_primary();
-
-#if 0
-  /*
-   * XXX: Experiment: See if the IST works the way we think it does.
-   */
-  for (unsigned index = 0; index < MAXCPU; ++index) {
-    printf ("SVA: Setting IST to %p\n",&(svaArray[1023])); 
-    common_tss[index].tss_ist3 = &(svaArray[1023]);
-  }
-#endif
 #endif
 
 	/* exceptions */
