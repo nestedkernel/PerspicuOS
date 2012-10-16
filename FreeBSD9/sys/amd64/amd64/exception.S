@@ -355,7 +355,7 @@ IDTVEC(fast_syscall)
 	swapgs
 	movq	%rsp,PCPU(SCRATCH_RSP)
 	movq	PCPU(RSP0),%rsp
-#if 1
+#if 0
 	call SVAsyscall
 #endif
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
@@ -407,7 +407,7 @@ IDTVEC(fast_syscall)
 	jne	2f
 	/* Restore preserved registers. */
 	MEXITCOUNT
-#if 0
+#if 1
 	movq	TF_RDI(%rsp),%rdi	/* bonus; preserve arg 1 */
 	movq	TF_RSI(%rsp),%rsi	/* bonus: preserve arg 2 */
 	movq	TF_RDX(%rsp),%rdx	/* return value 2 */
@@ -415,7 +415,7 @@ IDTVEC(fast_syscall)
 	movq	TF_RFLAGS(%rsp),%r11	/* original %rflags */
 #endif
 	movq	TF_RIP(%rsp),%rcx	/* original %rip */
-#if 1
+#if 0
 	call SVAsysret
 #endif
 	movq	TF_RSP(%rsp),%rsp	/* user stack pointer */
