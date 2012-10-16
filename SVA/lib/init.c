@@ -192,7 +192,7 @@ register_x86_interrupt (int number, void *interrupt, unsigned char priv) {
    */
   ip->gd_looffset = (uintptr_t)interrupt;
   ip->gd_selector = GSEL(GCODE_SEL, 0);
-  ip->gd_ist = 0;
+  ip->gd_ist = 3;
   ip->gd_xx = 0;
   ip->gd_type = SDT_SYSIGT;
   ip->gd_dpl = priv;
@@ -225,7 +225,7 @@ register_x86_trap (int number, void *trap) {
    */
   ip->gd_looffset = (uintptr_t)trap;
   ip->gd_selector = GSEL(GCODE_SEL, 3);
-  ip->gd_ist = 0;
+  ip->gd_ist = 3;
   ip->gd_xx = 0;
   ip->gd_type = SDT_SYSTGT;
   ip->gd_dpl = 3;

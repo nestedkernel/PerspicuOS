@@ -66,35 +66,6 @@
 #define TSS_IST3 52
 
 /*
- * Macro: NEWTRAP
- *
- * Description:
- *  Create an assembly language routine that can dispatch the specified trap.
- *  This version is for traps that do not generate their own error code.
- */
-#define NEWTRAP(x) \
-  .global trap##x ; \
-  .type   trap##x, @function ; \
-; \
-trap##x: \
-  /* Push a zero code */ \
-  pushq $0 ; \
-\
-  /* Push the trap number */ \
-  pushq $x ; \
-\
-  /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $USERCS, 24(%rsp) ; \
-  jz 1f ; \
- \
-  /* We came from user mode.  First switch to the kernel %GS register. */ \
-  swapgs ; \
-1: \
-  /* Call the common trap code. */ \
-  jmp NewTrap
-
-
-/*
  * Macro: TRAP
  *
  * Description:
@@ -287,112 +258,6 @@ restoreRegs:
  * Function: Trap
  *
  * Description:
- *  This code is common code for all trap handlers that handle traps with
- *  no x86_64 error code.
- *
- * Preconditions:
- *  o The GS register should be pointing to the base of the interrupt context
- *    for the current processor.
- *  o The error code and trap number should have been pushed on to the stack. 
- */
-Trap:
-  /*
-   * Get a pointer to the current processor's interrupt context.
-   */
-  pushq %rbp
-  movq %gs:0x260, %rbp
-  movq (%rbp), %rbp
-
-  /*
-   * Save a copy of the interrupt context into SVA memory.
-   */
-  callq saveRegs
-
-  /* Increment the interrupt context pointer */
-  callq incrementNextIC
-
-  /*
-   * Copy the registers saved by the processor into the user-space interupt
-   * context.
-   */
-  movq 0x00(%rsp), %r8
-  movq 0x08(%rsp), %rdi /* Use %rdi to make argument setup faster */
-  movq 0x10(%rsp), %r10
-  movq 0x18(%rsp), %r11
-  movq 0x20(%rsp), %r12
-  movq 0x28(%rsp), %r13
-  movq 0x30(%rsp), %r14
-  movq 0x38(%rsp), %r15
-  movq %r8,  0x88(%rbp)
-  movq %rdi, 0x90(%rbp)
-  movq %r10, 0x98(%rbp)
-  movq %r11, 0xa0(%rbp)
-  movq %r12, 0xa8(%rbp)
-  movq %r13, 0xb0(%rbp)
-  movq %r14, 0xb8(%rbp)
-  movq %r15, 0xc0(%rbp)
-
-  /*
-   * Call the trap handler registered by the OS for this trap.
-   */
-  movq $interrupt_table, %rax
-  callq *(%rax,%rdi,8)
-
-  /*
-   * Copy changes made to the interrupt context back on to the kernel stack.
-   */
-  movq 0x88(%rbp), %r8
-  movq 0x90(%rbp), %r9
-  movq 0x98(%rbp), %r10
-  movq 0xa0(%rbp), %r11
-  movq 0xa8(%rbp), %r12
-  movq 0xb0(%rbp), %r13
-  movq 0xb8(%rbp), %r14
-  movq 0xc0(%rbp), %r15
-  movq %r8,  0x00(%rsp)
-  movq %r9,  0x08(%rsp)
-  movq %r10, 0x10(%rsp)
-  movq %r11, 0x18(%rsp)
-  movq %r12, 0x20(%rsp)
-  movq %r13, 0x28(%rsp)
-  movq %r14, 0x30(%rsp)
-  movq %r15, 0x38(%rsp)
-
-  /* Decrement the interrupt context pointer */
-  call decrementNextIC
-
-  /*
-   * Copy the registers from the interrupt context back on to the processor.
-   */
-  call restoreRegs
-
-  /*
-   * Remove the saved %rbp from the stack.
-   */
-  popq %rbp
-
-  /*
-   * Remove the error code and trap number.
-   */
-  addq $16, %rsp
-
-  /* Determine whether we interrupted user or supervisor mode execution. */
-  testw $USERCS, 8(%rsp)
-  jz 1f
-
-  /* We came from user mode.  First switch to the kernel %GS register. */
-  swapgs
-
-1:
-  /*
-   * Return to the calling code.
-   */
-  iretq
-
-/*
- * Function: NewTrap
- *
- * Description:
  *  This code is common code for all trap and interrupt handlers.
  *
  * Preconditions:
@@ -400,7 +265,7 @@ Trap:
  *    for the current processor.
  *  o The error code and trap number should have been pushed on to the stack. 
  */
-NewTrap:
+Trap:
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
@@ -661,7 +526,7 @@ secfreetrap:
   iretq
 
 /* Define the trap handlers */
-NEWTRAP(0)
+TRAP(0)
 TRAP(1)
 TRAP(2)
 TRAP(3)
