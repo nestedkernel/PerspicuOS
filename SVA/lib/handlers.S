@@ -176,6 +176,9 @@ interrupt##x: \
 .global secfreetrap
 .type secfreetrap, @function
 
+.global sva_syscall
+.type sva_syscall, @function
+
 /*
  * Function: SVAbadtrap
  *
@@ -406,55 +409,210 @@ Trap:
  * Preconditions:
  *  o The GS register should be pointing to the base of the interrupt context
  *    for the current processor.
- *  o The error code and trap number should have been pushed on to the stack. 
+ *
+ * Notes:
+ *  o This function is called by the processor by the syscall instruction.
+ *    When we enter, we are still running on the application's stack.
+ *
+ *  o We assume that the syscall instruction was executed in user-mode.  SVA
+ *    should ensure that syscall is never generated for kernel code and that
+ *    the kernel cannot jump to user-space code containing the syscall
+ *    sequence.
+ *
+ *  o The SVA CFI checks should prevent the kernel from jumping to a syscall
+ *    instruction that exists in kernel code because it will violate the
+ *    assumption that we need to use swapgs to configure the %GS register.
  */
 SVAsyscall:
-  /*
-   * Get a pointer to the current processor's interrupt context.
-   */
-  pushq %rbp
-  movq %gs:0x260, %rbp
-  movq (%rbp), %rbp
+  /* We came from user mode.  First switch to the kernel %GS register. */
+  swapgs
 
   /*
-   * Set the next link to NULL (the user-space interrupt context should always
-   * be the first in the interrupt context chain).
+   * Save the processor status flags (%rflags) and the stack pointer (%rsp) for
+   * the application.
    */
-  movq $0, 0x00(%rbp)
+  pushf
+  pushq %rsp
+
+  /*
+   * Save a few registers so that we have some with which to work.
+   */
+  pushq %rbp
+  pushq %rdi
+  pushq %rsi
+
+  call sva_print_icontext
+
+  /*
+   * Get the location of the interrupt context within the current processor's
+   * CPUState and switch over to that stack.
+   */
+  movq %gs:0x260, %rdi
+  movq %gs:0x260, %rbp
+#if 0
+  addq $0x1a20, %rbp
+#else
+  addq $0x1a30, %rbp
+#endif
+  movq %rsp, %rsi
+  movq %rbp, %rsp
+
+  /*
+   * The stack pointer is now pointing into the interrupt context.
+   */
+
+  /* Push two dummy values and a dummy stack segment */
+  pushq $0
+  pushq $0
+  pushq $0
+
+  /* Push the user-space stack pointer (%rsp) */
+  pushq %rsi
+
+  /* Push the user-space status flags */
+  pushq 0x20(%rsi)
+
+  /* Push the user-space code segment */
+  pushq $USERCS
+
+  /* Push the user-space program counter (%rip) */
+  pushq %rcx
+
+  /* Push a zero code */
+  pushq $0
+
+  /* Push a dummy trap number */
+  pushq $0
 
   /*
    * Save a copy of the interrupt context into SVA memory.
    */
-  callq saveRegs
+  pushq 0x10(%rsi)
+  pushq %r15
+  pushq %r14
+  pushq %r13
+  pushq %r12
+  pushq %r11
+  pushq %r10
+  pushq %r9
+  pushq %r8
+
+  pushq %rdx
+  pushq %rcx
+  pushq %rbx
+  pushq %rax
+
+  pushq 0x00(%rsi)
+  pushq 0x08(%rsi)
+
+  pushw $0
+  movw  %es, 0(%rsp)
+  subq $2, %rsp
+  pushw %gs
+  pushw %fs
+
+  pushq $0
+
+  int $3
 
   /*
-   * Copy the registers saved by the processor into the user-space interupt
+   * Save the address of the current interrupt context into this processor's
+   * CPU state.
+   */
+  movq %gs:0x260, %rbp
+  movq %rsp, CPU_NEWIC(%rbp)
+
+  /*
+   * Modify the value in the Task State Segment (TSS) so that the next trap
+   * or interrupt on this processor saves state into the next interrupt
    * context.
    */
-  movq 0x10(%rsp), %rax
-  movq %rax, 0xa0(%rbp)
-  movq 0x18(%rsp), %rax
-  movq %rax, 0xa8(%rbp)
-  movq 0x20(%rsp), %rax
-  movq %rax, 0xb0(%rbp)
-  movq 0x28(%rsp), %rax
-  movq %rax, 0xb8(%rbp)
-  movq 0x30(%rsp), %rax
-  movq %rax, 0xc0(%rbp)
+  movq CPU_TSSP(%rbp), %rbx
+  movq %rsp, TSS_IST3(%rbx)
 
   /*
-   * Restore %rax from the saved register state.
+   * Adjust it to point to the first byte of the current interrupt context.
    */
-  movq 0x28(%rbp), %rax
+  subq $0x10, TSS_IST3(%rbx)
 
   /*
-   * Save a copy of the %rbp register into the interrupt context and then
-   * restore it to its saved value.
+   * Switch to the kernel stack.  If coming from user space, use the kernel
+   * stack pointer specified by the kernel.  Otherwise, use the previous
+   * kernel stack pointer.
    */
-  popq 0x88(%rbp)
-  movq 0x88(%rbp), %rbp
+  movq CPU_TSSP(%rbp), %rbp
+  cmpw $USERCS, 0xa8(%rsp)
+  cmoveq 4(%rbp), %rsp
+  cmovneq IC_RSP(%rsp), %rsp
 
-  ret
+  /*
+   * Call the system software system call handler.
+   */
+  movq $0, %rsi
+
+  callq sva_syscall
+
+  /*
+   * Switch the stack pointer back to the interrupt context.
+   */
+  movq %gs:0x260, %rbp
+  movq CPU_NEWIC(%rbp), %rsp
+
+  /*
+   * Pop off the most recent interrupt context.  This requires modifying
+   * the newCurrentIC field of the CPUState as well as modifying the IST
+   * in the TSS.
+   */
+  addq $IC_SIZE, CPU_NEWIC(%rbp)
+  movq CPU_TSSP(%rbp), %rbx
+  addq $IC_SIZE, TSS_IST3(%rbx)
+
+  /*
+   * Copy the registers from the interrupt context back on to the processor.
+   */
+#if 0
+  movw IC_FS(%rsp), %fs
+  movw IC_GS(%rsp), %gs
+  movw IC_ES(%rsp), %es
+#endif
+
+  movq IC_RDI(%rsp), %rdi
+  movq IC_RSI(%rsp), %rsi
+
+  movq IC_RAX(%rsp), %rax
+  movq IC_RBX(%rsp), %rbx
+  movq IC_RCX(%rsp), %rcx
+  movq IC_RDX(%rsp), %rdx
+
+  movq  IC_R8(%rsp), %r8
+  movq  IC_R9(%rsp), %r9
+  movq IC_R10(%rsp), %r10
+  movq IC_R11(%rsp), %r11
+  movq IC_R12(%rsp), %r12
+  movq IC_R13(%rsp), %r13
+  movq IC_R14(%rsp), %r14
+  movq IC_R15(%rsp), %r15
+  movq IC_RBP(%rsp), %rbp
+
+  /*
+   * Remove the current interrupt context.
+   */
+  addq $0x98, %rsp
+
+  /* Determine whether we interrupted user or supervisor mode execution. */
+  testw $USERCS, 8(%rsp)
+  jz 1f
+
+  /* We came from user mode.  First switch to the kernel %GS register. */
+  swapgs
+
+1:
+  /*
+   * Return to the calling code.  On x86_64, this will restore the stack
+   * pointer regardless of whether we came from user mode or kernel mode.
+   */
+  iretq
+
 
 SVAsysret:
   /*
