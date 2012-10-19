@@ -38,14 +38,13 @@ sva_trapframe (struct trapframe * tf) {
   /*
    * Fetch the currently available interrupt context.
    */
-  sva_icontext_t * p = getCPUState()->currentIC;
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * p = getCPUState()->newCurrentIC;
 
-#if 0
-  /*
-   * Decrement to the currently active interrupt context.
-   */
-  --p;
-#endif
+  printf ("SVA: (%p): %p: %p %p\n\n", cpup,
+                                      cpup->newCurrentIC,
+                                      cpup->interruptContexts + maxIC,
+                                      cpup->interruptContexts + maxIC - 1);
 
   /*
    * Store the fields into the trap frame.
@@ -104,14 +103,7 @@ sva_icontext (struct trapframe * tf) {
   /*
    * Fetch the currently free interrupt context.
    */
-  sva_icontext_t * p = getCPUState()->currentIC;
-
-#if 0
-  /*
-   * Decrement to the currently active interrupt context.
-   */
-  --p;
-#endif
+  sva_icontext_t * p = getCPUState()->newCurrentIC;
 
   /*
    * Store the fields into the trap frame.
@@ -198,8 +190,8 @@ sva_print_icontext (void) {
   if (cpup->tssp) {
     printf ("SVA: (%p): %p: %p %p\n\n", cpup,
                                         cpup->newCurrentIC,
-                                        cpup->interruptContexts + 1,
-                                        cpup->interruptContexts + 0);
+                                        cpup->interruptContexts + maxIC,
+                                        cpup->interruptContexts + maxIC - 1);
 #if 0
     printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
     printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
