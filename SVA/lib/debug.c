@@ -40,10 +40,12 @@ sva_trapframe (struct trapframe * tf) {
    */
   sva_icontext_t * p = getCPUState()->currentIC;
 
+#if 0
   /*
    * Decrement to the currently active interrupt context.
    */
   --p;
+#endif
 
   /*
    * Store the fields into the trap frame.
@@ -104,10 +106,12 @@ sva_icontext (struct trapframe * tf) {
    */
   sva_icontext_t * p = getCPUState()->currentIC;
 
+#if 0
   /*
    * Decrement to the currently active interrupt context.
    */
   --p;
+#endif
 
   /*
    * Store the fields into the trap frame.
