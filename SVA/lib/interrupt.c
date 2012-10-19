@@ -92,11 +92,7 @@ sva_getCPUState (tss_t * tssp) {
      * Setup the Interrupt Stack Table (IST) entry so that the hardware places
      * the stack frame inside SVA memory.
      */
-#if 0
-    tssp->ist3 = (uintptr_t) (CPUState[index].interruptContexts + (maxIC - 1));
-#else
-    tssp->ist3 = (uintptr_t) ((CPUState[index].interruptContexts + 2)) - 0x10;
-#endif
+    tssp->ist3 = (uintptr_t) ((CPUState[index].interruptContexts + maxIC)) - 0x10;
 
     /*
      * Return the CPU State to the caller.
