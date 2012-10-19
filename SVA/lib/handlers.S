@@ -428,6 +428,11 @@ SVAsyscall:
   swapgs
 
   /*
+   * Turn off the upper bit in the system call number (stored in %rax).
+   */
+  andl $0x7fffffff, %eax
+
+  /*
    * Save the processor status flags (%rflags) and the stack pointer (%rsp) for
    * the application.
    */
@@ -441,19 +446,13 @@ SVAsyscall:
   pushq %rdi
   pushq %rsi
 
-  call sva_print_icontext
-
   /*
    * Get the location of the interrupt context within the current processor's
    * CPUState and switch over to that stack.
    */
   movq %gs:0x260, %rdi
   movq %gs:0x260, %rbp
-#if 0
-  addq $0x1a20, %rbp
-#else
   addq $0x1a30, %rbp
-#endif
   movq %rsp, %rsi
   movq %rbp, %rsp
 
@@ -513,8 +512,6 @@ SVAsyscall:
 
   pushq $0
 
-  int $3
-
   /*
    * Save the address of the current interrupt context into this processor's
    * CPU state.
@@ -548,8 +545,6 @@ SVAsyscall:
   /*
    * Call the system software system call handler.
    */
-  movq $0, %rsi
-
   callq sva_syscall
 
   /*
@@ -595,24 +590,17 @@ SVAsyscall:
   movq IC_RBP(%rsp), %rbp
 
   /*
-   * Remove the current interrupt context.
+   * Restore the user-space stack pointer.
    */
-  addq $0x98, %rsp
-
-  /* Determine whether we interrupted user or supervisor mode execution. */
-  testw $USERCS, 8(%rsp)
-  jz 1f
+  movq IC_RSP(%rsp), %rsp
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
 
-1:
   /*
-   * Return to the calling code.  On x86_64, this will restore the stack
-   * pointer regardless of whether we came from user mode or kernel mode.
+   * Return to the calling code.
    */
-  iretq
-
+  sysret
 
 SVAsysret:
   /*
