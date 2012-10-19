@@ -204,7 +204,7 @@ struct CPUState {
    * This is because the x86 will first set the stack pointer to the value
    * in the IST, then decrement it, and *then* align it if necessary.
    */
-  sva_icontext_t interruptContexts[maxIC * 2];
+  sva_icontext_t interruptContexts[maxIC + 1];
 };
 
 /*
