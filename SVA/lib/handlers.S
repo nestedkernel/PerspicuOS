@@ -536,12 +536,10 @@ SVAsyscall:
    */
   movq CPU_TSSP(%rbp), %rsp
 
-#if 0
   /*
    * Call the system software system call handler.
    */
   callq sva_syscall
-#endif
 
   /*
    * Switch the stack pointer back to the interrupt context.
