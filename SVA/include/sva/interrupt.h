@@ -40,7 +40,7 @@ void sva_icontext_restart (unsigned long, unsigned long);
  */
 static inline sva_icontext_t *
 get_uicontext(void) {
-  return &(getCPUState()->interruptContexts[0]);
+  return &(getCPUState()->interruptContexts[maxIC - 1]);
 }
 
 /* Types for handlers */
