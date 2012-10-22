@@ -41,10 +41,12 @@ sva_trapframe (struct trapframe * tf) {
   struct CPUState * cpup = getCPUState();
   sva_icontext_t * p = getCPUState()->newCurrentIC;
 
+#if 0
   printf ("SVA: (%p): %p: %p %p\n\n", cpup,
                                       cpup->newCurrentIC,
                                       cpup->interruptContexts + maxIC,
                                       cpup->interruptContexts + maxIC - 1);
+#endif
 
   /*
    * Store the fields into the trap frame.
@@ -187,22 +189,21 @@ llva_get_eip (void * icontext)
 int
 sva_print_icontext (void) {
   struct CPUState * cpup = getCPUState();
-  if (cpup->tssp) {
-    printf ("SVA: (%p): %p: %p %p\n\n", cpup,
-                                        cpup->newCurrentIC,
-                                        cpup->interruptContexts + maxIC,
-                                        cpup->interruptContexts + maxIC - 1);
+  sva_icontext_t * p = cpup->newCurrentIC;
+  printf ("SVA: (%p): %p: %p %p\n\n", cpup,
+                                      cpup->newCurrentIC,
+                                      cpup->interruptContexts + maxIC,
+                                      cpup->interruptContexts + maxIC - 1);
+  printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
+  printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
+  printf("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
 #if 0
-    printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
-    printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
-    printf("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
-    printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
-    printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
-    printf ("SVA: icontext  code  : 0x%lx\n", p->code);
-    printf("es: 0x%x   ds: 0x%x   gs: 0x%x \n", p->es, 0, p->gs);
-    printf ("--------------------------------\n");
+  printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
+  printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
+  printf ("SVA: icontext  code  : 0x%lx\n", p->code);
+  printf("es: 0x%x   ds: 0x%x   gs: 0x%x \n", p->es, 0, p->gs);
 #endif
-  }
+  printf ("--------------------------------\n");
   return 0;
 }
 
