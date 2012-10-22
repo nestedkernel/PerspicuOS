@@ -433,10 +433,8 @@ SVAsyscall:
   andl $0x7fffffff, %eax
 
   /*
-   * Save the processor status flags (%rflags) and the stack pointer (%rsp) for
-   * the application.
+   * Save the stack pointer (%rsp) for the application.
    */
-  pushf
   pushq %rsp
 
   /*
@@ -452,7 +450,7 @@ SVAsyscall:
    */
   movq %gs:0x260, %rdi
   movq %gs:0x260, %rbp
-  addq $0x1a30, %rbp
+  addq $0x1a20, %rbp
   movq %rsp, %rsi
   movq %rbp, %rsp
 
@@ -466,10 +464,10 @@ SVAsyscall:
   pushq $0
 
   /* Push the user-space stack pointer (%rsp) */
-  pushq %rsi
+  pushq 0x18(%rsi)
 
   /* Push the user-space status flags */
-  pushq 0x20(%rsi)
+  pushq %r11
 
   /* Push the user-space code segment */
   pushq $USERCS
@@ -533,19 +531,17 @@ SVAsyscall:
   subq $0x10, TSS_IST3(%rbx)
 
   /*
-   * Switch to the kernel stack.  If coming from user space, use the kernel
-   * stack pointer specified by the kernel.  Otherwise, use the previous
-   * kernel stack pointer.
+   * Switch to the kernel stack.  Since we always come from user space, 
+   * switch to the kernel stack pointer specified by the kernel.
    */
-  movq CPU_TSSP(%rbp), %rbp
-  cmpw $USERCS, 0xa8(%rsp)
-  cmoveq 4(%rbp), %rsp
-  cmovneq IC_RSP(%rsp), %rsp
+  movq CPU_TSSP(%rbp), %rsp
 
+#if 0
   /*
    * Call the system software system call handler.
    */
   callq sva_syscall
+#endif
 
   /*
    * Switch the stack pointer back to the interrupt context.
@@ -576,13 +572,13 @@ SVAsyscall:
 
   movq IC_RAX(%rsp), %rax
   movq IC_RBX(%rsp), %rbx
-  movq IC_RCX(%rsp), %rcx
+  movq IC_RIP(%rsp), %rcx   /* Put the %rip in %rcx for sysret instruction */
   movq IC_RDX(%rsp), %rdx
 
   movq  IC_R8(%rsp), %r8
   movq  IC_R9(%rsp), %r9
   movq IC_R10(%rsp), %r10
-  movq IC_R11(%rsp), %r11
+  movq IC_RFLAGS(%rsp), %r11 /* Put the rflags back into %r11 for sysret */
   movq IC_R12(%rsp), %r12
   movq IC_R13(%rsp), %r13
   movq IC_R14(%rsp), %r14
@@ -600,7 +596,7 @@ SVAsyscall:
   /*
    * Return to the calling code.
    */
-  sysret
+  sysretq
 
 SVAsysret:
   /*
