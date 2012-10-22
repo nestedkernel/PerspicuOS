@@ -167,9 +167,6 @@ interrupt##x: \
 .global SVAsyscall
 .type SVAsyscall, @function
 
-.global SVAsysret
-.type SVAsysret, @function
-
 .global secmemtrap
 .type secmemtrap, @function
 
@@ -594,25 +591,6 @@ SVAsyscall:
   /*
    * Return to the calling code.
    */
-  sysretq
-
-SVAsysret:
-  /*
-   * Get a pointer to the current processor's interrupt context.
-   */
-  movq %gs:0x260, %rbp
-  movq (%rbp), %rbp
-
-  /*
-   * Copy the registers from the interrupt context back on to the processor.
-   */
-  call restoreRegs
-
-  /* Restore %rbp last */
-  movq 0x88(%rbp), %rbp
-  ret
-
-  /* Exit the system call */
   sysretq
 
 /*
