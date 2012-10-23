@@ -885,6 +885,7 @@ sva_load_integer (void * buffer)
 
   return;
 }
+#endif
 
 /*
  * Intrinsic: sva_swap_integer()
@@ -903,11 +904,16 @@ sva_load_integer (void * buffer)
  */
 unsigned
 sva_swap_integer (unsigned int newint, unsigned int * statep) {
+  /* Function for saving state */
+  extern unsigned int save_integer (sva_integer_state_t * buffer);
+
   /*
    * Current state held on CPU: We allocate it here so that the caller cannot
    * free it and cause a dangling pointer to an integer state.
+   *
+   * TODO: This should be in secure memory for the new SVA system.
    */
-  unsigned int old[24];
+  sva_integer_state_t old;
 
   /* Get a pointer to the saved state (the ID is the pointer) */
   void * new = (void *) (newint);
@@ -925,7 +931,7 @@ sva_swap_integer (unsigned int newint, unsigned int * statep) {
   /*
    * Save the current integer state.
    */
-  if (sva_save_integer (old)) {
+  if (save_integer (&old)) {
     /*
      * We've awakened.
      */
@@ -943,6 +949,7 @@ sva_swap_integer (unsigned int newint, unsigned int * statep) {
     return 1;
   }
 
+#if 0
   /*
    * Register the saved integer state in the splay tree.
    */
@@ -966,9 +973,11 @@ sva_swap_integer (unsigned int newint, unsigned int * statep) {
 #if SVA_CHECK_INTEGER
   pchk_drop_int (old);
 #endif
+#endif
   return 0;
 }
 
+#if 0
 unsigned char
 sva_is_privileged  (void)
 {

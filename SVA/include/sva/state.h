@@ -113,38 +113,55 @@ typedef struct sva_icontext {
  * TODO:
  *  The stack pointer should probably be removed.
  */
-typedef struct
-{
+typedef struct {
   /* Invoke Pointer */
-  void * invokep;
+  void * invokep;                     // 0x00
 
-  /* Old integer state */
-  unsigned int ebx;
-  unsigned int edi;
-  unsigned int esi;
+  /* Segment selector registers */
+  unsigned short fs;                  // 0x08
+  unsigned short gs;
+  unsigned short es;
+  unsigned short pad1;
 
-  /* Old exception state */
-  unsigned int es;
-  unsigned int ds;
-  unsigned int edx;
-  unsigned int ecx;
-  unsigned int eax;
-  unsigned int ebp;
+  unsigned long rdi;                  // 0x10
+  unsigned long rsi;                  // 0x18
 
-  unsigned int enable_shim;
-  unsigned int sc_disabled;
-  unsigned int gs;
+  unsigned long rax;                  // 0x20
+  unsigned long rbx;                  // 0x28
+  unsigned long rcx;                  // 0x30
+  unsigned long rdx;                  // 0x38
+
+  unsigned long r8;                   // 0x40
+  unsigned long r9;                   // 0x48
+  unsigned long r10;                  // 0x50
+  unsigned long r11;                  // 0x58
+  unsigned long r12;                  // 0x60
+  unsigned long r13;                  // 0x68
+  unsigned long r14;                  // 0x70
+  unsigned long r15;                  // 0x78
 
   /*
-   * These values are automagically saved by the i386 hardware upon an
+   * Keep this register right here.  We'll use it in assembly code, and we
+   * place it here for easy saving and recovery.
+   */
+  unsigned long rbp;                  // 0x80
+
+  /* Hardware trap number */
+  unsigned long trapno;               // 0x88
+
+  /*
+   * These values are automagically saved by the x86_64 hardware upon an
    * interrupt or exception.
    */
-  unsigned int code;
-  unsigned int eip;
-  unsigned int cs;
-  unsigned int eflags;
-  unsigned int * esp;
-  unsigned int ss;
+  unsigned long code;                 // 0x90
+  unsigned long rip;                  // 0x98
+  unsigned long cs;                   // 0xa0
+  unsigned long rflags;               // 0xa8
+  unsigned long * rsp;                // 0xb0
+  unsigned long ss;                   // 0xb8
+
+  unsigned long skip;                 // 0xc0
+  unsigned long start;                // 0xc8
 } sva_integer_state_t;
 
 typedef struct
