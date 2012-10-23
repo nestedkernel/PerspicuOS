@@ -192,6 +192,25 @@ struct invoke_frame
 static const unsigned char maxIC = 32;
 
 /*
+ * Struct: SVAThread
+ *
+ * Description:
+ *  This structure describes one "thread" of control in SVA.  It is an
+ *  interrupt context, an integer state, and a flag indicating whether the
+ *  state is available or free.
+ */
+struct SVAThread {
+  /* Interrupt contexts for this thread */
+  sva_icontext_t interruptContexts[maxIC + 1] __attribute__ ((aligned (16)));
+
+  /* Integer state for this thread for context switching */
+  sva_integer_state_t integerState;
+
+  /* Flag whether the thread is in use */
+  unsigned char used;
+};
+
+/*
  * Structure: CPUState
  *
  * Description:
@@ -200,8 +219,8 @@ static const unsigned char maxIC = 32;
  *  register.
  */
 struct CPUState {
-  /* Pointer to the currently available IC */
-  sva_icontext_t * currentIC;
+  /* Pointer to the thread currently on the processor */
+  struct SVAThread * currentThread;
 
   /* Per-processor TSS segment */
   tss_t * tssp;
@@ -259,7 +278,7 @@ sva_was_privileged (void) {
    */
   struct CPUState * cpuState = getCPUState();
 
-  return (((cpuState->currentIC->cs) & KERNELCS) == KERNELCS);
+  return (((cpuState->newCurrentIC->cs) & KERNELCS) == KERNELCS);
 }
 
 #if 0

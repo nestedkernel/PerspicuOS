@@ -50,6 +50,26 @@ default_interrupt (unsigned int number, void * state) {
  */
 struct CPUState CPUState[numProcessors] __attribute__((aligned(16)));
 
+/* Pre-allocate a large number of SVA Threads */
+struct SVAThread Threads[4096];
+
+/*
+ * Function: findNextFreeThread()
+ *
+ * Description:
+ *  This function returns the index of the next thread which is not in use.
+ */
+static inline struct SVAThread *
+findNextFreeThread (void) {
+  for (signed int index = 0; index < 4096; ++index) {
+    if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
+      return &(Threads[index]);
+    }
+  }
+
+  return 0;
+}
+
 /*
  * Intrinsic: sva_getCPUState()
  *
@@ -81,7 +101,7 @@ sva_getCPUState (tss_t * tssp) {
     /*
      * Initialize the interrupt context link list pointer.
      */
-    CPUState[index].currentIC = CPUState[index].interruptContexts;
+    CPUState[index].currentThread = findNextFreeThread();
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
@@ -165,42 +185,6 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
    * instruction.  We do this by reducing it by 2 bytes.
    */
   icontextp->rcx -= 2;
-  return;
-}
-
-void
-incrementNextIC (void) {
-  /*
-   * Get the current processor's SVA state.
-   */
-  struct CPUState * cpuState = getCPUState();
-
-  /*
-   * Increment to the next interrupt context.
-   */
-  ++(cpuState->currentIC);
-
-  /*
-   * Make sure we haven't overflowed.
-   */
-  if (cpuState->currentIC == &(cpuState->interruptContexts[maxIC - 2])) {
-    ((char *)(0xbeef))[0] = 'a';
-  }
-
-  return;
-}
-
-void
-decrementNextIC (void) {
-  /*
-   * Get the current processor's SVA state.
-   */
-  struct CPUState * cpuState = getCPUState();
-
-  /*
-   * Decrement the next interrupt context pointer.
-   */
-  --(cpuState->currentIC);
   return;
 }
 
