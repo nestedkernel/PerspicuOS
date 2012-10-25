@@ -23,6 +23,9 @@
 .global save_integer
 .type save_integer, @function
 
+.global load_integer
+.type load_integer, @function
+
 /*
  * Function: save_integer()
  *
@@ -131,4 +134,85 @@ save_integer:
 
   /* Return to the caller */
   ret
+
+/*
+ * Function: load_integer
+ *
+ * Description:
+ *  This function loads the integer state on to the processor from the
+ *  buffer supplied by the caller.  It is not an intrinsic; sva_swap_integer
+ *  will use it to restore previously saved state.
+ *
+ * Inputs:
+ *  rdi - Pointer to the buffer from which to load the state.
+ *
+ * Return value:
+ *  1 - We unconditionally return this value because, to the caller, it will
+ *      appear that we'll wake up and be returning 1 from save_integer.
+ *
+ */
+load_integer:
+  /*
+   * Restore the traditional registers except for %rax and %rdi:
+   *  %rax: This holds the return value, so we don't bother restoring it.
+   *  %rcx: This register is used for the CFI jump back to the caller.
+   %  %rdi: We wait to restore this register because we're using it to store
+   *        the pointer to the integer state buffer.
+   */
+  movq IC_RBX(%rdi), %rbx
+  movq IC_RDX(%rdi), %rdx 
+  movq IC_RSI(%rdi), %rsi
+
+  /*
+   * Restore them extra 64-bit registers.
+   */
+  movq  IC_R8(%rdi), %r8
+  movq  IC_R9(%rdi), %r9
+  movq IC_R10(%rdi), %r10
+  movq IC_R11(%rdi), %r11
+  movq IC_R12(%rdi), %r12
+  movq IC_R13(%rdi), %r13
+  movq IC_R14(%rdi), %r14
+  movq IC_R15(%rdi), %r15
+
+#if 0
+  /* Restore the extra segment registers */
+  movw %1, %es 
+  movw %1, %ds 
+#endif
+
+#if 0
+  /* Restore the code and stack segment registers */
+  movq 60(%rdi), %cs 
+  movq 72(%rdi), %ss 
+#endif
+
+  /* Restore the ebp register */
+  movq IC_RBP(%rdi), %rbp
+
+  /* Switch to the new stack pointer */
+  movq IC_RSP(%rdi), %rsp
+
+  /* Put the new return address on the new stack */
+  pushq IC_RIP(%rdi)
+
+  /* Put the EFLAGS register  on the new stack */
+  pushq IC_RFLAGS(%rdi)
+
+  /* Restore the %rdi register */
+  movq IC_RDI(%rdi), %rdi
+
+  /* Set the return value to 1 */
+  movq $1, %rax
+
+  /* Restore RFLAGS, potentially re-enabling interrupts */
+  popfq
+
+  /*
+   * Return to the caller.
+   *
+   * TODO: This should do a control-flow integrity label check.
+   */
+  popq %rcx
+  jmp *(%rcx)
 

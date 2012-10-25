@@ -20,6 +20,8 @@
 #include <sva/state.h>
 #include <sva/interrupt.h>
 
+#include "offsets.h"
+
 /*****************************************************************************
  * Interrupt Context Intrinsics
  ****************************************************************************/
@@ -723,23 +725,24 @@ sva_set_integer_stackp (sva_integer_state_t * intp, sva_sp_t p)
   intp->rsp = (void *) (p);
   return;
 }
+#endif
 
 /*
- * Intrinsic: sva_load_integer ()
+ * Function: checkIntegerForLoad ()
  *
  * Description:
- *  Load the integer processor state from the specified buffer.
+ *  Perform all necessary checks on an integer state to make sure that it can
+ *  be loaded on to the processor.
+ *
+ * Inputs:
+ *  p - A pointer to the integer state to load.
  *
  * TODO:
  *  The checking code must also verify that there is enough stack space before
  *  proceeding.  Otherwise, state could get really messy.
  */
-void
-sva_load_integer (void * buffer)
-{
-  /* Integer State Pointer */
-  sva_integer_state_t * p = buffer;
-
+static inline void
+checkIntegerForLoad (sva_integer_state_t * p) {
   /* Current code segment */
   unsigned int cs;
 
@@ -755,6 +758,7 @@ sva_load_integer (void * buffer)
   /* Disable interrupts */
   __asm__ __volatile__ ("cli");
 
+#if 0
   do
   {
 #ifdef SC_INTRINCHECKS
@@ -799,93 +803,27 @@ sva_load_integer (void * buffer)
      * If we're not operating at the same privilege level as when this state
      * buffer was saved, then generate an exception.
      */
-    if (cs != (p->cs))
-    {
+    if (cs != (p->cs)) {
       __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
       continue;
     }
 
+#if 0
     /*
      * Configure the data segment to match the code segment, in case it somehow
      * became corrupted.
      */
     ds = ((cs == 0x10) ? (0x18) : (0x2B));
+#endif
 
     /*
      * Validation is finished.  Continue.
      */
     validated = 1;
   } while (!validated);
-
-#if LLVA_COUNTERS
-  ++sva_counters.sva_load_int;
-  if (sva_debug) ++sva_local_counters.sva_load_int;
-  sc_intrinsics[current_sysnum] |= MASK_LLVA_LOAD_INT;
 #endif
-
-  /*
-   * Restore the system call disable mask.
-   */
-#if LLVA_SCLIMIT
-  sva_sys_disabled = p->sc_disabled;
-#endif
-
-  /*
-   * Restore the state to the processor.
-                        "movl 44(%%eax), %%gs\n" 
-   */
-  __asm__ __volatile__ (
-                        /* Get the pointer to the buffer */
-                        "movl %0, %%eax\n"
-
-                        /* Conditionally restore the integer state */
-                        "movl   4(%%eax), %%ebx\n"
-                        "movl   8(%%eax), %%edi\n"
-                        "movl  12(%%eax), %%esi\n"
-
-                        /* Restore the extra segment registers */
-                        "movw %1, %%es\n" 
-                        "movw %1, %%ds\n" 
-
-                        /* Restore ecx and edx */
-                        "movl 24(%%eax), %%edx\n" 
-                        "movl 28(%%eax), %%ecx\n" 
-
-#if 0
-                        /* Restore the code and stack segment registers */
-                        "movl 60(%%eax), %%cs\n" 
-                        "movl 72(%%eax), %%ss\n" 
-#endif
-
-                        /* Restore the ebp register */
-                        "movl 36(%%eax), %%ebp\n"
-
-                        /* Switch to the new stack pointer */
-                        "movl 68(%%eax), %%rsp\n"
-
-                        /* Put the new return address on the new stack */
-                        "pushl 56(%%eax)\n"
-
-                        /* Put the EFLAGS register  on the new stack */
-                        "pushl 64(%%eax)\n"
-
-#if 0
-                        /* Restore eax */
-                        "movl 32(%%eax), %%eax\n"
-#else
-                        /* Set the return value to 1 */
-                        "movl $1, %%eax\n"
-#endif
-
-                        /* Restore EFLAGS, potentially re-enabling interrupts */
-                        "popfl\n"
-
-                        /* Return */
-                        "ret\n" :: "m" (buffer), "m" (ds));
-
   return;
 }
-#endif
 
 /*
  * Intrinsic: sva_swap_integer()
@@ -903,20 +841,19 @@ sva_load_integer (void * buffer)
  *  1 - State swapping succeeded.
  */
 unsigned
-sva_swap_integer (unsigned int newint, unsigned int * statep) {
+sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /* Function for saving state */
   extern unsigned int save_integer (sva_integer_state_t * buffer);
+  extern void load_integer (sva_integer_state_t * p);
 
   /*
-   * Current state held on CPU: We allocate it here so that the caller cannot
-   * free it and cause a dangling pointer to an integer state.
-   *
-   * TODO: This should be in secure memory for the new SVA system.
+   * Get a pointer to the memory buffer into which the integer state should be
+   * stored.  There is one such buffer for every SVA thread.
    */
-  sva_integer_state_t old;
+  sva_integer_state_t * old = &(getCPUState()->currentThread->integerState);
 
   /* Get a pointer to the saved state (the ID is the pointer) */
-  void * new = (void *) (newint);
+  sva_integer_state_t * new = (void *) (newint);
 
   /*
    * Determine whether the integer state is valid.
@@ -929,9 +866,11 @@ sva_swap_integer (unsigned int newint, unsigned int * statep) {
 #endif
 
   /*
-   * Save the current integer state.
+   * Save the current integer state.  Note that returning from sva_integer()
+   * with a non-zero value means that we've just woken up from a context
+   * switch.
    */
-  if (save_integer (&old)) {
+  if (save_integer (old)) {
     /*
      * We've awakened.
      */
@@ -949,31 +888,27 @@ sva_swap_integer (unsigned int newint, unsigned int * statep) {
     return 1;
   }
 
-#if 0
   /*
-   * Register the saved integer state in the splay tree.
+   * Mark the saved integer state as valid.
    */
-#if SVA_CHECK_INTEGER
-  pchk_reg_int (old);
-#endif
+  old->valid = 1;
 
   /*
    * Inform the caller of the location of the last state saved.
    */
-  *statep = (unsigned int) old;
+  *statep = (uintptr_t) old;
 
   /*
    * Now, reload the integer state pointed to by new.
    */
-  sva_load_integer (new);
+  if (new) {
+    checkIntegerForLoad (new);
+    load_integer (new);
+  }
 
   /*
-   * The loading of integer state failed.
+   * The context switch failed.
    */
-#if SVA_CHECK_INTEGER
-  pchk_drop_int (old);
-#endif
-#endif
   return 0;
 }
 
