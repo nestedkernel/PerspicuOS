@@ -160,7 +160,10 @@ typedef struct {
   unsigned long * rsp;                // 0xb0
   unsigned long ss;                   // 0xb8
 
-  unsigned long skip;                 // 0xc0
+  /* Flag for whether the integer state is valid */
+  unsigned long valid;                // 0xc0
+
+  /* Padding field */
   unsigned long start;                // 0xc8
 } sva_integer_state_t;
 
@@ -299,12 +302,11 @@ extern unsigned int  sva_invoke      (unsigned int * retvalue,
 /*****************************************************************************
  * Global State
  ****************************************************************************/
+#endif
 
-extern void         sva_load_integer (void * p) __attribute__ ((regparm(0)));
-extern unsigned int sva_save_integer (void * p) __attribute__ ((regparm(0)));
-extern unsigned     sva_swap_integer  (unsigned int new,
-                                       unsigned int * state)
-                                      __attribute__ ((regparm(0)));
+extern unsigned sva_swap_integer  (uintptr_t new, uintptr_t * state);
+
+#if 0
 extern unsigned int sva_init_stack (unsigned char * sp, unsigned length,
                                     void * oip, void * f, unsigned int arg)
                                    __attribute__ ((regparm(0)));
