@@ -51,7 +51,7 @@ default_interrupt (unsigned int number, void * state) {
 struct CPUState CPUState[numProcessors] __attribute__((aligned(16)));
 
 /* Pre-allocate a large number of SVA Threads */
-struct SVAThread Threads[4096];
+struct SVAThread Threads[4096] __attribute__ ((aligned (16)));
 
 /*
  * Function: findNextFreeThread()
@@ -90,6 +90,7 @@ void *
 sva_getCPUState (tss_t * tssp) {
   /* Index of next available CPU state */
   static int nextIndex=0;
+  struct SVAThread * st;
   int index;
 
   if (nextIndex < numProcessors) {
@@ -101,7 +102,7 @@ sva_getCPUState (tss_t * tssp) {
     /*
      * Initialize the interrupt context link list pointer.
      */
-    CPUState[index].currentThread = findNextFreeThread();
+    CPUState[index].currentThread = st = findNextFreeThread();
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
@@ -112,7 +113,7 @@ sva_getCPUState (tss_t * tssp) {
      * Setup the Interrupt Stack Table (IST) entry so that the hardware places
      * the stack frame inside SVA memory.
      */
-    tssp->ist3 = (uintptr_t) ((CPUState[index].interruptContexts + maxIC)) - 0x10;
+    tssp->ist3 = ((uintptr_t) ((st->interruptContexts + maxIC))) - 0x10;
 
     /*
      * Return the CPU State to the caller.

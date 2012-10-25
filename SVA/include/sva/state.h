@@ -204,7 +204,7 @@ static const unsigned char maxIC = 32;
  */
 struct SVAThread {
   /* Interrupt contexts for this thread */
-  sva_icontext_t interruptContexts[maxIC + 1] __attribute__ ((aligned (16)));
+  sva_icontext_t interruptContexts[maxIC + 1];
 
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;
