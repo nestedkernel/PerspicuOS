@@ -63,11 +63,30 @@ static inline struct SVAThread *
 findNextFreeThread (void) {
   for (signed int index = 0; index < 4096; ++index) {
     if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
+      /*
+       * Do some basic initialization of the thread.
+       */
+      Threads[index].integerState.valid = 0;
+      Threads[index].integerState.kstackp = ((uintptr_t) ((Threads[index].interruptContexts + maxIC))) - 0x10;
       return &(Threads[index]);
     }
   }
 
   return 0;
+}
+
+/*
+ * Intrinsic: sva_mk_thread()
+ *
+ * Description:
+ *  Create a new SVAThread structure for a new thread.
+ *
+ * Notes:
+ *  TODO: This should be removed once the SVA intrinsics for fork() are working.
+ */
+uintptr_t
+sva_mk_thread (void) {
+  return (uintptr_t) findNextFreeThread();
 }
 
 /*
@@ -113,7 +132,7 @@ sva_getCPUState (tss_t * tssp) {
      * Setup the Interrupt Stack Table (IST) entry so that the hardware places
      * the stack frame inside SVA memory.
      */
-    tssp->ist3 = ((uintptr_t) ((st->interruptContexts + maxIC))) - 0x10;
+    tssp->ist3 = ((uintptr_t) (st->integerState.kstackp));
 
     /*
      * Return the CPU State to the caller.

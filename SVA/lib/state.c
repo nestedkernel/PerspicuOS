@@ -844,14 +844,19 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   extern unsigned int save_integer (sva_integer_state_t * buffer);
   extern void load_integer (sva_integer_state_t * p);
 
+  /* Pointer to the current CPU State */
+  struct CPUState * cpup = getCPUState();
+
   /*
    * Get a pointer to the memory buffer into which the integer state should be
    * stored.  There is one such buffer for every SVA thread.
    */
-  sva_integer_state_t * old = &(getCPUState()->currentThread->integerState);
+  struct SVAThread * oldThread = cpup->currentThread;
+  sva_integer_state_t * old = &(oldThread->integerState);
 
   /* Get a pointer to the saved state (the ID is the pointer) */
-  sva_integer_state_t * new = (void *) (newint);
+  struct SVAThread * newThread = (struct SVAThread *)(newint);
+  sva_integer_state_t * new =  &(newThread->integerState);
 
   /*
    * Determine whether the integer state is valid.
@@ -862,6 +867,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     return 0;
   }
 #endif
+
+  /*
+   * Save the value of the current kernel stack pointer.
+   */
+  old->kstackp = cpup->tssp->ist3;
 
   /*
    * Save the current integer state.  Note that returning from sva_integer()
@@ -894,8 +904,15 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /*
    * Inform the caller of the location of the last state saved.
    */
-  *statep = (uintptr_t) old;
+  *statep = (uintptr_t) oldThread;
 
+  /*
+   * Switch the CPU over to using the new set of interrupt contexts.
+   */
+  cpup->currentThread = newThread;
+  cpup->tssp->ist3 = newThread->integerState.kstackp;
+
+#if 0
   /*
    * Now, reload the integer state pointed to by new.
    */
@@ -903,6 +920,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     checkIntegerForLoad (new);
     load_integer (new);
   }
+#endif
 
   /*
    * The context switch failed.

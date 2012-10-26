@@ -163,8 +163,8 @@ typedef struct {
   /* Flag for whether the integer state is valid */
   unsigned long valid;                // 0xc0
 
-  /* Padding field */
-  unsigned long start;                // 0xc8
+  /* Kernel stack pointer */
+  unsigned long kstackp;              // 0xc8
 } sva_integer_state_t;
 
 typedef struct
