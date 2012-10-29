@@ -101,6 +101,7 @@ save_integer:
   movq %r14, IC_R14(%rdi)
   movq %r15, IC_R15(%rdi)
 
+  movq %rbp, IC_RBP(%rdi)
 #if 0
   /* Ensure that segments are only 16 bits */
   movw %cs,  60(%rdi)
@@ -118,11 +119,13 @@ save_integer:
    *
    * In other words, use the return address.
    *
-   * Note that load_integer will need to check for a CFI label before using the
-   * return address.
+   * Note that the return address could have been overwritten by another
+   * processor between the time sva_swap_integer() was called and the time
+   * that we get here.  Therefore, load_integer will need to check for a CFI
+   * label before using the return address.
    */
   popq  IC_RIP(%rdi)
-  movq %rsp, 68(%rdi)
+  movq %rsp, IC_RSP(%rdi)
   pushq IC_RIP(%rdi)
 
   /* Restore interrupts */
@@ -132,7 +135,11 @@ save_integer:
   /* Return a zero to the caller */
   movq $0, %rax
 
-  /* Return to the caller */
+  /*
+   * Return to the caller
+   *
+   * TODO: Need to do a CFI label check!
+   */
   ret
 
 /*
@@ -193,8 +200,8 @@ load_integer:
   /* Switch to the new stack pointer */
   movq IC_RSP(%rdi), %rsp
 
-  /* Put the new return address on the new stack */
-  pushq IC_RIP(%rdi)
+  /* Get the new return address to return to the caller */
+  movq IC_RIP(%rdi), %rcx
 
   /* Put the EFLAGS register  on the new stack */
   pushq IC_RFLAGS(%rdi)
@@ -213,6 +220,10 @@ load_integer:
    *
    * TODO: This should do a control-flow integrity label check.
    */
-  popq %rcx
-  jmp *(%rcx)
+#if 0
+  jmpq *(%rcx)
+#else
+  pushq %rcx
+  retq
+#endif
 
