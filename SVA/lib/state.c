@@ -856,7 +856,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 
   /* Get a pointer to the saved state (the ID is the pointer) */
   struct SVAThread * newThread = (struct SVAThread *)(newint);
-  sva_integer_state_t * new =  &(newThread->integerState);
+  if (!newThread) panic ("SVA: No New Thread!\n");
+  sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
+
+  /* Local CR3 register */
+  uintptr_t cr3;
 
   /*
    * Determine whether the integer state is valid.
@@ -874,11 +878,19 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   old->kstackp = cpup->tssp->ist3;
 
   /*
+   * Save the value of the CR3 register.
+   */
+  __asm__ __volatile__ ("movq %%cr3, %0\n"
+                        "movq %0, %1\n"
+                        : "=r" (cr3), "=m" (old->cr3));
+
+  /*
    * Save the current integer state.  Note that returning from sva_integer()
    * with a non-zero value means that we've just woken up from a context
    * switch.
    */
   if (save_integer (old)) {
+    uintptr_t rsp, rbp;
     /*
      * We've awakened.
      */
@@ -893,8 +905,16 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      */
     pchk_update_stack ();
 #endif
+    __asm__ __volatile__ ("movq %%rsp, %0\n"
+                          "movq %%rbp, %1\n"
+                          : "=m" (rsp), "=m" (rbp));
+    printf ("SVA: We're awake: rsp = %lx, rbp = %lx\n", rsp, rbp);
     return 1;
   }
+
+#if 0
+  printf ("SVA: saved: %p: rip = %lx, rsp = %lx, rbp = %lx\n", old, old->rip, old->rsp, old->rbp);
+#endif
 
   /*
    * Mark the saved integer state as valid.
@@ -907,20 +927,39 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   *statep = (uintptr_t) oldThread;
 
   /*
-   * Switch the CPU over to using the new set of interrupt contexts.
-   */
-  cpup->currentThread = newThread;
-  cpup->tssp->ist3 = newThread->integerState.kstackp;
-
-#if 0
-  /*
    * Now, reload the integer state pointed to by new.
    */
-  if (new) {
+  if (new->valid) {
+    /*
+     * Verify that we can load the new integer state.
+     */
     checkIntegerForLoad (new);
+
+    /*
+     * Switch the CPU over to using the new set of interrupt contexts.
+     */
+    cpup->currentThread = newThread;
+    cpup->tssp->ist3 = newThread->integerState.kstackp;
+
+    /*
+     * Invalidate the state that we're about to load.
+     */
+    new->valid = 0;
+
+    /*
+     * Switch to the new address space.  We only modify CR3 if the two states
+     * use different page tables because any changes to CR3 may flush the TLB.
+     */
+    if (old->cr3 != new->cr3) {
+      cr3 = new->cr3;
+      __asm__ __volatile__ ("movq %0, %%cr3\n" : : "r" (cr3));
+    }
+
+    /*
+     * Load the rest of the integer state.
+     */
     load_integer (new);
   }
-#endif
 
   /*
    * The context switch failed.
