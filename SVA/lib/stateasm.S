@@ -113,6 +113,9 @@ save_integer:
   /* Save the rflags register */
   popq       IC_RFLAGS(%rdi)
 
+  /* Save the stack pointer */
+  movq %rsp, IC_RSP(%rdi)
+
   /*
    * Instead of grabbing the current program counter, figure out what it would
    * be after we finish executing this function.
@@ -123,10 +126,12 @@ save_integer:
    * processor between the time sva_swap_integer() was called and the time
    * that we get here.  Therefore, load_integer will need to check for a CFI
    * label before using the return address.
+   *
+   * Note: Saving the %rip (program counter) is really unnecessary as it is
+   *       already saved on the stack and will be vetted by the CFI checks in
+   *       load_integer().
    */
-  popq  IC_RIP(%rdi)
-  movq %rsp, IC_RSP(%rdi)
-  pushq IC_RIP(%rdi)
+  movq $0x0000beef, IC_RIP(%rdi)
 
   /* Restore interrupts */
   pushq IC_RFLAGS(%rdi)
@@ -200,9 +205,6 @@ load_integer:
   /* Switch to the new stack pointer */
   movq IC_RSP(%rdi), %rsp
 
-  /* Get the new return address to return to the caller */
-  movq IC_RIP(%rdi), %rcx
-
   /* Put the EFLAGS register  on the new stack */
   pushq IC_RFLAGS(%rdi)
 
@@ -220,10 +222,5 @@ load_integer:
    *
    * TODO: This should do a control-flow integrity label check.
    */
-#if 0
-  jmpq *(%rcx)
-#else
-  pushq %rcx
   retq
-#endif
 
