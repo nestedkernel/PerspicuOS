@@ -165,6 +165,9 @@ typedef struct {
 
   /* Kernel stack pointer */
   unsigned long kstackp;              // 0xc8
+
+  /* CR3 register */
+  unsigned long cr3;                  // 0xd0
 } sva_integer_state_t;
 
 typedef struct
