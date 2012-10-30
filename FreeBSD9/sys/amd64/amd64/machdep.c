@@ -1111,6 +1111,10 @@ setidt(idx, func, typ, dpl, ist)
    */
   if ((idx == 0x7f) || (idx == 0x7e))
     panic ("SVA: Don't overwrite me!\n");
+
+  if (idx == IDT_DE) return;
+  if (ist == 3)
+    panic ("SVA: Bad IST value!\n");
 #endif
 
 	ip = idt + idx;
@@ -1693,7 +1697,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_DE, fr_sva_trap);
 #endif
 	setidt(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
+#if 1
  	setidt(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
 	setidt(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_BR, &IDTVEC(bnd),  SDT_SYSIGT, SEL_KPL, 0);
@@ -1705,7 +1709,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_UD, fr_sva_trap);
 #endif
 	setidt(IDT_NM, &IDTVEC(dna),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
+#if 1
 	setidt(IDT_DF, &IDTVEC(dblfault), SDT_SYSIGT, SEL_KPL, 1);
 	setidt(IDT_FPUGP, &IDTVEC(fpusegm),  SDT_SYSIGT, SEL_KPL, 0);
 #else
@@ -1719,7 +1723,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MF, &IDTVEC(fpu),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
+#if 1
 	setidt(IDT_AC, &IDTVEC(align), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MC, &IDTVEC(mchk),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_XF, &IDTVEC(xmm), SDT_SYSIGT, SEL_KPL, 0);
@@ -1761,7 +1765,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Point the ICU spurious interrupt vectors at the APIC spurious
 	 * interrupt handler.
 	 */
-#if 0
+#if 1
 	setidt(IDT_IO_INTS + 7, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_IO_INTS + 15, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 #else
@@ -1813,8 +1817,16 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;
 	wrmsr(MSR_EFER, msr);
+#if 1
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#else
+  {
+    extern void SVAsyscall(void);
+    wrmsr(MSR_LSTAR, (u_int64_t)SVAsyscall);
+    wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+  }
+#endif
 	msr = ((u_int64_t)GSEL(GCODE_SEL, SEL_KPL) << 32) |
 	      ((u_int64_t)GSEL(GUCODE32_SEL, SEL_UPL) << 48);
 	wrmsr(MSR_STAR, msr);
@@ -1845,6 +1857,10 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
 	thread0.td_frame = &proc0_tf;
 
+#if 1
+  extern uintptr_t sva_get_thread(void);
+  thread0.svaID = sva_get_thread();
+#endif
         env = getenv("kernelname");
 	if (env != NULL)
 		strlcpy(kernelname, env, sizeof(kernelname));
@@ -2470,6 +2486,88 @@ user_dbreg_trap(void)
          * None of the breakpoints are in user space.
          */
         return 0;
+}
+
+/*
+ * Function: cpu_switch_sva()
+ *
+ * Description:
+ *  This is a replacement for the architecture-dependent context-switch
+ *  function, cpu_switch().  This version uses SVA to do the context switching.
+ */
+void
+cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
+{
+  /* Context switch result */
+  volatile unsigned didSwap;
+
+#if 0
+  /*
+   * If this process to switch on has never been swapped out by SVA, allocate
+   * an SVA thread for it.
+   */
+  if (!(new->svaID)) {
+    extern uintptr_t sva_mk_thread (void);
+    if ((new->svaID = sva_mk_thread ()) == 0) {
+      panic ("SVA: No more SVA Threads!\n");
+    }
+  }
+#endif
+
+  printf ("SVA: %d(%lx:%d) -> %d(%lx:%d)\n",
+          old->td_proc->p_pid, old->svaID, old->sva,
+          new->td_proc->p_pid, new->svaID, new->sva);
+
+  /*
+   * The old process is about to have SVA state saved for it, so record that.
+   */
+  old->sva = 1;
+
+  /*
+   * Use SVA to context switch from the old thread to the new thread.
+   */
+  didSwap = sva_swap_integer (new->svaID, &(old->svaID));
+  printf ("SVA: Returned to kernel from SVA: %d!\n", didSwap);
+  if (didSwap == 0) {
+    /* Do an old style context switch */
+    cpu_switch(old, new, mtx);
+
+    /* Return because cpu_switch() already did all the other crap that we're
+       about to do. */
+    printf ("SVA: Returned to kernel from FreeBSD!\n");
+    return;
+  }
+
+  printf ("SVA: Did SVA swap!\n");
+
+  /*
+   * Release the old thread (I think this does some unlocking stuff when
+   * sharing page tables).
+   */
+  if ((old->td_pcb->pcb_cr3) == (new->td_pcb->pcb_cr3)) {
+    /* Release the old thread */
+    __sync_lock_test_and_set (&(old->td_lock), mtx);
+  } else {
+    /*
+     * Fetch the pmap (physical page mapping) structure from the per-CPU data
+     * structure.
+     */
+    struct pmap * pmap = PCPU_GET(curpmap);
+
+    /*
+     * Change the flag in pmap based on the current active CPU.
+     */
+    unsigned int cpuid = curcpu;
+    __asm__ __volatile__ ("lock btrl %1, %0\n"
+                          : "=m" (pmap->pm_active)
+                          : "r" (cpuid));
+
+    /* Release the old thread */
+    __sync_lock_test_and_set (&(old->td_lock), mtx);
+  }
+
+  printf ("SVA: Returned from cpu_switch_sva()!\n");
+  return;
 }
 
 #ifdef KDB
