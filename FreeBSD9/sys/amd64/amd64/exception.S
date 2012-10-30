@@ -352,12 +352,18 @@ IDTVEC(prot)
  * entries from an LDT).
  */
 IDTVEC(fast_syscall)
+#if 1
+  /*
+   * Determine if this is an SVA system call or an original system call.  If
+   * it is an SVA system call (the upper bit in the system call number is set),
+   * let SVA handle it.
+   */
+  testl $0x80000000, %eax
+  js SVAsyscall
+#endif
 	swapgs
 	movq	%rsp,PCPU(SCRATCH_RSP)
 	movq	PCPU(RSP0),%rsp
-#if 0
-	call SVAsyscall
-#endif
 	/* Now emulate a trapframe. Make the 8 byte alignment odd for call. */
 	subq	$TF_SIZE,%rsp
 	/* defer TF_RSP till we have a spare register */
