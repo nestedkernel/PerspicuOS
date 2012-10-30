@@ -640,16 +640,14 @@ out:
 }
 
 #if 1
-void fr_sva_trap(int type);
+void fr_sva_trap(void);
 void
-fr_sva_trap(int type)
+fr_sva_trap(void)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	int i = 0, ucode = 0, code;
-#if 0
 	u_int type;
-#endif
 	register_t addr = 0;
 	ksiginfo_t ksi;
 #if 1
@@ -661,6 +659,8 @@ fr_sva_trap(int type)
 	 */
 	extern void sva_trapframe (struct trapframe * tf);
 	sva_trapframe (frame);
+  type = localframe.tf_trapno;
+  printf ("SVA: trap: %x\n", type);
 
   /*
    * Translate the SVA trap number into a FreeBSD trap number.
@@ -1175,7 +1175,7 @@ user:
 	    ("Return from trap with kernel FPU ctx leaked"));
 userout:
 out:
-#if 1
+#if 0
   /*
    * Convert trap frame changes back into the SVA interrupt context.
    */
@@ -1457,6 +1457,12 @@ amd64_syscall(struct thread *td, int traced)
 	int error;
 	ksiginfo_t ksi;
 
+#if 1
+  /*
+   * SVA will not pass the thread pointer.
+   */
+  td = curthread;
+#endif
 #ifdef DIAGNOSTIC
 	if (ISPL(td->td_frame->tf_cs) != SEL_UPL) {
 		panic("syscall");
@@ -1486,3 +1492,68 @@ amd64_syscall(struct thread *td, int traced)
 
 	syscallret(td, error, &sa);
 }
+
+#if 1
+/*
+ *	syscall -	system call request C handler
+ *
+ *	A system call is essentially treated as a trap.
+ */
+void
+sva_syscall(struct thread *td, int traced)
+{
+	struct syscall_args sa;
+	int error;
+	ksiginfo_t ksi;
+
+#if 1
+  /*
+   * SVA will not pass the thread pointer nor will it indicate whether tracing
+   * is enabled.
+   */
+  td = curthread;
+  traced = 0;
+
+  /*
+   * Install a trap frame into the thread structure.
+   */
+	struct trapframe localframe;
+  td->td_frame = &localframe;
+
+	/*
+	 * Convert the SVA interrupt context to a FreeBSD trapframe.
+	 */
+	extern void sva_trapframe (struct trapframe * tf);
+	sva_trapframe (&localframe);
+  traced = localframe.tf_rflags & PSL_T;
+#endif
+#ifdef DIAGNOSTIC
+	if (ISPL(td->td_frame->tf_cs) != SEL_UPL) {
+		panic("syscall");
+		/* NOT REACHED */
+	}
+#endif
+	error = syscallenter(td, &sa);
+
+	/*
+	 * Traced syscall.
+	 */
+	if (__predict_false(traced)) {
+		td->td_frame->tf_rflags &= ~PSL_T;
+		ksiginfo_init_trap(&ksi);
+		ksi.ksi_signo = SIGTRAP;
+		ksi.ksi_code = TRAP_TRACE;
+		ksi.ksi_addr = (void *)td->td_frame->tf_rip;
+		trapsignal(td, &ksi);
+	}
+
+	KASSERT(PCB_USER_FPU(td->td_pcb),
+	    ("System call %s returing with kernel FPU ctx leaked",
+	     syscallname(td->td_proc, sa.code)));
+	KASSERT(td->td_pcb->pcb_save == &td->td_pcb->pcb_user_save,
+	    ("System call %s returning with mangled pcb_save",
+	     syscallname(td->td_proc, sa.code)));
+
+	syscallret(td, error, &sa);
+}
+#endif
