@@ -131,7 +131,8 @@ save_integer:
    *       already saved on the stack and will be vetted by the CFI checks in
    *       load_integer().
    */
-  movq $0x0000beef, IC_RIP(%rdi)
+  movq (%rsp), %rax
+  movq %rax, IC_RIP(%rdi)
 
   /* Restore interrupts */
   pushq IC_RFLAGS(%rdi)
@@ -205,8 +206,15 @@ load_integer:
   /* Switch to the new stack pointer */
   movq IC_RSP(%rdi), %rsp
 
+#if 0
   /* Put the EFLAGS register  on the new stack */
   pushq IC_RFLAGS(%rdi)
+#endif
+
+  /* Fetch the program counter */
+  popq %rcx
+  movq IC_RIP(%rdi), %rcx
+  pushq %rcx
 
   /* Restore the %rdi register */
   movq IC_RDI(%rdi), %rdi
@@ -214,8 +222,10 @@ load_integer:
   /* Set the return value to 1 */
   movq $1, %rax
 
+#if 0
   /* Restore RFLAGS, potentially re-enabling interrupts */
   popfq
+#endif
 
   /*
    * Return to the caller.
