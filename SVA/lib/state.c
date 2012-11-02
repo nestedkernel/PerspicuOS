@@ -838,7 +838,7 @@ checkIntegerForLoad (sva_integer_state_t * p) {
  *  0 - State swapping failed.
  *  1 - State swapping succeeded.
  */
-unsigned
+uintptr_t
 sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /* Function for saving state */
   extern unsigned int save_integer (sva_integer_state_t * buffer);
@@ -856,7 +856,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 
   /* Get a pointer to the saved state (the ID is the pointer) */
   struct SVAThread * newThread = (struct SVAThread *)(newint);
-  if (!newThread) panic ("SVA: No New Thread!\n");
   sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
 
   /* Local CR3 register */
@@ -908,7 +907,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     __asm__ __volatile__ ("movq %%rsp, %0\n"
                           "movq %%rbp, %1\n"
                           : "=m" (rsp), "=m" (rbp));
-    printf ("SVA: We're awake: rsp = %lx, rbp = %lx\n", rsp, rbp);
+    printf ("SVA: We're awake: %lx\n", __builtin_return_address(0));
     return 1;
   }
 
@@ -926,6 +925,35 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    */
   *statep = (uintptr_t) oldThread;
 
+  /*
+   * If there is no place for new state, create a new SVA thread and start
+   * using it without trying to load the new state.
+   */
+  if (!newThread) {
+    /*
+     * Create the new SVA Thread.
+     */
+    extern uintptr_t sva_mk_thread (void);
+    newThread = (struct SVAThread *) sva_mk_thread ();
+
+    /*
+     * Switch the CPU over to using the new set of interrupt contexts.
+     */
+    cpup->currentThread = newThread;
+#if 0
+    cpup->tssp->ist3 = newThread->integerState.kstackp;
+#endif
+
+    return (uintptr_t) newThread;
+  }
+
+  /*
+   * Switch the CPU over to using the new set of interrupt contexts.  However,
+   * don't change the stack pointer.
+   */
+  cpup->currentThread = newThread;
+
+#if 1
   /*
    * Now, reload the integer state pointed to by new.
    */
@@ -958,13 +986,15 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Load the rest of the integer state.
      */
+    printf ("SVA: rip = %lx\n", new->rip);
     load_integer (new);
   }
+#endif
 
   /*
    * The context switch failed.
    */
-  return 0;
+  return 0; 
 }
 
 #if 0
