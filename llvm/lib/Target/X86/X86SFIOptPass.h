@@ -83,11 +83,19 @@ namespace llvm {
   X86SFIOptPass(X86TargetMachine &tm) : MachineFunctionPass(ID), TM(tm),
 	  numPushf(0), numPushs(0), numAnds(0) {}
 
-    virtual const char *getPassName() const;
+  virtual const char *getPassName() const;
 
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const;
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 
 	virtual bool runOnMachineFunction(MachineFunction& F);
+
+  // Flag whether we're compiling for 32-bit or 64-bit x86
+  bool is64Bit(void) {
+    return TM.getSubtarget<X86Subtarget>().is64Bit();
+  }
+
+  void insertPushf (MachineInstr* MI, DebugLoc& dl, const TargetInstrInfo* TII);
+  void insertPopf  (MachineInstr* MI, DebugLoc& dl, const TargetInstrInfo* TII);
 
 	// find a dead register right before MI
 	// a dead register is one that does not live in to MI
@@ -124,7 +132,7 @@ namespace llvm {
 	// MI should modify %ebp
 	// we only sandbox the change to %ebp so that
 	// there is no need to sandbox all the uses of %ebp
-	static void insertMaskAfterReg(MachineBasicBlock& MBB, MachineInstr* MI,
+	void insertMaskAfterReg(MachineBasicBlock& MBB, MachineInstr* MI,
 								   DebugLoc& dl, const TargetInstrInfo* TII,
 								   const unsigned Reg, const bool pushf);
 	

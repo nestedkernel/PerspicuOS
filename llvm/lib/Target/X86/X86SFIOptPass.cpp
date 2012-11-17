@@ -44,6 +44,44 @@ using namespace llvm;
 
 char X86SFIOptPass::ID = 0;
 
+//
+// Function: isStackPointer()
+//
+// Description:
+//  Determine if this register is the stack pointer.
+//
+static inline bool
+isStackPointer (unsigned Reg) {
+  return ((Reg == X86::ESP) || (Reg == X86::RSP));
+}
+
+static inline bool
+isFramePointer (unsigned Reg) {
+  return ((Reg == X86::EBP) || (Reg == X86::RBP));
+}
+
+void X86SFIOptPass::insertPushf (MachineInstr* nextMI,
+                                 DebugLoc& dl,
+                                 const TargetInstrInfo* TII) {
+  MachineBasicBlock & MBB = *nextMI->getParent();
+  if (is64Bit ())
+    BuildMI (MBB, nextMI, dl, TII->get(X86::PUSHF64));
+  else
+    BuildMI (MBB, nextMI, dl, TII->get(X86::PUSHF32));
+  return;
+}
+
+void X86SFIOptPass::insertPopf (MachineInstr* nextMI,
+                                DebugLoc& dl,
+                                const TargetInstrInfo* TII) {
+  MachineBasicBlock & MBB = *nextMI->getParent();
+  if (is64Bit ())
+    BuildMI (MBB, nextMI, dl, TII->get(X86::POPF64));
+  else
+    BuildMI (MBB, nextMI, dl, TII->get(X86::POPF32));
+  return;
+}
+
 const char* X86SFIOptPass::getPassName() const { return "X86 SFI optimizer"; }
 
 void X86SFIOptPass::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -174,19 +212,13 @@ bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index) {
   // TODO: Figure out how much of an offset we can handle.
   //
   unsigned base = MI->getOperand(index).getReg(); // base reg
-  switch (base) {
-    case X86::EBP:
-    case X86::ESP:
-    case X86::RBP:
-    case X86::RSP:
-      if (MI->getOperand(index+1).getImm() == 1 &&     // scale value
-          MI->getOperand(index+2).getReg() == 0 &&     // index reg
-          MI->getOperand(index+3).isImm() &&
-          MI->getOperand(index+3).getImm() < GUARD_REGION && // displacement value
-          MI->getOperand(index+4).getReg() == 0)             // segment reg
-        return true;
-    default:
-      break;
+  if ((isStackPointer (base)) || (isFramePointer (base))) {
+    if (MI->getOperand(index+1).getImm() == 1 &&     // scale value
+        MI->getOperand(index+2).getReg() == 0 &&     // index reg
+        MI->getOperand(index+3).isImm() &&
+        MI->getOperand(index+3).getImm() < GUARD_REGION && // displacement value
+        MI->getOperand(index+4).getReg() == 0)             // segment reg
+      return true;
   }
 
   return false;
@@ -305,50 +337,71 @@ void X86SFIOptPass::insertMaskAfterReg (MachineBasicBlock& MBB,
                                         DebugLoc& dl,
                                         const TargetInstrInfo* TII,
                                         const unsigned Reg,
-                                        const bool pushf){
-  const TargetRegisterInfo* TRI = MBB.getParent()->getTarget().getRegisterInfo();
+                                        const bool pushf) {
+  const TargetRegisterInfo* TRI=MBB.getParent()->getTarget().getRegisterInfo();
+
+  //
+  // Find the instruction following the specified instruction within the basic
+  // block (if such an instructions exists).
+  //
   MachineBasicBlock::iterator NXT = MBB.begin(), end = MBB.end();
   while (NXT != end && &*NXT != MI) ++NXT;
   if (NXT != end) ++NXT;
-  bool saveFlags = (NXT == end) ?  false : needsPushf(&*NXT, TRI);
-
   MachineInstr* nextMI = &*NXT;
-  if (Reg == X86::ESP && saveFlags) {
-	MachineInstr* Def = getDefInst(*MI, X86::EFLAGS);
-	if(Def == MI){
-	  llvm::errs() << "Error: MI defines %esp and eflags\n";
-	  abort();
-	}
-	if(!Def){
-	  llvm::errs() << "Error can not find the instruction which defines eflags\n";
-	  abort();
-	}
-	MachineInstr* next = Def->getNextNode();
-	bool independent = true;
-	while(next != MI){
-	  if(!X86Inst::independent(*Def, *next)){
-		independent = false;
-		break;
-	  }
-	  next = next->getNextNode();
-	}
-	if(!independent){
-	  llvm::errs() << "Error: the instruction which defines eflags can not be moved\n";
-	  abort();
-	}
-	// AND32ri %Reg, DATA_MASK
-	BuildMI(MBB,nextMI,dl, TII->get(X86::AND32ri), Reg).addReg(Reg).addImm(DATA_MASK);
-	// make a copy of Def
-	const MachineInstrBuilder& MIB = BuildMI(MBB, nextMI, dl, TII->get(Def->getOpcode()));
-	for(unsigned i = 0, e = Def->getNumOperands(); i < e; ++i)
-	  MIB.addOperand(Def->getOperand(i));
-	Def->eraseFromParent(); // delete Def
-	return;
+
+  //
+  // If the specified instruction is the last instruction in the basic block,
+  // then we know that we do not need to save the processor status flags.
+  // Otherwise, go find out if we need to save the processor status flags.
+  //
+  // TODO: Verify if this is correct.
+  //
+  bool saveFlags = (NXT == end) ?  false : needsPushf(nextMI, TRI);
+
+  if (isStackPointer(Reg) && saveFlags) {
+    MachineInstr* Def = getDefInst(*MI, X86::EFLAGS);
+    assert (Def && "Error can not find the instruction which defines eflags\n");
+    assert ((Def != MI) && "Error: MI defines %%esp and eflags\n");
+    MachineInstr* next = Def->getNextNode();
+    bool independent = true;
+    while (next != MI) {
+      if (!X86Inst::independent(*Def, *next)) {
+        independent = false;
+        break;
+      }
+      next = next->getNextNode();
+    }
+
+    if(!independent){
+      llvm::errs() << "Error: the instruction which defines eflags can not be moved\n";
+      abort();
+    }
+
+    // AND32ri %Reg, DATA_MASK
+    BuildMI(MBB,nextMI,dl, TII->get(X86::AND32ri), Reg).addReg(Reg).addImm(DATA_MASK);
+    // make a copy of Def
+    const MachineInstrBuilder& MIB = BuildMI(MBB, nextMI, dl, TII->get(Def->getOpcode()));
+    for(unsigned i = 0, e = Def->getNumOperands(); i < e; ++i)
+      MIB.addOperand(Def->getOperand(i));
+    Def->eraseFromParent(); // delete Def
+    return;
   }
-  if(pushf || saveFlags) BuildMI(MBB,nextMI,dl,TII->get(X86::PUSHF32)); // PUSHF32
+
+  //
+  // Insert code to save the processor status flags if needed.
+  //
+  if (pushf || saveFlags)
+    insertPushf(nextMI,dl,TII);
+
   // AND32ri %Reg, DATA_MASK
   BuildMI(MBB,nextMI,dl,TII->get(X86::AND32ri),Reg).addReg(Reg).addImm(DATA_MASK);
-  if(pushf || saveFlags) BuildMI(MBB,nextMI,dl,TII->get(X86::POPF32));  // POPF32
+
+  //
+  // Insert code to restore the processor flags if necesary.
+  //
+  if (pushf || saveFlags)
+    insertPopf (nextMI,dl,TII);
+  return;
 }
 
 #if 0
