@@ -5,6 +5,9 @@
 // This file was written by Bin Zeng at the Lehigh University CSE Department.
 // All Right Reserved.
 //
+// This file contains code written by John Criswell at the University of
+// Illinois at Urbana-Champaign.
+//
 //===----------------------------------------------------------------------===//
 //
 // This file implements a machine language level transform that enforces
