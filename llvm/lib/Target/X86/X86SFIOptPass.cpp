@@ -57,12 +57,12 @@ bool X86SFIOptPass::isCFICMP(const MachineInstr& MI){
   return X86Inst::isCFICMP(MI);
 }  
 
-#if 0
 // Idx is the index of the first MachineOperand that constitutes the memory
 // location the instruction MI will store to
 // e.g. movl %eax, 4(%ebx, %ecx, 4)
 // if this instruction kills %ecx, then we can use %ecx for sandboxing
 unsigned X86SFIOptPass::findDeadReg(const MachineInstr* MI, unsigned Idx){
+#if 0
   const TargetRegisterInfo* TRI = MI->getParent()->getParent()->getTarget().getRegisterInfo();
   unsigned dead = 0;
   BitVector liveIns = MI->getLiveIns();
@@ -159,23 +159,40 @@ unsigned X86SFIOptPass::findDeadReg(const MachineInstr* MI, unsigned Idx){
 	}
   }
   return dead;
+#else
+  return 0;
+#endif
 }
 
 // returns true if MI refers to memory location on stack
 bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index){
-  // if the mem operand uses %ebp or %esp as base reg and a immediate value
-  // as displacement like in this form: movl %ecx, 8(%ebp), do not mask it
+  //
+  // If the memory operand uses %ebp, %esp, %rbp, or %rsp as a base register
+  // and an immediate value as displacement (e.g., movl %ecx, 8(%ebp)), then
+  // do not mask it.
+  //
+  // TODO: Figure out how much of an offset we can handle.
+  //
   unsigned base = MI->getOperand(index).getReg(); // base reg
-  if((base == X86::EBP || base == X86::ESP) && 
-	 MI->getOperand(index+1).getImm() == 1 &&     // scale value
-	 MI->getOperand(index+2).getReg() == 0 &&     // index reg
-	 MI->getOperand(index+3).isImm() &&
-	 MI->getOperand(index+3).getImm() < GUARD_REGION && // displacement value
-	 MI->getOperand(index+4).getReg() == 0)             // segment reg
-	return true;
+  switch (base) {
+    case X86::EBP:
+    case X86::ESP:
+    case X86::RBP:
+    case X86::RSP:
+      if (MI->getOperand(index+1).getImm() == 1 &&     // scale value
+          MI->getOperand(index+2).getReg() == 0 &&     // index reg
+          MI->getOperand(index+3).isImm() &&
+          MI->getOperand(index+3).getImm() < GUARD_REGION && // displacement value
+          MI->getOperand(index+4).getReg() == 0)             // segment reg
+        return true;
+    default:
+      break;
+  }
+
   return false;
 }
 
+#if 0
 // returns true if sandboxing MI needs to save eflags
 // MI is a store instruction or the instruction right after andl
 bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegisterInfo* TRI){
