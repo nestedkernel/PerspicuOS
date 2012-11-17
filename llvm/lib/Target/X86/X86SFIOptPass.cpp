@@ -165,7 +165,7 @@ unsigned X86SFIOptPass::findDeadReg(const MachineInstr* MI, unsigned Idx){
 }
 
 // returns true if MI refers to memory location on stack
-bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index){
+bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index) {
   //
   // If the memory operand uses %ebp, %esp, %rbp, or %rsp as a base register
   // and an immediate value as displacement (e.g., movl %ecx, 8(%ebp)), then
@@ -192,37 +192,71 @@ bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index){
   return false;
 }
 
-#if 0
-// returns true if sandboxing MI needs to save eflags
-// MI is a store instruction or the instruction right after andl
-bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegisterInfo* TRI){
+//
+// Description:
+//  Determine if the specified machine instruction will need the processor
+//  flags (eflags) saved after it is sandboxed.
+//
+// Inputs:
+//  MI - The machine instruction to check.  It should be a store or the
+//       instruction right after the andl/andq.
+//
+// Return value:
+//  true - The processor flags need to be saved.
+//  false - The processor flags do not need to be saved.
+//
+bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegisterInfo* TRI) {
   const MachineBasicBlock& MBB = *MI->getParent();
-  if(MI->readsRegister(X86::EFLAGS, TRI)) return true;
-  if(MI->definesRegister(X86::EFLAGS, TRI)  || MI->modifiesRegister(X86::EFLAGS, TRI))
-	return false;
+
+  //
+  // If the instruction uses the processor flags register directly, then it
+  // must be saved.
+  //
+  if (MI->readsRegister(X86::EFLAGS, TRI))
+    return true;
+
+  //
+  // If the instruction modifies the processor flags register, then no saving
+  // is required.
+  //
+  if (MI->definesRegister(X86::EFLAGS, TRI) ||
+      MI->modifiesRegister(X86::EFLAGS, TRI))
+    return false;
+
+  //
+  // Examine all instructions following the specified instruction.  If any of
+  // them define or modify the processor flags, then we do not need to save the
+  // processor status register.  If something uses the processor status
+  // register, then we do.
+  //
   MachineBasicBlock::const_iterator I = MBB.begin(), E = MBB.end();
-  while(I != E && &*I != MI) ++I;
-  if(&*I == MI) ++I;
+  while (I != E && &*I != MI) ++I;
+  if (&*I == MI) ++I;
   bool need = false; // true;
-  while(I != E){
-	if((*I).definesRegister(X86::EFLAGS, TRI) || (*I).modifiesRegister(X86::EFLAGS, TRI)){
-	  need = false;
-	  break;
-	} else if((*I).readsRegister(X86::EFLAGS, TRI)){
-	  need = true;
-	  break;
-	}
-	++I;
+  while (I != E) {
+    if ((*I).definesRegister(X86::EFLAGS, TRI) ||
+        (*I).modifiesRegister(X86::EFLAGS, TRI)) {
+      need = false;
+      break;
+    } else if ((*I).readsRegister(X86::EFLAGS, TRI)) {
+      need = true;
+      break;
+    }
+
+    ++I;
   }
+
   return need;
 }
 
-
-// returns the instruction which defines the register reg by walking up the
-// basic block from and on instruction MI 
+//
+// Description:
+//  Return the instruction which defines the specified register by walking up
+//  the basic block from and on instruction MI 
+//
 MachineInstr* X86SFIOptPass::getDefInst(MachineInstr& MI, const unsigned reg){
   MachineBasicBlock& MBB = *MI.getParent();
-  const TargetRegisterInfo* TRI = MBB.getParent()->getTarget().getRegisterInfo();
+  const TargetRegisterInfo* TRI=MBB.getParent()->getTarget().getRegisterInfo();
   MachineBasicBlock::reverse_iterator CRI = MBB.rbegin(), CRE = MBB.rend();
   while(CRI != CRE && &*CRI != &MI) ++CRI;
   while(CRI != CRE){
@@ -233,6 +267,7 @@ MachineInstr* X86SFIOptPass::getDefInst(MachineInstr& MI, const unsigned reg){
   return 0;
 }
 
+#if 0
 // returns true if MI uses only a base register to get a memory location such as in (%eax)
 bool X86SFIOptPass::baseReg2Mem(const MachineInstr* const MI, const unsigned index){
   return (MI->getOperand(index).getReg()   != 0 &&
