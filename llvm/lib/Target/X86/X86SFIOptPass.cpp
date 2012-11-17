@@ -205,9 +205,8 @@ bool X86SFIOptPass::onStack(const MachineInstr* MI, const unsigned index) {
 //  true - The processor flags need to be saved.
 //  false - The processor flags do not need to be saved.
 //
-bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegisterInfo* TRI) {
-  const MachineBasicBlock& MBB = *MI->getParent();
-
+bool X86SFIOptPass::needsPushf(const MachineInstr* const MI,
+                               const TargetRegisterInfo* TRI) {
   //
   // If the instruction uses the processor flags register directly, then it
   // must be saved.
@@ -229,6 +228,7 @@ bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegiste
   // processor status register.  If something uses the processor status
   // register, then we do.
   //
+  const MachineBasicBlock& MBB = *MI->getParent();
   MachineBasicBlock::const_iterator I = MBB.begin(), E = MBB.end();
   while (I != E && &*I != MI) ++I;
   if (&*I == MI) ++I;
@@ -252,22 +252,35 @@ bool X86SFIOptPass::needsPushf(const MachineInstr* const MI, const TargetRegiste
 //
 // Description:
 //  Return the instruction which defines the specified register by walking up
-//  the basic block from and on instruction MI 
+//  the basic block from an instruction MI.
 //
 MachineInstr* X86SFIOptPass::getDefInst(MachineInstr& MI, const unsigned reg){
+  //
+  // Scan backwards through the basic block looking for the specified
+  // instruction.
+  //
   MachineBasicBlock& MBB = *MI.getParent();
   const TargetRegisterInfo* TRI=MBB.getParent()->getTarget().getRegisterInfo();
   MachineBasicBlock::reverse_iterator CRI = MBB.rbegin(), CRE = MBB.rend();
   while(CRI != CRE && &*CRI != &MI) ++CRI;
-  while(CRI != CRE){
-	if((*CRI).modifiesRegister(reg, TRI) || (*CRI).definesRegister(reg, TRI))
-	  return &*CRI;
-	++CRI;
+
+  //
+  // Scan backwards from the instruction looking for an instruction that
+  // either modifies or defines the register.  If we find such an instruction,
+  // return it.
+  //
+  while (CRI != CRE) {
+    if ((*CRI).modifiesRegister(reg, TRI) || (*CRI).definesRegister(reg, TRI))
+      return &*CRI;
+    ++CRI;
   }
+
+  //
+  // We did not find the defining instruction.
+  //
   return 0;
 }
 
-#if 0
 // returns true if MI uses only a base register to get a memory location such as in (%eax)
 bool X86SFIOptPass::baseReg2Mem(const MachineInstr* const MI, const unsigned index){
   return (MI->getOperand(index).getReg()   != 0 &&
@@ -278,22 +291,29 @@ bool X86SFIOptPass::baseReg2Mem(const MachineInstr* const MI, const unsigned ind
 		  MI->getOperand(index+4).getReg() == 0);
 }
 
-
-// insert sandboxing instructions right after MI to sandbox %reg
-// MI should modify %reg
-void X86SFIOptPass::insertMaskAfterReg(MachineBasicBlock& MBB, MachineInstr* MI,
-									   DebugLoc& dl, const TargetInstrInfo* TII,
-									   const unsigned Reg, const bool pushf){
+//
+// Description:
+//  Insert sandboxing instructions right after the specified instruction to
+//  sandbox the specified register.
+//
+// Inputs:
+//  MI - The machine instruction which should modify the specified register.
+//  Reg - The register which is modified by the machine instruction.
+//
+void X86SFIOptPass::insertMaskAfterReg (MachineBasicBlock& MBB,
+                                        MachineInstr* MI,
+                                        DebugLoc& dl,
+                                        const TargetInstrInfo* TII,
+                                        const unsigned Reg,
+                                        const bool pushf){
   const TargetRegisterInfo* TRI = MBB.getParent()->getTarget().getRegisterInfo();
   MachineBasicBlock::iterator NXT = MBB.begin(), end = MBB.end();
-  while(NXT != end && &*NXT != MI)++NXT;
-  if(NXT != end) ++NXT;
-  bool saveFlags;
-  if(NXT == end) saveFlags = false;
-  else saveFlags = needsPushf(&*NXT, TRI);
-  // MachineInstr* nextMI = MI->getNextNode();
+  while (NXT != end && &*NXT != MI) ++NXT;
+  if (NXT != end) ++NXT;
+  bool saveFlags = (NXT == end) ?  false : needsPushf(&*NXT, TRI);
+
   MachineInstr* nextMI = &*NXT;
-  if(Reg == X86::ESP && saveFlags){
+  if (Reg == X86::ESP && saveFlags) {
 	MachineInstr* Def = getDefInst(*MI, X86::EFLAGS);
 	if(Def == MI){
 	  llvm::errs() << "Error: MI defines %esp and eflags\n";
@@ -331,6 +351,7 @@ void X86SFIOptPass::insertMaskAfterReg(MachineBasicBlock& MBB, MachineInstr* MI,
   if(pushf || saveFlags) BuildMI(MBB,nextMI,dl,TII->get(X86::POPF32));  // POPF32
 }
 
+#if 0
 void X86SFIOptPass::insertMaskAfterReg(MachineBasicBlock& MBB, MachineInstr* MI,
 									   DebugLoc& dl, const TargetInstrInfo* TII,
 									   const unsigned Reg){
