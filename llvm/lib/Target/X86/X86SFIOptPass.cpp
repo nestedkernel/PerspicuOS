@@ -377,7 +377,32 @@ void X86SFIOptPass::insertMaskAfterReg (MachineBasicBlock& MBB,
       abort();
     }
 
+    //
+    // Create an instruction that creates a version of the pointer with the
+    // proper bits set.
+    //
+    MachineInstr * maskedPtr = BuildMI (MBB,
+                                        nextMI,
+                                        dl,
+                                        TII->get(X86::OR32ri),
+                                        Reg).addReg(Reg).addImm(setMask);
+
+    //
+    // Create an instruction to mask off the proper bits to see if the pointer
+    // is within the secure memory range.
+    //
     // AND32ri %Reg, DATA_MASK
+    //
+    MachineInstr * checkMasked = BuildMI (MBB,
+                                          nextMI,
+                                          dl,
+                                          TII->get(X86::AND32ri),
+                                          Reg).addReg(Reg).addImm(setMask);
+
+    //
+    // Compare the masked pointer to the mask.  If they're the same, we need to
+    // set that bit.
+    //
     BuildMI(MBB,nextMI,dl, TII->get(X86::AND32ri), Reg).addReg(Reg).addImm(DATA_MASK);
     // make a copy of Def
     const MachineInstrBuilder& MIB = BuildMI(MBB, nextMI, dl, TII->get(Def->getOpcode()));

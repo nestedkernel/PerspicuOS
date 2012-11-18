@@ -59,6 +59,12 @@ namespace llvm {
 	const static unsigned DATA_BOTTOM  = DATA_START - GUARD_REGION;
 	const static unsigned DATA_TOP     = DATA_END   + GUARD_REGION;
 
+  // Mask to determine if we use the original value or the masked value
+  static const uintptr_t checkMask = 0xffffff0000000000u;
+
+  // Mask to set proper lower-order bits
+  static const uintptr_t setMask = 0xffffff8000000000u;
+
 	unsigned numPushf;
 	unsigned numPushs;
 	unsigned numAnds;
