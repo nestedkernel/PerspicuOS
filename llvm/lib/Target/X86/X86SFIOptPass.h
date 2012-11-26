@@ -108,7 +108,7 @@ namespace llvm {
 	// if there is one dead register returns it, else returns 0
 	// MI is a store instruction, idx is the index of the first
 	// MachineOperand that constitutes the memory location
-	static unsigned findDeadReg(const MachineInstr* MI, const unsigned idx);
+	unsigned findDeadReg(const MachineInstr* MI, const unsigned idx);
 
 	// insert a mask instruction before store instruction MI
 	// this version does not use any dead registers

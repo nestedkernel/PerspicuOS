@@ -95,29 +95,39 @@ bool X86SFIOptPass::isCFICMP(const MachineInstr& MI){
   return X86Inst::isCFICMP(MI);
 }  
 
+// Registers to check for 32-bit systems
+static const unsigned Regs32[] = {X86::EAX, X86::ECX, X86::EDX,
+                                  X86::EBX, X86::ESI, X86::EDI, 0};
+
+// Registers to check for 64-bit systems
+static const unsigned Regs64[] = {X86::RAX, X86::RCX, X86::RDX, X86::RBX,
+                                  X86::RSI, X86::RDI, X86::R8, X86::R9,
+                                  X86::R10, X86::R11, X86::R12, X86::R13,
+                                  X86::R14, X86::R15, 0};
+
 // Idx is the index of the first MachineOperand that constitutes the memory
 // location the instruction MI will store to
 // e.g. movl %eax, 4(%ebx, %ecx, 4)
 // if this instruction kills %ecx, then we can use %ecx for sandboxing
-unsigned X86SFIOptPass::findDeadReg(const MachineInstr* MI, unsigned Idx){
-#if 0
+unsigned X86SFIOptPass::findDeadReg (const MachineInstr* MI, unsigned Idx) {
   const TargetRegisterInfo* TRI = MI->getParent()->getParent()->getTarget().getRegisterInfo();
   unsigned dead = 0;
-  BitVector liveIns = MI->getLiveIns();
-  // find a Reg that does not live in to MI
-  if(!liveIns[X86::AH] && !liveIns[X86::AL] && !liveIns[X86::AX] && !liveIns[X86::EAX])
-	dead = X86::EAX;
-  else if(!liveIns[X86::CH] && !liveIns[X86::CL] && !liveIns[X86::CX] && !liveIns[X86::ECX])
-	dead = X86::ECX;
-  else if(!liveIns[X86::DH] && !liveIns[X86::DL] && !liveIns[X86::DX] && !liveIns[X86::EDX])
-	dead = X86::EDX;
-  else if(!liveIns[X86::BH] && !liveIns[X86::BL] && !liveIns[X86::BX] && !liveIns[X86::EBX])
-  	dead = X86::EBX;
-  else if(!liveIns[X86::SI] && !liveIns[X86::ESI])
-  	dead = X86::ESI;
-  else if(!liveIns[X86::DI] && !liveIns[X86::EDI])
-	dead = X86::EDI;
-  else {
+
+  //
+  // Determine which list of registers to check.
+  //
+  const unsigned * RegsToCheck = is64Bit() ? Regs64 : Regs32;
+
+  //
+  // Scan through the list to see if one of the registers is dead.  If we find
+  // a dead register, return right away.
+  //
+  for (unsigned char index = 0; RegsToCheck[index] != 0; ++index) {
+    if (MI->registerDefIsDead (RegsToCheck[index]))
+      return (RegsToCheck[index]);
+  }
+
+#if 0
 	// find a Reg that lives in to MI and is only used to calculate the
 	// memory location and it is killed by MI.e.g. movl %eax, 4(%ebx, %ecx, 4)
 	// if %ebx is killed by movl and only used to calculate the memory location
@@ -196,10 +206,8 @@ unsigned X86SFIOptPass::findDeadReg(const MachineInstr* MI, unsigned Idx){
 	  }
 	}
   }
-  return dead;
-#else
-  return 0;
 #endif
+  return dead;
 }
 
 // returns true if MI refers to memory location on stack
