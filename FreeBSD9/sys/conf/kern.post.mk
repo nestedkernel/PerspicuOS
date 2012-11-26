@@ -90,10 +90,10 @@ gdbinit:
 .endif
 .endif
 
-${FULLKERNEL}: ${SYSTEM_DEP} vers.o /usr/home/criswell/src/sva/SVA/lib/libsva.a
+${FULLKERNEL}: ${SYSTEM_DEP} vers.o /home/criswell/src/sva/SVA/lib/libsva.a
 	@rm -f ${.TARGET}
 	@echo linking SVA ${.TARGET}
-	${SYSTEM_LD} -L/usr/home/criswell/src/sva/SVA/lib -lsva
+	${SYSTEM_LD} -L/home/criswell/src/sva/SVA/lib -lsva
 	@${SYSTEM_CTFMERGE}
 .if !defined(DEBUG)
 	${OBJCOPY} --strip-debug ${.TARGET}
