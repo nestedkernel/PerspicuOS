@@ -51,6 +51,38 @@ sva_check_memory_write (void * memory, unsigned int size) {
   return;
 }
 
+/*
+ * Function: sva_enter_critical()
+ *
+ * Description:
+ *  Enter an SVA critical section.  This basically means that we need to
+ *  disable interrupts so that the intrinsic acts like a single,
+ *  uninterruptable instruction.
+ */
+static inline unsigned long
+sva_enter_critical (void) {
+  unsigned long rflags;
+  __asm__ __volatile__ ("pushfq\n"
+                        "popq %0\n"
+                        "cli\n" : "=r" (rflags));
+  return rflags;
+}
+
+/*
+ * Function: sva_exit_critical()
+ *
+ * Description:
+ *  Exit an SVA critical section.  This basically means that we need to
+ *  enable interrupts if they had been enabled before the intrinsic was
+ *  executed.
+ */
+static inline void
+sva_exit_critical (unsigned long rflags) {
+  if (rflags & 0x00000200)
+    __asm__ __volatile__ ("sti":::"memory");
+  return;
+}
+
 #ifdef __cplusplus
 }
 #endif
