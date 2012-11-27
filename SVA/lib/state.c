@@ -374,82 +374,71 @@ sva_ipush_function1 (void * icontext, void (*newf)(int), int param)
  * Intrinsic: sva_ipush_function4 ()
  *
  * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
+ *  This intrinsic modifies the most recent interrupt context so that the
+ *  specified function is called with the given arguments when the state is
+ *  reloaded on to the processor.
  *
  * Inputs:
  *  newf     - The function to call.
  *  p[1|2|3] - The parameters to pass to the function.
  *
- * NOTES:
+ * TODO:
+ *  o This intrinsic should check whether newf is a valid function for the
+ *    appropriate mode (user or kernel).
+ *
  *  o This intrinsic could conceivably cause a memory fault (either by
  *    accessing a stack page that isn't paged in, or by overwriting the stack).
  *    This should be addressed at some point.
  */
 void
-sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t), uintptr_t p1, uintptr_t p2, uintptr_t p3, uintptr_t p4) {
+sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
+                     uintptr_t p1,
+                     uintptr_t p2,
+                     uintptr_t p3,
+                     uintptr_t p4) {
   /* Old interrupt flags */
   unsigned int rflags;
 
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (rflags));
+  rflags = sva_enter_critical();
 
   /*
-   * Get the user-space interrupt context.
+   * Get the most recent interrupt context.
    */
-  /* User Context Pointer */
-  sva_icontext_t * ep = get_uicontext();
+  sva_icontext_t * ep = getCPUState()->newCurrentIC;
 
-  do {
-    /*
-     * Check the memory.
-     */
-    sva_check_memory_write (ep, sizeof (sva_icontext_t));
-#if 0
-    sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
-#endif
-
-    /*
-     * Verify that this interrupt context has a stack pointer.
-     */
-#if 0
-    if (sva_is_privileged () && sva_was_privileged(icontext)) {
-      __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-      continue;
-    }
-#endif
-    break;
-  } while (1);
+  /*
+   * Check the memory.
+   */
+  sva_check_memory_write (ep, sizeof (sva_icontext_t));
+  sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
 
   /*
    * Place the arguments into the proper registers.
    */
-  uintptr_t offset = ((uintptr_t) &(ep->rdi)) - ((uintptr_t) ep);
-  printf ("SVA: offset=%lx: %lx %lx %lx %lx\n", offset, p1, p2, p3, p4);
+  printf ("SVA: %lx %lx %lx %lx\n", p1, p2, p3, p4);
   ep->rdi = p1;
   ep->rsi = p2;
   ep->rdx = p3;
   ep->rcx = p4;
 
-#if 0
   /*
-   * Push the return PC pointer on to the stack.
+   * Push a return program counter value on to the stack.  It should cause a
+   * fault if the function returns.
    */
-  *(--(ep->rsp)) = ep->rip;
+  *(--(ep->rsp)) = 0x0000beefu;
 
   /*
    * Set the return function to be the specificed function.
    */
   ep->rip = (unsigned int)newf;
-#endif
 
   /*
    * Re-enable interrupts.
    */
-  if (rflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+  sva_exit_critical (rflags);
   return;
 }
 
@@ -566,8 +555,6 @@ sva_push_function1 (void * integer, void (*newf)(int), int param)
  *  Modify the given LLVA state so that it appears that the specified system
  *  call has been invoked.
  */
-extern void sc_ret(void);
-
 void
 sva_push_syscall (unsigned int sysnum, void * integerp, void * func)
 {
@@ -861,6 +848,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /* Local CR3 register */
   uintptr_t cr3;
 
+  /* Variables for registers for debugging */
+  uintptr_t rsp, rbp;
+
   /*
    * Determine whether the integer state is valid.
    */
@@ -872,9 +862,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 #endif
 
   /*
-   * Save the value of the current kernel stack pointer.
+   * Save the value of the current kernel stack pointer, IST3, and currentIC.
    */
-  old->kstackp = cpup->tssp->ist3;
+  old->kstackp = cpup->tssp->rsp0;
+  old->ist3 = cpup->tssp->ist3;
+  old->currentIC = cpup->newCurrentIC;
 
   /*
    * Save the value of the CR3 register.
@@ -889,7 +881,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * switch.
    */
   if (save_integer (old)) {
-    uintptr_t rsp, rbp;
     /*
      * We've awakened.
      */
@@ -904,21 +895,39 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      */
     pchk_update_stack ();
 #endif
+
+#if 1
+    /*
+     * Fixup to where we will return.
+     */
+    uintptr_t * pcptr = __builtin_frame_address(0) + sizeof (void *);
+    *pcptr = old->hackRIP;
+#endif
     __asm__ __volatile__ ("movq %%rsp, %0\n"
                           "movq %%rbp, %1\n"
                           : "=m" (rsp), "=m" (rbp));
-    printf ("SVA: We're awake: %lx\n", __builtin_return_address(0));
+    printf ("SVA: Awake: %lx %lx: %lx\n", rsp, rbp, __builtin_return_address(0));
     return 1;
   }
 
-#if 0
-  printf ("SVA: saved: %p: rip = %lx, rsp = %lx, rbp = %lx\n", old, old->rip, old->rsp, old->rbp);
-#endif
+  /*
+   * Save this functions return address because it can be overwritten by
+   * calling interim FreeBSD code that does a native FreeBSD context switch.
+   */
+  old->hackRIP = __builtin_return_address(0);
 
   /*
    * Mark the saved integer state as valid.
    */
   old->valid = 1;
+
+  __asm__ __volatile__ ("movq %%rsp, %0\n"
+                        "movq %%rbp, %1\n"
+                        : "=m" (rsp), "=m" (rbp));
+  printf ("SVA: Sleep: %lx %lx: %lx\n", rsp, rbp, __builtin_return_address(0));
+#if 0
+  printf ("SVA: saved: %p: rip = %lx, rsp = %lx, rbp = %lx\n", old, old->rip, old->rsp, old->rbp);
+#endif
 
   /*
    * Inform the caller of the location of the last state saved.
@@ -967,7 +976,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * Switch the CPU over to using the new set of interrupt contexts.
      */
     cpup->currentThread = newThread;
-    cpup->tssp->ist3 = newThread->integerState.kstackp;
+    cpup->tssp->rsp0 = new->kstackp;
+    cpup->tssp->ist3 = new->ist3;
+    cpup->newCurrentIC = new->currentIC;
 
     /*
      * Invalidate the state that we're about to load.
@@ -986,7 +997,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Load the rest of the integer state.
      */
-    printf ("SVA: rip = %lx\n", new->rip);
     load_integer (new);
   }
 #endif
@@ -1421,6 +1431,7 @@ sva_load_tsc (long long tsc)
 {
   __asm__ __volatile__ ("wrmsr\n" :: "A" (tsc), "c" (0x10));
 }
+#endif
 
 /*
  * Intrinsic: sva_init_stack()
@@ -1429,7 +1440,11 @@ sva_load_tsc (long long tsc)
  *  Pointer to the integer state identifier used for context switching.
  *
  * Inputs:
- *  stackp - A pointer to the *beginning* of the kernel stack.
+ *  start_stackp - A pointer to the *beginning* of the kernel stack.
+ *  length       - Length of the kernel stack in bytes.
+ *  func         - The kernel function to execute when the new integer state
+ *                 is swapped on to the processor.
+ *  arg          - The first argument to the function.
  *
  * Return value:
  *  An identifier that can be passed to sva_swap_integer() to begin execution
@@ -1437,8 +1452,7 @@ sva_load_tsc (long long tsc)
  */
 unsigned int
 sva_init_stack (unsigned char * start_stackp,
-                unsigned length,
-                void * orig_icontextp,
+                uintptr_t length,
                 void * func,
                 unsigned int arg) {
   /* Working memory pointer */
@@ -1447,66 +1461,72 @@ sva_init_stack (unsigned char * start_stackp,
   /* Working integer state */
   sva_integer_state_t * integerp;
 
+  /* Function to use to return from system call */
+  extern void sc_ret(void);
+
   /* Arguments allocated on the new stack */
   struct frame {
     /* Return pointer for the function frame */
     void * return_rip;
-
-    /* The arguments to the function */
-    unsigned long args[6];
-
-    /* The pointer to the interrupt context */
-    void * icontextp;
   } * args;
 
   /* Old interrupt flags */
-  unsigned int eflags;
+  uintptr_t rflags;
 
   /* End of stack */
   unsigned char * stackp = 0;
 
   /* Length of Stack */
-  unsigned int stacklen = 0;
+  uintptr_t stacklen = stacklen;
 
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
+  rflags = sva_enter_critical();
 
   /*
-   * Verify that the given stack is, in fact, a declared stack.
+   * Find the last byte on the stack.
    */
-#ifdef SVA_KSTACKS
-  if (start_stackp = pchk_checkstack (start_stackp, &stacklen)) {
-      stackp = start_stackp + stacklen;
-  } else {
-    return 0;
-  }
-#else
-  stacklen = length;
   stackp = start_stackp + stacklen;
-#endif
 
   /*
    * Verify that the stack is big enough.
    */
-  if (stacklen < sizeof (sva_integer_state_t) +
-                 sizeof (sva_icontext_t) + 
-                 sizeof (struct frame)) {
+  if (stacklen < sizeof (struct frame)) {
     return 0;
   }
 
-  /*
-   * Allocate an integer state at the top of the stack before anything else.
-   */
-  stackp -= sizeof (sva_integer_state_t);
-  integerp = stackp;
+  /* Pointer to the current CPU State */
+  struct CPUState * cpup = getCPUState();
 
   /*
-   * Allocate an interrupt context just after the integer state on the stack.
+   * Verify that no interrupts or traps have occurred (other than a system call
+   * into the kernel).
    */
-  stackp -= sizeof (sva_icontext_t);
-  icontextp = stackp;
+  if (cpup->newCurrentIC < &(cpup->currentThread->interruptContexts[maxIC - 1]))
+    return 0;
+
+  /*
+   * Get access to the old thread.
+   */
+  struct SVAThread * oldThread = cpup->currentThread;
+
+  /*
+   * Allocate a new SVA thread.
+   */
+  extern uintptr_t sva_mk_thread (void);
+  struct SVAThread * newThread = (struct SVAThread *) sva_mk_thread ();
+
+  /*
+   * Verify that the memory has the proper access.
+   */
+  sva_check_memory_read  (oldThread, sizeof (struct SVAThread));
+  sva_check_memory_write (newThread, sizeof (struct SVAThread));
+
+  /*
+   * Copy the old SVA thread state into the new thread state.
+   */
+  *newThread = *oldThread;
 
   /*
    * Allocate the call frame for the call to the system call.
@@ -1515,60 +1535,24 @@ sva_init_stack (unsigned char * start_stackp,
   args = stackp;
 
   /*
-   * FIXME: Need to redo for this intrinsic.
-   *
-   * Verify that the memory has the proper access.
-   */
-  sva_check_memory_read  (orig_icontextp, sizeof (sva_icontext_t));
-  sva_check_memory_write (icontextp,      sizeof (sva_icontext_t));
-
-  /*
    * Initialize the arguments to the system call.  Also setup the interrupt
    * context and return function pointer.
    */
-  args->icontextp = icontextp;
   args->return_rip = sc_ret;
-  args->args[0] = arg;
-  args->args[1] = 0;
-  args->args[2] = 0;
-  args->args[3] = 0;
-  args->args[4] = 0;
-  args->args[5] = 0;
-
-  /*
-   * Initialize the interrupt context by copying the old interrupt context into
-   * the new one on the stack.
-   */
-  __builtin_memcpy (icontextp, orig_icontextp, sizeof (sva_icontext_t));
-
-  /*
-   * Disable restrictions on system calls since we don't know from where this
-   * function pointer came.
-   */
-#if LLVA_SCLIMIT
-  icontextp->sc_disabled = 0;
-#endif
 
   /*
    * Initialze the integer state of the new thread of control.
    */
+  integerp = &(newThread->integerState);
   bzero (integerp, sizeof (sva_integer_state_t));
   integerp->rip = func;
+  integerp->rdi = arg;
   integerp->rsp = stackp;
   integerp->cs  = 0x10;
-
-#ifdef SVA_CHECK_INTEGER
-  /*
-   * Mark the integer state as valid.
-   */
-  pchk_reg_int (integerp);
-#endif
 
   /*
    * Re-enable interrupts.
    */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+  sva_exit_critical (rflags);
   return (unsigned int) integerp;
 }
-#endif
