@@ -196,179 +196,7 @@ sva_ipop_function0 (void * exceptp)
     __asm__ __volatile__ ("sti":::"memory");
   return;
 }
-
-/*
- * Intrinsic: sva_ipush_function0 ()
- *
- * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
- *
- * Inputs:
- *  icontext - A pointer to the exception handler saved state.
- *  newf     - The function to call.
- *
- * NOTES:
- *  o This intrinsic could conceivably cause a memory fault (either by
- *    accessing a stack page that isn't paged in, or by overwriting the stack).
- *    This should be addressed at some point.
- */
-void
-sva_ipush_function0 (void * icontext, void (*newf)(void))
-{
-  /* User Context Pointer */
-  sva_icontext_t * ip = icontext;
-
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  /*
-   * Check the memory.
-   */
-  sva_check_memory_write (ip,      sizeof (sva_icontext_t));
-  sva_check_memory_write (ip->rsp, sizeof (unsigned int) * 1);
-
-  /*
-   * Verify that this interrupt context has a stack pointer.
-   */
-#if 0
-  if (sva_is_privileged () && sva_was_privileged(icontext))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-  }
 #endif
-
-  /* Performance counters */
-#if LLVA_COUNTERS
-  ++sva_counters.sva_ipush_func;
-  if (sva_debug) ++sva_local_counters.sva_ipush_func;
-  sc_intrinsics[current_sysnum] |= MASK_LLVA_IPUSH_FUNCTION;
-#endif
-
-  /*
-   * Push the return PC pointer on to the stack.
-   */
-  *(--(ip->rsp)) = ip->rip;
-
-  /*
-   * Set the return function to be the specificed function.
-   */
-  ip->rip = (unsigned int)newf;
-
-  /*
-   * Disable restrictions on system calls since we don't know where this
-   * function pointer came from.
-   */
-#if LLVA_SCLIMIT
-  ip->sc_disabled = 0;
-#endif
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-  return;
-}
-
-/*
- * Intrinsic: sva_ipush_function1 ()
- *
- * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
- *
- * Inputs:
- *  icontext - A pointer to the exception handler saved state.
- *  newf     - The function to call.
- *  param    - The parameter to send to the function.
- *
- * TODO:
- *  This currently only takes a function that takes a single integer
- *  argument.  Eventually, this should take any function.
- *
- * NOTES:
- *  o This intrinsic could conceivably cause a memory fault (either by
- *    accessing a stack page that isn't paged in, or by overwriting the stack).
- *    This should be addressed at some point.
- */
-void
-sva_ipush_function1 (void * icontext, void (*newf)(int), int param)
-{
-  /* User Context Pointer */
-  sva_icontext_t * ep = icontext;
-
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  do
-  {
-    /*
-     * Check the memory.
-     */
-    sva_check_memory_write (ep, sizeof (sva_icontext_t));
-    sva_check_memory_write (ep->rsp, sizeof (unsigned int) * 2);
-
-    /*
-     * Verify that this interrupt context has a stack pointer.
-     */
-    if (sva_is_privileged () && sva_was_privileged(icontext))
-    {
-      __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-      continue;
-    }
-    break;
-  } while (1);
-
-  /* Performance counters */
-#if LLVA_COUNTERS
-  ++sva_counters.sva_ipush_func;
-  if (sva_debug) ++sva_local_counters.sva_ipush_func;
-  sc_intrinsics[current_sysnum] |= MASK_LLVA_IPUSH_FUNCTION;
-#endif
-
-  /*
-   * Push the one argument on to the user space stack.
-   */
-  *(--(ep->rsp)) = param;
-
-  /*
-   * Push the return PC pointer on to the stack.
-   */
-  *(--(ep->rsp)) = ep->rip;
-
-  /*
-   * Set the return function to be the specificed function.
-   */
-  ep->rip = (unsigned int)newf;
-
-  /*
-   * Disable restrictions on system calls since we don't know where this
-   * function pointer came from.
-   */
-#if LLVA_SCLIMIT
-  ep->sc_disabled = 0;
-#endif
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-  return;
-}
-#endif
-
 
 /*
  * Intrinsic: sva_ipush_function4 ()
@@ -439,6 +267,53 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
    * Re-enable interrupts.
    */
   sva_exit_critical (rflags);
+  return;
+}
+
+/*
+ * Intrinsic: sva_ipush_function0 ()
+ *
+ * Description:
+ *  This intrinsic modifies the user space process code so that the
+ *  specified function was called with the given arguments.
+ *
+ * Inputs:
+ *  newf     - The function to call.
+ *
+ * NOTES:
+ *  o This intrinsic could conceivably cause a memory fault (either by
+ *    accessing a stack page that isn't paged in, or by overwriting the stack).
+ *    This should be addressed at some point.
+ */
+void
+sva_ipush_function0 (void (*newf)(void)) {
+  sva_ipush_function4 (newf, 0, 0, 0, 0);
+  return;
+}
+
+/*
+ * Intrinsic: sva_ipush_function1 ()
+ *
+ * Description:
+ *  This intrinsic modifies the user space process code so that the
+ *  specified function was called with the given arguments.
+ *
+ * Inputs:
+ *  newf     - The function to call.
+ *  param    - The parameter to send to the function.
+ *
+ * TODO:
+ *  This currently only takes a function that takes a single integer
+ *  argument.  Eventually, this should take any function.
+ *
+ * NOTES:
+ *  o This intrinsic could conceivably cause a memory fault (either by
+ *    accessing a stack page that isn't paged in, or by overwriting the stack).
+ *    This should be addressed at some point.
+ */
+void
+sva_ipush_function1 (void (*newf)(int), uintptr_t param) {
+  sva_ipush_function4 (newf, param, 0, 0, 0);
   return;
 }
 
