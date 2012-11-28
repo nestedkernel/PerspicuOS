@@ -2507,8 +2507,6 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
           old->td_proc->p_pid, old->td_tid, old->svaID, old->sva,
           new->td_proc->p_pid, new->td_tid, new->svaID, new->sva);
 
-  breakpoint();
-
   /*
    * The old process is about to have SVA state saved for it, so record that.
    */
