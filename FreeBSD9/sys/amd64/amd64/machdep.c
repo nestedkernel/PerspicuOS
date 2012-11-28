@@ -2499,24 +2499,15 @@ void
 cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
 {
   /* Context switch result */
-  volatile unsigned didSwap;
+  uintptr_t didSwap;
 
-#if 0
-  /*
-   * If this process to switch on has never been swapped out by SVA, allocate
-   * an SVA thread for it.
-   */
-  if (!(new->svaID)) {
-    extern uintptr_t sva_mk_thread (void);
-    if ((new->svaID = sva_mk_thread ()) == 0) {
-      panic ("SVA: No more SVA Threads!\n");
-    }
-  }
-#endif
+  volatile uintptr_t rbx;
 
-  printf ("SVA: %d(%lx:%d) -> %d(%lx:%d)\n",
-          old->td_proc->p_pid, old->svaID, old->sva,
-          new->td_proc->p_pid, new->svaID, new->sva);
+  printf ("SVA: [%d:%d](%lx/%d) -> [%d:%d](%lx:%d)\n",
+          old->td_proc->p_pid, old->td_tid, old->svaID, old->sva,
+          new->td_proc->p_pid, new->td_tid, new->svaID, new->sva);
+
+  breakpoint();
 
   /*
    * The old process is about to have SVA state saved for it, so record that.
@@ -2524,34 +2515,67 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
   old->sva = 1;
 
   /*
+   * For the existing trap code, tell the PCB that it will need to do a full
+   * iret.
+   */
+  old->td_pcb->pcb_flags |= PCB_FULL_IRET;
+
+  /*
+   * Tell the new process which process was running before it.
+   */
+  new->prev = old;
+  new->mtx = mtx;
+
+  /*
    * Use SVA to context switch from the old thread to the new thread.
    */
+  __asm__ __volatile__ ("movq %%rbx, %0\n" : "=m" (rbx));
   didSwap = sva_swap_integer (new->svaID, &(old->svaID));
-  printf ("SVA: Returned to kernel from SVA: %d!\n", didSwap);
-  if (didSwap == 0) {
+  __asm__ __volatile__ ("movq %0, %%rbx\n" :: "m" (rbx));
+  printf ("SVA: Back in Kernel: %d(%d): %lx!\n",
+          old->td_proc->p_pid,
+          old->td_tid,
+          didSwap);
+
+  /* Record the SVA thread here */
+  if (didSwap > 1)
+    new->svaID = didSwap;
+
+  if (didSwap != 1) {
     /* Do an old style context switch */
     cpu_switch(old, new, mtx);
-
-    /* Return because cpu_switch() already did all the other crap that we're
-       about to do. */
     printf ("SVA: Returned to kernel from FreeBSD!\n");
     return;
   }
 
-  printf ("SVA: Did SVA swap!\n");
+  /*
+   * JTC: XXX: Bug: old and new aren't referring to the same old and new
+   * as before.
+   */
 
   /*
    * Release the old thread (I think this does some unlocking stuff when
    * sharing page tables).
    */
-  if ((old->td_pcb->pcb_cr3) == (new->td_pcb->pcb_cr3)) {
+  mtx = old->mtx;
+  if ((old->prev->td_pcb->pcb_cr3) == (old->td_pcb->pcb_cr3)) {
     /* Release the old thread */
-    __sync_lock_test_and_set (&(old->td_lock), mtx);
+    extern struct mtx blocked_lock;
+    printf ("SVA: Same address space: %p %p %p\n", &blocked_lock, mtx, old->prev->td_lock);
+    mtx = __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
   } else {
     /*
-     * Fetch the pmap (physical page mapping) structure from the per-CPU data
-     * structure.
+     * JTC: TODO: There's some logic that sets the td_lock at label swact in
+     * cpu_switch.S  Replicate it here when we start working on threads that
+     * don't share the same address space.
      */
+    panic ("SVA: Different address spaces not done correctly yet.\n");
+
+    /*
+     * Fetch the pmap (physical page mapping) structure from the per-CPU
+     * data structure.
+     */
+    printf ("SVA: Different address space\n");
     struct pmap * pmap = PCPU_GET(curpmap);
 
     /*
@@ -2563,10 +2587,26 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
                           : "r" (cpuid));
 
     /* Release the old thread */
-    __sync_lock_test_and_set (&(old->td_lock), mtx);
+    __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
   }
 
+#if defined(SCHED_ULE) && defined(SMP)
+  panic ("SVA: SMP Swap Start\n");
+  /* Do some locking blocking stuff for the ULE scheduler */
+  extern struct mtx blocked_lock;
+  while (old->td_lock == &blocked_lock) {
+    __asm__ __volatile__ ("pause");
+  }
+  printf ("SVA: SMP Swap End\n");
+#endif
+
+  /*
+   * Update the FreeBSD per-cpu data structure to know which thread is
+   * running on this CPU.
+   */
+  PCPU_SET (curthread, old);
   printf ("SVA: Returned from cpu_switch_sva()!\n");
+
   return;
 }
 
