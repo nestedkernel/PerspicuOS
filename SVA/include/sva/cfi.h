@@ -24,7 +24,7 @@
 #define CHECKLABEL 0x80180F67
 
 /* Macro for call */
-#define CALLQ(x) callq x \
+#define CALLQ(x) callq x ; \
 								 prefetchnta RETLABEL(%eax)
 
 /* Macro for start of function */
