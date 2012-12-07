@@ -309,6 +309,13 @@ struct thread {
 	struct vnet	*td_vnet;	/* (k) Effective vnet. */
 	const char	*td_vnet_lpush;	/* (k) Debugging vnet push / pop. */
 	struct trapframe *td_intr_frame;/* (k) Frame of the current irq */
+#if 1
+  /* The thread that swapped out so this thread could swap on */
+  struct thread * prev;
+  struct mtx * mtx;
+  unsigned char sva; /* Flag whether SVA saved state on context switch */
+  uintptr_t svaID;   /* Thread ID for SVA Thread */
+#endif
 };
 
 struct mtx *thread_lock_block(struct thread *);
@@ -869,7 +876,11 @@ void	tidhash_remove(struct thread *);
 void	cpu_idle(int);
 int	cpu_idle_wakeup(int);
 extern	void (*cpu_idle_hook)(void);	/* Hook to machdep CPU idler. */
+#if 0
 void	cpu_switch(struct thread *, struct thread *, struct mtx *);
+#else
+int	cpu_switch(struct thread *, struct thread *, struct mtx *);
+#endif
 void	cpu_throw(struct thread *, struct thread *) __dead2;
 void	unsleep(struct thread *);
 void	userret(struct thread *, struct trapframe *);
