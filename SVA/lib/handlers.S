@@ -132,6 +132,9 @@ interrupt##x: \
 .global SVAsyscall
 .type SVAsyscall, @function
 
+.global sc_ret
+.type   sc_ret, @function
+
 .global secmemtrap
 .type secmemtrap, @function
 
@@ -503,6 +506,7 @@ SVAsyscall:
    */
   callq sva_syscall
 
+sc_ret:
   /*
    * Switch the stack pointer back to the interrupt context.
    */
