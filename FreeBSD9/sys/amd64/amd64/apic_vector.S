@@ -43,6 +43,8 @@
 
 #include "assym.s"
 
+#include <sva/cfi.h>
+
 /*
  * I/O Interrupt Entry Point.  Rather than having one entry point for
  * each interrupt source, we use one entry point for each 32-bit word
@@ -64,6 +66,7 @@ IDTVEC(vec_name) ;							\
 	movq	%rsp, %rsi	;                                       \
 	movl	%eax, %edi ;	/* pass the IRQ */			\
 	call	lapic_handle_intr ;					\
+	RETTARGET ; \
 1: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti
@@ -101,6 +104,7 @@ IDTVEC(timerint)
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	movq	%rsp, %rdi
 	call	lapic_handle_timer
+	RETTARGET
 	MEXITCOUNT
 	jmp	doreti
 
@@ -113,6 +117,7 @@ IDTVEC(cmcint)
 	PUSH_FRAME
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	call	lapic_handle_cmc
+	RETTARGET
 	MEXITCOUNT
 	jmp	doreti
 
@@ -125,6 +130,7 @@ IDTVEC(errorint)
 	PUSH_FRAME
 	FAKE_MCOUNT(TF_RIP(%rsp))
 	call	lapic_handle_error
+	RETTARGET
 	MEXITCOUNT
 	jmp	doreti
 
@@ -275,6 +281,7 @@ IDTVEC(ipi_intr_bitmap_handler)
 	FAKE_MCOUNT(TF_RIP(%rsp))
 
 	call	ipi_bitmap_handler
+	RETTARGET
 	MEXITCOUNT
 	jmp	doreti
 
@@ -290,6 +297,7 @@ IDTVEC(cpustop)
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
 	call	cpustop_handler
+	RETTARGET
 	jmp	doreti
 
 /*
@@ -304,6 +312,7 @@ IDTVEC(cpususpend)
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 
 	call	cpususpend_handler
+	RETTARGET
 
 	POP_FRAME
 	jmp	doreti_iret
@@ -323,6 +332,7 @@ IDTVEC(rendezvous)
 	incq	(%rax)
 #endif
 	call	smp_rendezvous_action
+	RETTARGET
 	movq	lapic, %rax
 	movl	$0, LA_EOI(%rax)	/* End Of Interrupt to APIC */
 	jmp	doreti

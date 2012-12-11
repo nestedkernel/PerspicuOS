@@ -38,6 +38,8 @@
 
 #include "assym.s"
 
+#include <sva/cfi.h>
+
 	.text
 
 /*
@@ -57,7 +59,7 @@ ENTRY(bzero)
 	andq	$7,%rcx
 	rep
 	stosb
-	ret
+	RETQ
 END(bzero)
 	
 /* Address: %rdi */
@@ -73,7 +75,7 @@ ENTRY(pagezero)
 	addq	$32,%rdx
 	jne	1b
 	sfence
-	ret
+	RETQ
 END(pagezero)
 
 ENTRY(bcmp)
@@ -91,7 +93,7 @@ ENTRY(bcmp)
 1:
 	setne	%al
 	movsbl	%al,%eax
-	ret
+	RETQ
 END(bcmp)
 
 /*
@@ -116,7 +118,8 @@ ENTRY(bcopy)
 	andq	$7,%rcx				/* any bytes left? */
 	rep
 	movsb
-	ret
+	RETQ
+	retq
 
 	/* ALIGN_TEXT */
 1:
@@ -135,7 +138,7 @@ ENTRY(bcopy)
 	rep
 	movsq
 	cld
-	ret
+	RETQ
 END(bcopy)
 	
 /*
@@ -151,7 +154,7 @@ ENTRY(memcpy)
 	andq	$7,%rcx				/* any bytes left? */
 	rep
 	movsb
-	ret
+	RETQ
 END(memcpy)
 
 /*
@@ -178,7 +181,7 @@ ENTRY(pagecopy)
 	addq	$32,%rdx
 	jne	2b
 	sfence
-	ret
+	RETQ
 END(pagecopy)
 
 /* fillw(pat, base, cnt) */  
@@ -190,7 +193,7 @@ ENTRY(fillw)
 	cld
 	rep
 	stosw
-	ret
+	RETQ
 END(fillw)
 
 /*****************************************************************************/
@@ -255,14 +258,14 @@ done_copyout:
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rdx
 	movq	%rax,PCB_ONFAULT(%rdx)
-	ret
+	RETQ
 
 	ALIGN_TEXT
 copyout_fault:
 	movq	PCPU(CURPCB),%rdx
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
-	ret
+	RETQ
 END(copyout)
 
 /*
@@ -301,14 +304,14 @@ done_copyin:
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rdx
 	movq	%rax,PCB_ONFAULT(%rdx)
-	ret
+	RETQ
 
 	ALIGN_TEXT
 copyin_fault:
 	movq	PCPU(CURPCB),%rdx
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
-	ret
+	RETQ
 END(copyin)
 
 /*
@@ -337,7 +340,7 @@ ENTRY(casuword32)
 
 	movq	PCPU(CURPCB),%rcx
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(casuword32)
 
 /*
@@ -367,7 +370,7 @@ ENTRY(casuword)
 	movq	PCPU(CURPCB),%rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(casuword)
 
 /*
@@ -387,7 +390,7 @@ ENTRY(fuword)
 
 	movq	(%rdi),%rax
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(fuword64)	
 END(fuword)
 
@@ -401,7 +404,7 @@ ENTRY(fuword32)
 
 	movl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(fuword32)
 
 /*
@@ -414,7 +417,7 @@ END(fuword32)
 ALTENTRY(suswintr)
 ENTRY(fuswintr)
 	movq	$-1,%rax
-	ret
+	RETQ
 END(suswintr)
 END(fuswintr)
 
@@ -428,7 +431,7 @@ ENTRY(fuword16)
 
 	movzwl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(fuword16)
 
 ENTRY(fubyte)
@@ -441,7 +444,7 @@ ENTRY(fubyte)
 
 	movzbl	(%rdi),%eax
 	movq	$0,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(fubyte)
 
 	ALIGN_TEXT
@@ -450,7 +453,7 @@ fusufault:
 	xorl	%eax,%eax
 	movq	%rax,PCB_ONFAULT(%rcx)
 	decq	%rax
-	ret
+	RETQ
 
 /*
  * Store a 64-bit word, a 32-bit word, a 16-bit word, or an 8-bit byte to
@@ -470,7 +473,7 @@ ENTRY(suword)
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(suword64)
 END(suword)
 
@@ -486,7 +489,7 @@ ENTRY(suword32)
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(suword32)
 
 ENTRY(suword16)
@@ -501,7 +504,7 @@ ENTRY(suword16)
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rcx		/* restore trashed register */
 	movq	%rax,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(suword16)
 
 ENTRY(subyte)
@@ -517,7 +520,7 @@ ENTRY(subyte)
 	xorl	%eax,%eax
 	movq	PCPU(CURPCB),%rcx		/* restore trashed register */
 	movq	%rax,PCB_ONFAULT(%rcx)
-	ret
+	RETQ
 END(subyte)
 
 /*
@@ -586,7 +589,7 @@ cpystrflt_x:
 	subq	%rdx,%r8
 	movq	%r8,(%r9)
 1:
-	ret
+	RETQ
 END(copyinstr)
 
 /*
@@ -623,7 +626,7 @@ ENTRY(copystr)
 	subq	%rdx,%r8
 	movq	%r8,(%rcx)
 7:
-	ret
+	RETQ
 END(copystr)
 
 /*
@@ -651,7 +654,11 @@ ENTRY(lgdt)
 	pushq	$KCSEL
 	pushq	%rax
 	MEXITCOUNT
+#if 1
 	lretq
+#else
+	RETQ
+#endif
 END(lgdt)
 
 /*****************************************************************************/
@@ -669,7 +676,7 @@ ENTRY(setjmp)
 	movq	0(%rsp),%rdx			/* get rta */
 	movq	%rdx,56(%rdi)			/* save rip */
 	xorl	%eax,%eax			/* return(0); */
-	ret
+	RETQ
 END(setjmp)
 
 ENTRY(longjmp)
@@ -684,7 +691,7 @@ ENTRY(longjmp)
 	movq	%rdx,0(%rsp)			/* put in return frame */
 	xorl	%eax,%eax			/* return(1); */
 	incl	%eax
-	ret
+	RETQ
 END(longjmp)
 
 /*
@@ -703,7 +710,7 @@ ENTRY(rdmsr_safe)
 	movq	%rax,(%rsi)
 	xorq	%rax,%rax
 	movq	%rax,PCB_ONFAULT(%r8)
-	ret
+	RETQ
 
 /*
  * Support for writing MSRs in the safe manner.
@@ -720,7 +727,7 @@ ENTRY(wrmsr_safe)
 				   hi byte in edx, lo in %eax. */
 	xorq	%rax,%rax
 	movq	%rax,PCB_ONFAULT(%r8)
-	ret
+	RETQ
 
 /*
  * MSR operations fault handler
@@ -729,4 +736,4 @@ ENTRY(wrmsr_safe)
 msr_onfault:
 	movq	$0,PCB_ONFAULT(%r8)
 	movl	$EFAULT,%eax
-	ret
+	RETQ

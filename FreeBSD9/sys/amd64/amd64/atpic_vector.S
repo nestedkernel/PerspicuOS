@@ -40,6 +40,8 @@
 
 #include "assym.s"
 
+#include <sva/cfi.h>
+
 /*
  * Macros for interrupt entry, call to handler, and exit.
  */
@@ -52,6 +54,7 @@ IDTVEC(vec_name) ;							\
 	movq	%rsp, %rsi	;                                       \
 	movl	$irq_num, %edi; 	/* pass the IRQ */		\
 	call	atpic_handle_intr ;					\
+	RETTARGET ; \
 	MEXITCOUNT ;							\
 	jmp	doreti
 

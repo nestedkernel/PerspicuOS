@@ -33,6 +33,8 @@
 
 #include "assym.s"
 
+#include <sva/cfi.h>
+
 /*
  * Compiled KERNBASE location
  */
@@ -77,8 +79,10 @@ NON_GPROF_ENTRY(btext)
 	xorl	%ebp, %ebp
 
 	call	hammer_time		/* set up cpu for unix operation */
+	RETTARGET
 	movq	%rax,%rsp		/* set up kstack for mi_startup() */
 	call	mi_startup		/* autoconfiguration, mountroot etc */
+	RETTARGET
 0:	hlt
 	jmp	0b
 
