@@ -29,14 +29,24 @@
 
 /* Macro for start of function */
 #define STARTFUNC prefetchnta CALLLABEL(%eax)
+#define RETTARGET prefetchnta RETLABEL(%eax)
 
 /* Macro for return */
+#if 0
 #define RETQ  movq  (%rsp), %rcx ; \
               addq  $8, %rsp ; \
               cmpl  $CHECKLABEL, (%rcx) ; \
-							jne 1f ; \
-							jmpq  *%rcx ; \
-							1: movq $0x0fea, %rcx; \
-							jmpq  *%rcx ; \
+              jne 23f ; \
+              jmpq  *%rcx ; \
+              23: movq $0x0fea, %rcx; \
+							jmpq  *%rcx ;
+#else
+#define RETQ  movq  (%rsp), %rcx ; \
+              addq  $8, %rsp ; \
+              cmpl  $CHECKLABEL, (%rcx) ; \
+              jne 23f ; \
+              jmpq  *%rcx ; \
+              23: jmpq  *%rcx ;
+#endif
 
 #endif
