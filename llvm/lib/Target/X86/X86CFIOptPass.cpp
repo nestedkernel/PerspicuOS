@@ -15,6 +15,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <iostream>
+
 #include "X86.h"
 #include "X86CFIOptPass.h"
 
@@ -161,11 +163,13 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB,
   unsigned reg = MI->getOperand(0).getReg();
   addCheckInstruction (MBB,MI,dl,TII, reg);
 
+#if 0
   //
   // Add an instruction to jump to the error handling code if the check fails:
   // JNE_4 EMBB
   //
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -213,8 +217,10 @@ void X86CFIOptPass::insertCheckCall32m(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   addCheckInstruction (MBB,MI,dl,TII, X86::EAX);
 
+#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -233,9 +239,14 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
                      MachineBasicBlock* EMBB){
   assert(MI->getOpcode() == X86::CALL64m && "opcode: CALL64m expected");
-  // use %eax since %eax is caller-saved
-  // MOV32rm, %eax, mem_loc
-  BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),X86::EAX)
+#if 0
+  std::cerr << "JTC:" << MBB.getParent()->getFunction()->getName().str() << ":" << std::endl;
+  MI->dump();
+#endif
+
+  // use %rax since %rax is caller-saved
+  // MOV32rm, %rax, mem_loc
+  BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm),X86::RAX)
   .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
   .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
   .addReg(MI->getOperand(4).getReg());
@@ -243,18 +254,20 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   // Add an instruction to perform the label check.
   //
-  addCheckInstruction (MBB,MI,dl,TII, X86::EAX);
+  addCheckInstruction (MBB,MI,dl,TII, X86::RAX);
 
+#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, X86::EAX);
+  addSkipInstruction (MBB, MI, dl, TII, X86::RAX);
 
-  // call %eax
-  BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
+  // call %rax
+  BuildMI(MBB,MI,dl,TII->get(X86::CALL64r)).addReg(X86::RAX);
   MBB.erase(MI);
 }
 
@@ -270,8 +283,10 @@ void X86CFIOptPass::insertCheckJmp32r(MachineBasicBlock& MBB, MachineInstr *MI,
   const unsigned reg = MI->getOperand(0).getReg();
   addCheckInstruction (MBB, MI, dl, TII, reg);
 
+#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -348,8 +363,10 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
     //
     addCheckInstruction (MBB, MI, dl, TII, killed);
 
+#if 0
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
     //
     // Add code to skip the CFI label.
@@ -398,8 +415,10 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
 
     // POP32r %reg
     BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
+#if 0
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
   }
 }
 
@@ -419,8 +438,10 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
   //
   addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
 
+#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -445,8 +466,10 @@ void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI
   unsigned reg = MI->getOperand(0).getReg();
   addCheckInstruction (MBB, MI, dl, TII, reg);
 
+#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -501,8 +524,10 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
     //
     addCheckInstruction (MBB, MI, dl, TII, killed);
 
+#if 0
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
     //
     // Add code to skip the CFI label.
@@ -548,8 +573,10 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
 
     // POP32r %reg
     BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
+#if 0
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
   } 
 }
 
@@ -647,8 +674,10 @@ void X86CFIOptPass::insertCheckReti(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
 
+#if 0
   // jne EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
+#endif
 
   //
   // Add code to skip the CFI label.
@@ -849,7 +878,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 
           case X86::CALL64m:
             insertIDCall(MBB,MI,nextMI,dl,TII);
+#if 1
             insertCheckCall64m(MBB,MI,dl,TII,EMBB);
+#endif
             break;
 
           case X86::CALL64pcrel32:
@@ -906,18 +937,24 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::TAILJMPm:
+#if 0
             insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
+#endif
             break;
 
           case X86::TAILJMPm64:
+#if 0
             insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
+#endif
             break;
 
           case X86::TAILJMPr:
-            insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
+            insertCheckTailJmpr(MBB,MI,dl,TII,EMBB);
+            break;
 
           case X86::TAILJMPr64:
             insertCheckTailJmpr(MBB,MI,dl,TII,EMBB); break;
+						break;
 
           case X86::TCRETURNdi:
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
@@ -983,7 +1020,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             // checks and IDs.
             //
             if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
+#if 0
               insertCheckJmp32m(MBB,MI,dl,TII,EMBB);
+#endif
  
               // insert prefetchnta CFI_ID at successors
               insertIDSuccessors(MBB,dl,TII);
@@ -1007,7 +1046,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             // checks and IDs.
             //
             if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
+#if 0
               insertCheckJmp64m(MBB,MI,dl,TII,EMBB);
+#endif
  
               // insert prefetchnta CFI_ID at successors
               insertIDSuccessors(MBB,dl,TII);
@@ -1030,10 +1071,17 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::RET:
-            insertCheckRet(MBB,MI,dl,TII,EMBB); break;
+            insertCheckRet(MBB,MI,dl,TII,EMBB);
+            break;
 
           case X86::RETI:
-            insertCheckReti(MBB,MI,dl,TII,EMBB); break;
+#if 0
+            insertCheckReti(MBB,MI,dl,TII,EMBB);
+#else
+            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
+            MI->dump(); abort(); break;
+#endif
+						break;
 
       #if 0
           case X86::LRET: // far ret
