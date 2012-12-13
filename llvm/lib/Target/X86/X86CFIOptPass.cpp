@@ -526,8 +526,8 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
 
   // if the JMP32m kills a register, use it for check
   if(killed != 0){
-    // MOV32rm, %killed, mem_loc
-    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),killed)
+    // MOV64rm, %killed, mem_loc
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm),killed)
       .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
       .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
       .addReg(MI->getOperand(4).getReg());
@@ -537,59 +537,76 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
     //
     addCheckInstruction (MBB, MI, dl, TII, killed);
 
-#if 0
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-#endif
 
     //
     // Add code to skip the CFI label.
     //
     addSkipInstruction (MBB, MI, dl, TII, killed);
 
-    // JMP32r %killed
-    BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
+    // JMP64r %killed
+    BuildMI(MBB,MI,dl,TII->get(X86::JMP64r)).addReg(killed);
     MBB.erase(MI);
-  } else { // spill a register onto stack
+  } else {
+    // Spill a register onto stack
     unsigned reg = 0;
-    if(!MI->readsRegister(X86::AH, TRI) && !MI->readsRegister(X86::AL, TRI) &&
-     !MI->readsRegister(X86::AX, TRI) && !MI->readsRegister(X86::EAX, TRI))
-      reg = X86::EAX;
-    else if(!MI->readsRegister(X86::CH, TRI) && !MI->readsRegister(X86::CL, TRI) &&
-      !MI->readsRegister(X86::CX, TRI) && !MI->readsRegister(X86::ECX, TRI))
-      reg = X86::ECX;
-    else if(!MI->readsRegister(X86::DH, TRI) && !MI->readsRegister(X86::DL, TRI) &&
-      !MI->readsRegister(X86::DX, TRI) && !MI->readsRegister(X86::EDX, TRI))
-      reg = X86::EDX;
-    else if(!MI->readsRegister(X86::BH, TRI) && !MI->readsRegister(X86::BL, TRI) &&
-      !MI->readsRegister(X86::BX, TRI) && !MI->readsRegister(X86::EBX, TRI))
-      reg = X86::EBX;
-  else if(!MI->readsRegister(X86::SI, TRI) && !MI->readsRegister(X86::ESI, TRI))
-    reg = X86::ESI;
-  else if(!MI->readsRegister(X86::DI, TRI) && !MI->readsRegister(X86::EDI, TRI))
-    reg = X86::EDI;
-    else abort();
-    // pushl %reg
-    BuildMI(MBB,MI,dl,TII->get(X86::PUSH32r)).addReg(reg);
-    // MOV32rm  mem_loc, %reg
-    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm),reg)
-      .addReg(MI->getOperand(0).getReg())  // base
+    if (!MI->readsRegister(X86::AH, TRI) &&
+        !MI->readsRegister(X86::AL, TRI) &&
+        !MI->readsRegister(X86::AX, TRI) &&
+        !MI->readsRegister(X86::EAX, TRI) &&
+        !MI->readsRegister(X86::RAX, TRI))
+      reg = X86::RAX;
+    else if (!MI->readsRegister(X86::CH, TRI) &&
+             !MI->readsRegister(X86::CL, TRI) &&
+             !MI->readsRegister(X86::CX, TRI) &&
+             !MI->readsRegister(X86::ECX, TRI) &&
+             !MI->readsRegister(X86::RCX, TRI))
+      reg = X86::RCX;
+    else if (!MI->readsRegister(X86::DH, TRI) &&
+             !MI->readsRegister(X86::DL, TRI) &&
+             !MI->readsRegister(X86::DX, TRI) &&
+             !MI->readsRegister(X86::EDX, TRI) &&
+             !MI->readsRegister(X86::RDX, TRI))
+      reg = X86::RDX;
+    else if (!MI->readsRegister(X86::BH, TRI) &&
+             !MI->readsRegister(X86::BL, TRI) &&
+             !MI->readsRegister(X86::BX, TRI) &&
+             !MI->readsRegister(X86::EBX, TRI) &&
+             !MI->readsRegister(X86::RBX, TRI))
+      reg = X86::RBX;
+  else if (!MI->readsRegister(X86::SI, TRI) &&
+           !MI->readsRegister(X86::ESI, TRI) &&
+           !MI->readsRegister(X86::RSI, TRI))
+    reg = X86::RSI;
+  else if (!MI->readsRegister(X86::DI, TRI) &&
+           !MI->readsRegister(X86::EDI, TRI) &&
+           !MI->readsRegister(X86::RDI, TRI))
+    reg = X86::RDI;
+  else
+    abort();
+
+  // pushl %reg
+  BuildMI (MBB,MI,dl,TII->get(X86::PUSH64r)).addReg(reg);
+
+  // MOV64rm  mem_loc, %reg
+  BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm),reg)
+    .addReg(MI->getOperand(0).getReg())  // base
     .addImm(MI->getOperand(1).getImm())  // scale
-      .addReg(MI->getOperand(2).getReg())  // index
+    .addReg(MI->getOperand(2).getReg())  // index
     .addOperand(MI->getOperand(3))       // displacement
-      .addReg(MI->getOperand(4).getReg()); //segment register
+    .addReg(MI->getOperand(4).getReg()); //segment register
 
     //
     // Add an instruction to perform the label check.
     //
     addCheckInstruction (MBB, MI, dl, TII, reg);
 
-    // POP32r %reg
-    BuildMI(MBB,MI,dl,TII->get(X86::POP32r),reg);
-#if 0
+    // POP64r %reg
+    BuildMI(MBB,MI,dl,TII->get(X86::POP64r),reg);
+
     // JNE_4 EMBB
     BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-#endif
   } 
 }
 
@@ -1058,9 +1075,7 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             // checks and IDs.
             //
             if (!JTOpt || MI->getOperand(3).getType() != MachineOperand::MO_JumpTableIndex) {
-#if 0
               insertCheckJmp64m(MBB,MI,dl,TII,EMBB);
-#endif
  
               // insert prefetchnta CFI_ID at successors
               insertIDSuccessors(MBB,dl,TII);
