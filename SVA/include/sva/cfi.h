@@ -32,7 +32,6 @@
 #define RETTARGET prefetchnta RETLABEL(%eax)
 
 /* Macro for return */
-#if 0
 #define RETQ  movq  (%rsp), %rcx ; \
               addq  $8, %rsp ; \
               cmpl  $CHECKLABEL, (%rcx) ; \
@@ -40,13 +39,5 @@
               jmpq  *%rcx ; \
               23: movq $0x0fea, %rcx; \
 							jmpq  *%rcx ;
-#else
-#define RETQ  movq  (%rsp), %rcx ; \
-              addq  $8, %rsp ; \
-              cmpl  $CHECKLABEL, (%rcx) ; \
-              jne 23f ; \
-              jmpq  *%rcx ; \
-              23: jmpq  *%rcx ;
-#endif
 
 #endif
