@@ -19,6 +19,7 @@
  ****************************************************************************/
 
 #include "offsets.h"
+#include <sva/cfi.h>
 
 /* FreeBSD segment selector for kernel code segment */
 #define USERCS 0x03
@@ -220,7 +221,7 @@ restoreRegs:
   movq IC_R14(%rbp), %r14
   movq IC_R15(%rbp), %r15
 
-  ret
+  retq
 
 /*
  * Function: Trap
@@ -505,6 +506,7 @@ SVAsyscall:
    * Call the system software system call handler.
    */
   callq sva_syscall
+  RETTARGET
 
 sc_ret:
   /*
