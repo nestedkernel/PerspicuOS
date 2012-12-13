@@ -919,10 +919,6 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
           case X86::CALL64pcrel32:
             insertIDCall(MBB,MI,nextMI,dl,TII);
             break;
-#if 0
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-#endif
 
           case X86::CALL64r:
             insertIDCall(MBB,MI,nextMI,dl,TII);
