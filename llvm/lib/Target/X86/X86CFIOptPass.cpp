@@ -239,10 +239,6 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
                      DebugLoc& dl, const TargetInstrInfo* TII,
                      MachineBasicBlock* EMBB){
   assert(MI->getOpcode() == X86::CALL64m && "opcode: CALL64m expected");
-#if 0
-  std::cerr << "JTC:" << MBB.getParent()->getFunction()->getName().str() << ":" << std::endl;
-  MI->dump();
-#endif
 
   // use %rax since %rax is caller-saved
   // MOV32rm, %rax, mem_loc
@@ -256,10 +252,8 @@ void X86CFIOptPass::insertCheckCall64m(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   addCheckInstruction (MBB,MI,dl,TII, X86::RAX);
 
-#if 0
   // JNE_4 EMBB
   BuildMI(MBB,MI,dl,TII->get(X86::JNE_4)).addMBB(EMBB);
-#endif
 
   //
   // Add code to skip the CFI label.
@@ -422,21 +416,37 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
   }
 }
 
-void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI,
-                    DebugLoc& dl, const TargetInstrInfo* TII,
-                    MachineBasicBlock* EMBB){
+void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB,
+                                        MachineInstr* MI,
+                                        DebugLoc& dl,
+                                        const TargetInstrInfo* TII,
+                                        MachineBasicBlock* EMBB) {
   assert((MI->getOpcode() == X86::TAILJMPm ||
           MI->getOpcode() == X86::TAILJMPm64) && "opcode: TAILJMPm expected");
-  // movl mem_loc, %ecx, we use %ecx since %ecx is not used for return values
-  BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
-  .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
-  .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
-  .addReg(MI->getOperand(4).getReg());
+
+  //
+  // Template: movl mem_loc, %[r|e]cx
+  //
+  // Move the target address into the %[r|e]cx register since this register is
+  // not used for return values.
+  //
+  if (is64Bit()) {
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
+    .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
+    .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
+    .addReg(MI->getOperand(4).getReg());
+  } else {
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV32rm), X86::ECX)
+    .addReg(MI->getOperand(0).getReg()).addImm(MI->getOperand(1).getImm())
+    .addReg(MI->getOperand(2).getReg()).addOperand(MI->getOperand(3))
+    .addReg(MI->getOperand(4).getReg());
+  }
 
   //
   // Add an instruction to perform the label check.
   //
-  addCheckInstruction (MBB, MI, dl, TII, X86::ECX);
+  unsigned targetRegister = is64Bit() ? X86::RCX : X86::ECX;
+  addCheckInstruction (MBB, MI, dl, TII, targetRegister);
 
 #if 0
   // JNE_4 EMBB
@@ -446,10 +456,13 @@ void X86CFIOptPass::insertCheckTailJmpm(MachineBasicBlock& MBB, MachineInstr* MI
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
+  addSkipInstruction (MBB, MI, dl, TII, targetRegister);
 
   // JMP32r %ecx
-  BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
+  if (is64Bit())
+    BuildMI(MBB,MI,dl,TII->get(X86::JMP64r)).addReg(targetRegister);
+  else
+    BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(targetRegister);
   MBB.erase(MI);
 }
 
@@ -782,7 +795,12 @@ MachineBasicBlock* X86CFIOptPass::insertBasicBlockBefore(MachineFunction &MF,
   // JNE_4 error_label
   // BuildMI(MBB,dl,TII->get(X86::JNE_4)).addExternalSymbol("error_label");
   // insert jmp 0
+#if 0
   BuildMI(MBB,dl,TII->get(X86::JMP_1)).addImm(0x0fea);
+#else
+  /* JTC: Do this for now */
+  BuildMI(MBB,dl,TII->get(X86::INT3));
+#endif
   // MOV32ri %eax, 0, causes problems
   // BuildMI(MBB,dl,TII->get(X86::MOV32ri),X86::EAX).addImm(0);
   // CALL32r %eax !!! this has problems when dump is used
@@ -878,9 +896,7 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 
           case X86::CALL64m:
             insertIDCall(MBB,MI,nextMI,dl,TII);
-#if 1
             insertCheckCall64m(MBB,MI,dl,TII,EMBB);
-#endif
             break;
 
           case X86::CALL64pcrel32:
@@ -937,15 +953,11 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             break;
 
           case X86::TAILJMPm:
-#if 0
             insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
-#endif
             break;
 
           case X86::TAILJMPm64:
-#if 0
             insertCheckTailJmpm(MBB,MI,dl,TII, EMBB);
-#endif
             break;
 
           case X86::TAILJMPr:
