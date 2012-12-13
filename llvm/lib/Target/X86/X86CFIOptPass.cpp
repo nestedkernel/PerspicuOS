@@ -1110,12 +1110,12 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 #endif
 						break;
 
-      #if 0
+#if 0
           case X86::LRET: // far ret
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
 
-      #endif
+#endif
           case X86::LRETI: // far reti
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
