@@ -211,10 +211,24 @@ load_integer:
   pushq IC_RFLAGS(%rdi)
 #endif
 
+  /*
+   * Fetch the correct program counter value for returning from
+   * sva_swap_integer() and put it on the stack.
+   */
+#if 0
+  popq %rcx
+  popq %rcx
+  pushq IS_HACKRIP(%rdi)
+
+  /* Fetch the program counter */
+  movq IC_RIP(%rdi), %rcx
+  pushq %rcx
+#else
   /* Fetch the program counter */
   popq %rcx
   movq IC_RIP(%rdi), %rcx
   pushq %rcx
+#endif
 
   /* Restore the %rdi register */
   movq IC_RDI(%rdi), %rdi

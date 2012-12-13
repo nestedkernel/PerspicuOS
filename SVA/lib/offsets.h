@@ -50,4 +50,5 @@
 /* Size of the interrupt context */
 #define IC_SIZE    0xd0
 
+#define IS_HACKRIP 0xc8
 

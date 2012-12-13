@@ -163,11 +163,20 @@ typedef struct {
   /* Flag for whether the integer state is valid */
   unsigned long valid;                // 0xc0
 
+  /* Store another RIP value for the second return */
+  unsigned long hackRIP;              // 0xc8
+
   /* Kernel stack pointer */
-  unsigned long kstackp;              // 0xc8
+  unsigned long kstackp;              // 0xd0
 
   /* CR3 register */
-  unsigned long cr3;                  // 0xd0
+  unsigned long cr3;                  // 0xd8
+
+  /* Current interrupt context location */
+  sva_icontext_t * currentIC;
+
+  /* Current setting of IST3 in the TSS */
+  unsigned long ist3;
 } sva_integer_state_t;
 
 typedef struct
@@ -307,12 +316,11 @@ extern unsigned int  sva_invoke      (unsigned int * retvalue,
  ****************************************************************************/
 #endif
 
-extern unsigned sva_swap_integer  (uintptr_t new, uintptr_t * state);
+extern uintptr_t sva_swap_integer  (uintptr_t new, uintptr_t * state);
 
+extern uintptr_t sva_init_stack (unsigned char * sp, uintptr_t length,
+                                 void * f, unsigned int arg);
 #if 0
-extern unsigned int sva_init_stack (unsigned char * sp, unsigned length,
-                                    void * oip, void * f, unsigned int arg)
-                                   __attribute__ ((regparm(0)));
 extern void *       sva_declare_stack (void * p, unsigned size);
 extern void         sva_release_stack (void * p);
 

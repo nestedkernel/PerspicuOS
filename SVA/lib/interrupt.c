@@ -89,6 +89,12 @@ sva_mk_thread (void) {
   return (uintptr_t) findNextFreeThread();
 }
 
+uintptr_t
+sva_get_thread (void) {
+  struct CPUState * cpup = getCPUState();
+  return (uintptr_t) (cpup->currentThread);
+}
+
 /*
  * Intrinsic: sva_getCPUState()
  *
