@@ -930,15 +930,9 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
 
-#if 0
-          case X86::TAILJMP_1:
-            llvm::errs() << "instr unsupported at " << __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-
-#endif
-            // TAILJMPd is an direct jmp instruction
-            // when there is a call at the end of a function, it can be transformed into
-            // a jmp instruction
+          // TAILJMPd is a direct jmp instruction
+          // when there is a call at the end of a function, it can be
+          // transformed into a jmp instruction
           case X86::TAILJMPd:
             break;
 
@@ -985,20 +979,6 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
 
-#if 0
-          case X86::WINCALL64m:
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-
-          case X86::WINCALL64pcrel32:
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-
-          case X86::WINCALL64r:
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-
-#endif
           case X86::FARJMP16i:
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
@@ -1084,13 +1064,12 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 #endif
 						break;
 
-#if 0
-          case X86::LRET: // far ret
-            llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
-            MI->dump(); abort(); break;
-
-#endif
-          case X86::LRETI: // far reti
+          // Far returns
+          case X86::LRETL:
+          case X86::LRETW:
+          case X86::LRETQ:
+          case X86::LRETI:
+          case X86::LRETIW:
             llvm::errs() << "instr unsupported at "<< __FILE__ << ":" << __LINE__ << "\n";
             MI->dump(); abort(); break;
 
