@@ -825,13 +825,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Verify that we can load the new integer state.
      */
-    printf ("SVA: Verify Integer\n");
     checkIntegerForLoad (new);
 
     /*
      * Switch the CPU over to using the new set of interrupt contexts.
      */
-    printf ("SVA: Switch CPU Contexts\n");
     cpup->currentThread = newThread;
     cpup->tssp->rsp0 = new->kstackp;
     cpup->tssp->ist3 = new->ist3;
@@ -840,14 +838,12 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Invalidate the state that we're about to load.
      */
-    printf ("SVA: Invalidate state to load\n");
     new->valid = 0;
 
     /*
      * Switch to the new address space.  We only modify CR3 if the two states
      * use different page tables because any changes to CR3 may flush the TLB.
      */
-    printf ("SVA: Switch CR3\n");
     if (old->cr3 != new->cr3) {
       cr3 = new->cr3;
       __asm__ __volatile__ ("movq %0, %%cr3\n" : : "r" (cr3));
@@ -856,7 +852,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Load the rest of the integer state.
      */
-    printf ("SVA: Start Load\n");
     load_integer (new);
   }
 #endif
