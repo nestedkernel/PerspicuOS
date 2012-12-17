@@ -34,6 +34,10 @@
 
 #include <sys/cdefs.h>
 
+#if 1
+#include <sva/cfi.h>
+#endif
+
 /* XXX too much duplication in various asm*.h's. */
 
 /*
@@ -52,8 +56,13 @@
 #endif
 #define SUPERALIGN_TEXT	.p2align 4,0x90	/* 16-byte alignment, nop filled */
 
+#if 0
 #define GEN_ENTRY(name)		ALIGN_TEXT; .globl CNAME(name); \
 				.type CNAME(name),@function; CNAME(name):
+#else
+#define GEN_ENTRY(name)		ALIGN_TEXT; .globl CNAME(name); \
+				.type CNAME(name),@function; CNAME(name): STARTFUNC
+#endif
 #define NON_GPROF_ENTRY(name)	GEN_ENTRY(name)
 #define NON_GPROF_RET		.byte 0xc3	/* opcode for `ret' */
 

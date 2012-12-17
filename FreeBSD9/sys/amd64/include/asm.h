@@ -46,6 +46,10 @@
 #define	PIC_GOT(x)	x
 #endif
 
+#if 1
+#include <sva/cfi.h>
+#endif
+
 /*
  * CNAME and HIDENAME manage the relationship between symbol names in C
  * and the equivalent assembly language names.  CNAME is given a name as
@@ -58,8 +62,13 @@
 
 #define _START_ENTRY	.text; .p2align 4,0x90
 
+#if 0
 #define _ENTRY(x)	_START_ENTRY; \
 			.globl CNAME(x); .type CNAME(x),@function; CNAME(x):
+#else
+#define _ENTRY(x)	_START_ENTRY; \
+			.globl CNAME(x); .type CNAME(x),@function; CNAME(x): STARTFUNC
+#endif
 
 #ifdef PROF
 #define	ALTENTRY(x)	_ENTRY(x); \
