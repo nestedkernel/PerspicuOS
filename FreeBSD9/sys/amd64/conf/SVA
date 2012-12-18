@@ -23,7 +23,8 @@ ident		GENERIC
 
 makeoptions	DEBUG=-g		# Build kernel with gdb(1) debug symbols
 
-options 	SCHED_ULE		# ULE scheduler
+#options 	SCHED_ULE		# ULE scheduler
+options   SCHED_4BSD
 options 	PREEMPTION		# Enable kernel thread preemption
 options 	INET			# InterNETworking
 options 	INET6			# IPv6 communications protocols
@@ -68,9 +69,10 @@ options 	KDB			# Kernel debugger related code
 options 	KDB_TRACE		# Print a stack trace for a panic
 options		DDB
 options		BREAK_TO_DEBUGGER # Break signal on console goes into debugger
+options		ALT_BREAK_TO_DEBUGGER # Break signal on console goes into debugger
 
 # Make an SMP-capable kernel by default
-options 	SMP			# Symmetric MultiProcessor Kernel
+#options 	SMP			# Symmetric MultiProcessor Kernel
 
 # CPU frequency control
 device		cpufreq
