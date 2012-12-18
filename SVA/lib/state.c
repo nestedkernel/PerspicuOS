@@ -1293,7 +1293,9 @@ uintptr_t
 sva_init_stack (unsigned char * start_stackp,
                 uintptr_t length,
                 void * func,
-                unsigned int arg) {
+                uintptr_t arg1,
+                uintptr_t arg2,
+                uintptr_t arg3) {
   /* Working memory pointer */
   sva_icontext_t * icontextp;
 
@@ -1387,7 +1389,9 @@ sva_init_stack (unsigned char * start_stackp,
   integerp = &(newThread->integerState);
   bzero (integerp, sizeof (sva_integer_state_t));
   integerp->rip = func;
-  integerp->rdi = arg;
+  integerp->rdi = arg1;
+  integerp->rsi = arg2;
+  integerp->rdx = arg3;
   integerp->rsp = stackp;
   integerp->cs  = 0x10;
   integerp->valid = 1;

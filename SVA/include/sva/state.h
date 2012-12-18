@@ -317,9 +317,12 @@ extern unsigned int  sva_invoke      (unsigned int * retvalue,
 #endif
 
 extern uintptr_t sva_swap_integer  (uintptr_t new, uintptr_t * state);
-
-extern uintptr_t sva_init_stack (unsigned char * sp, uintptr_t length,
-                                 void * f, unsigned int arg);
+extern uintptr_t sva_init_stack (unsigned char * sp,
+                                 uintptr_t length,
+                                 void * f,
+                                 uintptr_t arg1,
+                                 uintptr_t arg2,
+                                 uintptr_t arg3);
 #if 0
 extern void *       sva_declare_stack (void * p, unsigned size);
 extern void         sva_release_stack (void * p);
