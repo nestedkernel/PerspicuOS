@@ -94,6 +94,66 @@ static u_int	cpu_reset_proxyid;
 static volatile u_int	cpu_reset_proxy_active;
 #endif
 
+#if 1
+static void
+kernel_thread_trampoline (void (*f)(uintptr_t), void * arg)
+{
+  /* Grab a reference to the current thread */
+  struct thread * old = curthread;
+
+  extern void fork_exit(void (*callout)(void *, struct trapframe *),
+                        void *arg,
+                        struct trapframe *frame);
+
+  /*
+   * Release the old thread (I think this does some unlocking stuff when
+   * sharing page tables).
+   */
+  struct mtx * mtx = old->mtx;
+  if ((old->prev->td_pcb->pcb_cr3) == (old->td_pcb->pcb_cr3)) {
+    /* Release the old thread */
+    extern struct mtx blocked_lock;
+    printf ("SVA: tramp: Same address space: %p %p %p\n", &blocked_lock, mtx, old->prev->td_lock);
+    mtx = __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
+    printf ("SVA: tramp: sync done\n");
+  } else {
+    /*
+     * Fetch the pmap (physical page mapping) structure from the per-CPU
+     * data structure.
+     */
+    printf ("SVA: tramp: Different address space\n");
+    struct pmap * pmap = PCPU_GET(curpmap);
+
+    /*
+     * Change the flag in pmap based on the current active CPU.
+     */
+    unsigned int cpuid = curcpu;
+    __asm__ __volatile__ ("lock btrl %1, %0\n"
+                          : "=m" (pmap->pm_active)
+                          : "r" (cpuid));
+
+    /* Release the old thread */
+    __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
+  }
+
+#if defined(SCHED_ULE) && defined(SMP)
+  panic ("SVA: SMP Swap Start\n");
+  /* Do some locking blocking stuff for the ULE scheduler */
+  extern struct mtx blocked_lock;
+  while (old->td_lock == &blocked_lock) {
+    __asm__ __volatile__ ("pause");
+  }
+  printf ("SVA: SMP Swap End\n");
+#endif
+
+  /*
+   * Call the specified function.
+   */
+  fork_exit (f, arg, 0);
+  return;
+}
+#endif
+
 /*
  * Finish a fork operation, with process p2 nearly set up.
  * Copy and update the pcb, set up the stack so that the child
@@ -220,6 +280,13 @@ cpu_fork(td1, p2, td2, flags)
 		mdp2->md_ldt = NULL;
 	mtx_unlock(&dt_lock);
 
+#if 1
+  /*
+   * SVA: Initialize the new thread state.
+   */
+  td2->svaID = sva_init_stack (td2->td_kstack, td2->td_kstack_pages * PAGE_SIZE - sizeof (struct pcb) - sizeof (struct trapframe), fork_trampoline, 0);
+  printf ("SVA: cpu_fork: [%d:%d] %lx\n", td2->td_proc->p_pid, td2->td_tid, td2->svaID);
+#endif
 	/*
 	 * Now, cpu_switch() can schedule the new process.
 	 * pcb_rsp is loaded pointing to the cpu_switch() stack frame
@@ -249,6 +316,13 @@ cpu_set_fork_handler(td, func, arg)
 	 */
 	td->td_pcb->pcb_r12 = (long) func;	/* function */
 	td->td_pcb->pcb_rbx = (long) arg;	/* first arg */
+#if 1
+  printf ("SVA: cpu_fork_set_handler: [%d:%d] : func=%p, arg=%p: %lx\n", td->td_proc->p_pid, td->td_tid, func, arg, td->svaID);
+  if (td->svaID) {
+    sva_push_function2 (td->svaID, kernel_thread_trampoline, func, arg);
+    td->sva = 1;
+  }
+#endif
 }
 
 void
@@ -351,7 +425,7 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		 * %r10 restore is only required for freebsd/amd64 processes,
 		 * but shall be innocent for any ia32 ABI.
 		 */
-#if 0
+#if 1
 		td->td_frame->tf_rip -= td->td_frame->tf_err;
 		td->td_frame->tf_r10 = td->td_frame->tf_rcx;
     sva_icontext_restart(td->td_frame->tf_r10, td->td_frame->tf_rip);
@@ -438,6 +512,13 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
 	/* Setup to release spin count in fork_exit(). */
 	td->td_md.md_spinlock_count = 1;
 	td->td_md.md_saved_flags = PSL_KERNEL | PSL_I;
+#if 1
+  /*
+   * SVA: Initialize the new thread state.
+   */
+  td->svaID = sva_init_stack (td->td_kstack, td->td_kstack_pages * PAGE_SIZE, fork_trampoline, 0);
+  printf ("SVA: cpu_set_upcall: [%d:%d] %lx\n", td->td_proc->p_pid, td->td_tid, td->svaID);
+#endif
 }
 
 /*
