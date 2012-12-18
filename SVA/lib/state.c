@@ -750,12 +750,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     uintptr_t * pcptr = __builtin_frame_address(0) + sizeof (void *);
     *pcptr = old->hackRIP;
 #endif
-#if 1
-    __asm__ __volatile__ ("movq %%rsp, %0\n"
-                          "movq %%rbp, %1\n"
-                          : "=m" (rsp), "=m" (rbp));
-    printf ("SVA: Awake: %lx %lx: %lx\n", rsp, rbp, __builtin_return_address(0));
-#endif
     return 1;
   }
 
@@ -769,16 +763,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * Mark the saved integer state as valid.
    */
   old->valid = 1;
-
-#if 1
-  __asm__ __volatile__ ("movq %%rsp, %0\n"
-                        "movq %%rbp, %1\n"
-                        : "=m" (rsp), "=m" (rbp));
-  printf ("SVA: Sleep: %lx %lx: %lx\n", rsp, rbp, __builtin_return_address(0));
-#endif
-#if 0
-  printf ("SVA: saved: %p: rip = %lx, rsp = %lx, rbp = %lx\n", old, old->rip, old->rsp, old->rbp);
-#endif
 
   /*
    * Inform the caller of the location of the last state saved.
