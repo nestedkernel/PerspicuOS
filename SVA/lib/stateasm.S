@@ -14,6 +14,8 @@
  *===----------------------------------------------------------------------===
  */
 
+#include <sva/cfi.h>
+
 #include "offsets.h"
 
 .data
@@ -212,14 +214,20 @@ load_integer:
 #endif
 
   /*
-   * Fetch the correct program counter value for returning from
-   * sva_swap_integer() and put it on the stack.
+   * Remove the return address from the stack; we won't be using it.
    */
-  /* Fetch the program counter */
   popq %rcx
-  movq IC_RIP(%rdi), %rcx
-  pushq %rcx
 
+  /*
+   * Fetch the correct program counter value for returning from
+   * sva_swap_integer() and verify that it is correct.
+   */
+  movq IC_RIP(%rdi), %rcx
+  cmpl  $CHECKLABEL, (%rcx)
+  je 1f
+  int $3
+
+1:
   /* Restore the %rdi register */
   movq IC_RDI(%rdi), %rdi
 
@@ -236,5 +244,5 @@ load_integer:
    *
    * TODO: This should do a control-flow integrity label check.
    */
-  retq
+  jmpq *%rcx
 
