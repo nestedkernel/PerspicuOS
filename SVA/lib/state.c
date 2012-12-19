@@ -1273,6 +1273,70 @@ sva_load_tsc (long long tsc)
 #endif
 
 /*
+ * Intrinsic: sva_reinit_icontext()
+ *
+ * Description:
+ *  Reinitialize an interrupt context so that, upon return, it begins to
+ *  execute code at a new location.  This supports the exec() family of system
+ *  calls.
+ */
+void
+sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
+  /* Old interrupt flags */
+  unsigned int rflags;
+
+  printf ("SVA: sva_reinit_icontext\n");
+
+  /*
+   * Disable interrupts.
+   */
+  rflags = sva_enter_critical();
+
+  /*
+   * Get the most recent interrupt context.
+   */
+  sva_icontext_t * ep = getCPUState()->newCurrentIC;
+
+  /*
+   * Check the memory.
+   */
+  sva_check_memory_write (ep, sizeof (sva_icontext_t));
+  sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
+
+  /*
+   * Setup the call to the new function.
+   */
+#if 0
+  ep->rip = func;
+#else
+  ep->rip = 0x0bee;
+#endif
+  ep->rsp = stackp;
+  ep->rdi = arg;
+
+  /*
+   * Setup the segment registers for the proper mode.
+   */
+  if (priv) {
+    panic ("SVA: sva_reinit_context: No support for creating kernel state.\n");
+  } else {
+    ep->cs = 0x43;
+    ep->ss = 0x3b;
+#if 0
+    ep->ds = 0x00;
+#endif
+    ep->es = 0x00;
+    ep->fs = 0x00;
+    ep->gs = 0x00;
+  }
+
+  /* Re-enable interupts if they were enabled before */
+  sva_exit_critical (rflags);
+
+  return;
+}
+
+/*
  * Intrinsic: sva_init_stack()
  *
  * Description:
