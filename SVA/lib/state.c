@@ -321,6 +321,12 @@ sva_ipush_function1 (void (*newf)(int), uintptr_t param) {
  * Integer State
  ****************************************************************************/
 
+void
+dummy (uintptr_t p1, uintptr_t p2) {
+  printf ("SVA: dummy: %lx %lx: return to %p\n", p1, p2, __builtin_return_address(0));
+  panic ("SVA: dummy\n");
+}
+
 /*
  * Intrinsic: sva_push_function2 ()
  *
@@ -380,7 +386,11 @@ sva_push_function2 (uintptr_t integer,
    * Push a return PC pointer on to the stack that will cause a fault if the
    * pushed function ever returns.
    */
-  *(--(ep->rsp)) = 0xbeef;
+#if 0
+  *(--(ep->rsp)) = 0xbeefu;
+#else
+  *((ep->rsp)) = 0xbeefu;
+#endif
 
   /*
    * Set the return function to be the specificed function.
@@ -1459,6 +1469,7 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->rsp = stackp;
   integerp->cs  = 0x10;
   integerp->valid = 1;
+  integerp->rflags = rflags;
   uintptr_t cr3;
   __asm__ __volatile__ ("movq %%cr3, %0\n"
                         "movq %0, %1\n" : "=a" (cr3), "=m" (integerp->cr3));
