@@ -321,12 +321,6 @@ sva_ipush_function1 (void (*newf)(int), uintptr_t param) {
  * Integer State
  ****************************************************************************/
 
-void
-dummy (uintptr_t p1, uintptr_t p2) {
-  printf ("SVA: dummy: %lx %lx: return to %p\n", p1, p2, __builtin_return_address(0));
-  panic ("SVA: dummy\n");
-}
-
 /*
  * Intrinsic: sva_push_function2 ()
  *
