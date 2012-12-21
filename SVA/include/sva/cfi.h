@@ -37,6 +37,6 @@
               cmpl  $CHECKLABEL, (%rcx) ; \
               jne 23f ; \
               jmpq  *%rcx ; \
-              23: int $3 ;
+              23: movq $0xfea, %rax;
 
 #endif
