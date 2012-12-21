@@ -208,15 +208,15 @@ load_integer:
   /* Switch to the new stack pointer */
   movq IC_RSP(%rdi), %rsp
 
-#if 0
-  /* Put the EFLAGS register on the new stack */
-  pushq IC_RFLAGS(%rdi)
-#endif
-
   /*
    * Remove the return address from the stack; we won't be using it.
    */
   popq %rcx
+
+#if 1
+  /* Put the EFLAGS register on the new stack */
+  pushq IC_RFLAGS(%rdi)
+#endif
 
   /*
    * Fetch the correct program counter value for returning from
@@ -234,7 +234,7 @@ load_integer:
   /* Set the return value to 1 */
   movq $1, %rax
 
-#if 0
+#if 1
   /* Restore RFLAGS, potentially re-enabling interrupts */
   popfq
 #endif
