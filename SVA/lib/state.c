@@ -1340,6 +1340,12 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   return;
 }
 
+void
+svaDummy (void) {
+  panic ("SVA: svaDummy: Return to user space!\n");
+  return;
+}
+
 /*
  * Intrinsic: sva_init_stack()
  *
@@ -1449,7 +1455,11 @@ sva_init_stack (unsigned char * start_stackp,
    * Initialize the arguments to the system call.  Also setup the interrupt
    * context and return function pointer.
    */
+#if 0
   args->return_rip = sc_ret;
+#else
+  args->return_rip = svaDummy;
+#endif
 
   /*
    * Initialze the integer state of the new thread of control.
