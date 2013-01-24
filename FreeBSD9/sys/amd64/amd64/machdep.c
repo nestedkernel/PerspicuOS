@@ -142,6 +142,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include <isa/rtc.h>
 
 #include <sva/init.h>
+#include <sva/mmu.h>
 
 /* Sanity check for __curthread() */
 CTASSERT(offsetof(struct pcpu, pc_curthread) == 0);
@@ -2537,6 +2538,11 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
       /* Release the old thread */
       mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
     } else {
+      /*
+       * Switch to the new page table.
+       */
+      sva_mm_load_pgtable (new->td_pcb->pcb_cr3);
+
       /*
        * Fetch the pmap (physical page mapping) structure from the per-CPU
        * data structure.
