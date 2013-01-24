@@ -1384,6 +1384,9 @@ sva_init_stack (unsigned char * start_stackp,
 
   /* Arguments allocated on the new stack */
   struct frame {
+    /* Dummy return pointer ignored by load_integer() */
+    void * dummy;
+
     /* Return pointer for the function frame */
     void * return_rip;
   } * args;
@@ -1453,6 +1456,7 @@ sva_init_stack (unsigned char * start_stackp,
    */
   stackp -= sizeof (struct frame);
   args = stackp;
+  printf ("SVA: sva_init_stack: RIP is at %p\n", stackp);
 
   /*
    * Initialize the arguments to the system call.  Also setup the interrupt
@@ -1477,9 +1481,6 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->cs  = 0x10;
   integerp->valid = 1;
   integerp->rflags = rflags;
-  uintptr_t cr3;
-  __asm__ __volatile__ ("movq %%cr3, %0\n"
-                        "movq %0, %1\n" : "=a" (cr3), "=m" (integerp->cr3));
 
   /*
    * Initialize the interrupt context of the new thread.
