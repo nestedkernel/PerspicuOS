@@ -719,12 +719,14 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   old->ist3 = cpup->tssp->ist3;
   old->currentIC = cpup->newCurrentIC;
 
+#if 0
   /*
    * Save the value of the CR3 register.
    */
   __asm__ __volatile__ ("movq %%cr3, %0\n"
                         "movq %0, %1\n"
                         : "=r" (cr3), "=m" (old->cr3));
+#endif
 
   /*
    * Save the current integer state.  Note that returning from sva_integer()
@@ -828,6 +830,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      */
     new->valid = 0;
 
+#if 0
     /*
      * Switch to the new address space.  We only modify CR3 if the two states
      * use different page tables because any changes to CR3 may flush the TLB.
@@ -836,6 +839,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
       cr3 = new->cr3;
       __asm__ __volatile__ ("movq %0, %%cr3\n" : : "r" (cr3));
     }
+#endif
 
     /*
      * Load the rest of the integer state.
