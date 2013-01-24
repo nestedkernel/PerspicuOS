@@ -43,7 +43,7 @@ getNextSecureAddress (void) {
    * Advance the address by a single page frame and return the value before
    * increment.
    */
-  return (unsigned char *)(__sync_fetch_and_add (((uintptr_t *)(&secmemp)), PAGE_SIZE));
+  return (unsigned char *)(__sync_fetch_and_add (((uintptr_t *)(&secmemp)), X86_PAGE_SIZE));
 }
 
 /*
@@ -76,7 +76,7 @@ allocSecureMemory (uintptr_t size) {
      * Map each page of the memory into the part of the virtual address space
      * used for private memory.
      */
-    for (uintptr_t paddr = sp; paddr < (sp + size); paddr += PAGE_SIZE) {
+    for (uintptr_t paddr = sp; paddr < (sp + size); paddr += X86_PAGE_SIZE) {
       /*
        * Assign the memory to live within the secure memory virtual address
        * space.

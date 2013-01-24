@@ -292,7 +292,7 @@ getPhysicalAddr (void * v) {
 
 /* Cache of page table pages */
 extern unsigned char
-SVAPTPages[64][PAGE_SIZE];
+SVAPTPages[64][X86_PAGE_SIZE];
 
 /*
  * Function: allocPTPage()
@@ -332,7 +332,7 @@ allocPTPage (void) {
     /*
      * Initialize the memory.
      */
-    memset (p, 0, PAGE_SIZE);
+    memset (p, 0, X86_PAGE_SIZE);
 
     /*
      * Record the information about the page in the page table page array.
@@ -768,7 +768,7 @@ sva_declare_l1_page (unsigned frame) {
   page_desc[frame].type = PG_L1;
 
   /* The data contained in the page is set to 0 */
-  memset (getVirtual (frame), 0, PAGE_SIZE);
+  memset (getVirtual (frame), 0, X86_PAGE_SIZE);
  
   /* Update the page table entry with the new RO flag */ 
   unprotect_pte();
@@ -881,12 +881,12 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
 
   /* (1) Allocate the page_desc array */
   unsigned long desc_size = max_pfn * sizeof(page_desc_t);
-  /*desc_size = desc_size + PAGE_SIZE - (desc_size % PAGE_SIZE);*/
+  /*desc_size = desc_size + X86_PAGE_SIZE - (desc_size % X86_PAGE_SIZE);*/
   page_desc = (page_desc_t*)allocator(desc_size);
   memset(page_desc, 0, desc_size);
   /* Set the page_desc as sva pages */
-  for (i = (unsigned)page_desc/PAGE_SIZE; 
-       i < ((unsigned)page_desc + desc_size)/PAGE_SIZE; 
+  for (i = (unsigned)page_desc/X86_PAGE_SIZE; 
+       i < ((unsigned)page_desc + desc_size)/X86_PAGE_SIZE; 
        ++i) {
     pte_t* pte = get_pte(i, pagetable);
     unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
@@ -925,12 +925,12 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
   /* (4) Set the kernel/sva code pages as read-only */
 
   /* Verify that _text is page aligned */
-  if (!(((unsigned long)&_text) % PAGE_SIZE == 0)) {
+  if (!(((unsigned long)&_text) % X86_PAGE_SIZE == 0)) {
     poolcheckfail("MMU: _text is not page aligned %x", __builtin_return_address(0));
   }
 
   /* Set code pages as read-only */
-  for (i = (unsigned long) &_text; i < codesize; i += PAGE_SIZE) {
+  for (i = (unsigned long) &_text; i < codesize; i += X86_PAGE_SIZE) {
     pte_t* pte = get_pte(i, pagetable);
     (*pte) = __pte(pte_val((*pte)) & ~_PAGE_RW);
     unsigned long page_index = pte_val(*pte) >> PAGE_SHIFT;
