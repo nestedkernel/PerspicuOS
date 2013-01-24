@@ -315,7 +315,8 @@ struct thread {
   struct mtx * mtx;
   uintptr_t svaID;   /* Thread ID for SVA Thread */
   unsigned char sva; /* Flag whether SVA saved state on context switch */
-  unsigned char isInit; /* Flags whether this is the init process */
+  void (*callout)(void *, struct trapframe *); /* Thread startup function */
+  void * callarg; /* Thread startup argument */
 #endif
 };
 

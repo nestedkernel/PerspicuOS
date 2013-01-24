@@ -95,61 +95,17 @@ static volatile u_int	cpu_reset_proxy_active;
 #endif
 
 #if 1
-static void
-kernel_thread_trampoline (void (*f)(uintptr_t), void * arg)
+void
+kernel_thread_trampoline (struct thread * td)
 {
-  /* Grab a reference to the current thread */
-  struct thread * old = curthread;
-
   extern void fork_exit(void (*callout)(void *, struct trapframe *),
                         void *arg,
                         struct trapframe *frame);
 
   /*
-   * Release the old thread (I think this does some unlocking stuff when
-   * sharing page tables).
-   */
-  struct mtx * mtx = old->mtx;
-  if ((old->prev->td_pcb->pcb_cr3) == (old->td_pcb->pcb_cr3)) {
-    /* Release the old thread */
-    extern struct mtx blocked_lock;
-    printf ("SVA: tramp: Same address space: %p %p %p\n", &blocked_lock, mtx, old->prev->td_lock);
-    mtx = __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
-    printf ("SVA: tramp: sync done\n");
-  } else {
-    /*
-     * Fetch the pmap (physical page mapping) structure from the per-CPU
-     * data structure.
-     */
-    printf ("SVA: tramp: Different address space\n");
-    struct pmap * pmap = PCPU_GET(curpmap);
-
-    /*
-     * Change the flag in pmap based on the current active CPU.
-     */
-    unsigned int cpuid = curcpu;
-    __asm__ __volatile__ ("lock btrl %1, %0\n"
-                          : "=m" (pmap->pm_active)
-                          : "r" (cpuid));
-
-    /* Release the old thread */
-    __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
-  }
-
-#if defined(SCHED_ULE) && defined(SMP)
-  panic ("SVA: SMP Swap Start\n");
-  /* Do some locking blocking stuff for the ULE scheduler */
-  extern struct mtx blocked_lock;
-  while (old->td_lock == &blocked_lock) {
-    __asm__ __volatile__ ("pause");
-  }
-  printf ("SVA: SMP Swap End\n");
-#endif
-
-  /*
    * Call the specified function.
    */
-  fork_exit (f, arg, 0);
+  fork_exit (td->callout, td->callarg, 0);
   return;
 }
 #endif
@@ -281,11 +237,28 @@ cpu_fork(td1, p2, td2, flags)
 	mtx_unlock(&dt_lock);
 
 #if 1
+	/*
+	 * Compute the length of the stack.
+	 */
+	uintptr_t stacklen = td2->td_kstack_pages * PAGE_SIZE -
+	                     sizeof (struct pcb) -
+	                     sizeof (struct trapframe);
+
   /*
    * SVA: Initialize the new thread state.
    */
-  td2->svaID = sva_init_stack (td2->td_kstack, td2->td_kstack_pages * PAGE_SIZE - sizeof (struct pcb) - sizeof (struct trapframe), fork_trampoline, 0);
-  printf ("SVA: cpu_fork: [%d:%d] %lx\n", td2->td_proc->p_pid, td2->td_tid, td2->svaID);
+  td2->sva = 1;
+  td2->callout = fork_return;
+  td2->callarg = td2;
+  td2->svaID = sva_init_stack (td2->td_kstack,
+	                             stacklen,
+	                             kernel_thread_trampoline,
+	                             td2,
+	                             0,
+                               0);
+#if 0
+	printf ("SVA: cpu_fork: [%d:%d] %lx\n", td2->td_proc->p_pid, td2->td_tid, td2->svaID);
+#endif
 #endif
 	/*
 	 * Now, cpu_switch() can schedule the new process.
@@ -318,10 +291,13 @@ cpu_set_fork_handler(td, func, arg)
 	td->td_pcb->pcb_rbx = (long) arg;	/* first arg */
 #if 1
   printf ("SVA: cpu_fork_set_handler: [%d:%d] : func=%p, arg=%p: %lx\n", td->td_proc->p_pid, td->td_tid, func, arg, td->svaID);
+  td->callout = func;
+  td->callarg = arg;
+#if 0
   if (td->svaID) {
     sva_push_function2 (td->svaID, kernel_thread_trampoline, func, arg);
-    td->sva = 1;
   }
+#endif
 #endif
 }
 
@@ -516,10 +492,106 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
   /*
    * SVA: Initialize the new thread state.
    */
-  td->svaID = sva_init_stack (td->td_kstack, td->td_kstack_pages * PAGE_SIZE, fork_trampoline, 0);
+  uintptr_t stacklen = td->td_kstack_pages * PAGE_SIZE -
+	                     sizeof (struct pcb) -
+	                     sizeof (struct trapframe);
+  td->sva = 1;
+  td->callout = fork_return;
+  td->callarg = td;
+  td->svaID = sva_init_stack (td->td_kstack,
+	                            stacklen,
+	                            kernel_thread_trampoline,
+                              td,
+                              0,
+	                            0);
   printf ("SVA: cpu_set_upcall: [%d:%d] %lx\n", td->td_proc->p_pid, td->td_tid, td->svaID);
 #endif
 }
+
+#if 1
+/*
+ * Initialize machine state (pcb and trap frame) for a new thread about to
+ * upcall. Put enough state in the new thread's PCB to get it to go back 
+ * userret(), where we can intercept it again to set the return (upcall)
+ * Address and stack, along with those from upcals that are from other sources
+ * such as those generated in thread_userret() itself.
+ */
+void
+cpu_create_upcall(struct thread *td,
+                  struct thread *td0,
+                  void (*func)(void *),
+                  void *arg)
+{
+	struct pcb *pcb2;
+
+	/* Point the pcb to the top of the stack. */
+	pcb2 = td->td_pcb;
+
+	/*
+	 * Copy the upcall pcb.  This loads kernel regs.
+	 * Those not loaded individually below get their default
+	 * values here.
+	 */
+	bcopy(td0->td_pcb, pcb2, sizeof(*pcb2));
+	clear_pcb_flags(pcb2, PCB_FPUINITDONE | PCB_USERFPUINITDONE);
+	pcb2->pcb_save = &pcb2->pcb_user_save;
+	set_pcb_flags(pcb2, PCB_FULL_IRET);
+
+	/*
+	 * Create a new fresh stack for the new thread.
+	 */
+	bcopy(td0->td_frame, td->td_frame, sizeof(struct trapframe));
+
+	/* If the current thread has the trap bit set (i.e. a debugger had
+	 * single stepped the process to the system call), we need to clear
+	 * the trap flag from the new frame. Otherwise, the new thread will
+	 * receive a (likely unexpected) SIGTRAP when it executes the first
+	 * instruction after returning to userland.
+	 */
+	td->td_frame->tf_rflags &= ~PSL_T;
+
+	/*
+	 * Set registers for trampoline to user mode.  Leave space for the
+	 * return address on stack.  These are the kernel mode register values.
+	 */
+	pcb2->pcb_r12 = (register_t)fork_return;	    /* trampoline arg */
+	pcb2->pcb_rbp = 0;
+	pcb2->pcb_rsp = (register_t)td->td_frame - sizeof(void *);	/* trampoline arg */
+	pcb2->pcb_rbx = (register_t)td;			    /* trampoline arg */
+	pcb2->pcb_rip = (register_t)fork_trampoline;
+	/*
+	 * If we didn't copy the pcb, we'd need to do the following registers:
+	 * pcb2->pcb_cr3:	cloned above.
+	 * pcb2->pcb_dr*:	cloned above.
+	 * pcb2->pcb_savefpu:	cloned above.
+	 * pcb2->pcb_onfault:	cloned above (always NULL here?).
+	 * pcb2->pcb_[fg]sbase: cloned above
+	 */
+
+	/* Setup to release spin count in fork_exit(). */
+	td->td_md.md_spinlock_count = 1;
+	td->td_md.md_saved_flags = PSL_KERNEL | PSL_I;
+#if 1
+  /*
+   * SVA: Initialize the new thread state.
+   */
+  uintptr_t stacklen = td->td_kstack_pages * PAGE_SIZE -
+	                     sizeof (struct pcb) -
+	                     sizeof (struct trapframe);
+  td->sva = 1;
+  td->callout = func;
+  td->callarg = arg;
+  td->svaID = sva_init_stack (td->td_kstack,
+	                            stacklen,
+	                            kernel_thread_trampoline,
+                              td,
+                              0,
+	                            0);
+  printf ("SVA: cpu_set_upcall: [%d:%d] %lx\n", td->td_proc->p_pid, td->td_tid, td->svaID);
+#endif
+}
+#endif
+
 
 /*
  * Set that machine state for performing an upcall that has to

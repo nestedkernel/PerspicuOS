@@ -369,6 +369,8 @@ vm_thread_new(struct thread *td, int pages)
   td->mtx = 0;
   td->sva = 0;
   td->prev = 0;
+  td->callout = 0;
+  td->callarg = 0;
 #endif
 
 	/* Bounds check */

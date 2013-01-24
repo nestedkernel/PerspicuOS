@@ -887,6 +887,7 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	else
 		mtx_unlock(&dt_lock);
 	
+#if 0
 	pcb->pcb_fsbase = 0;
 	pcb->pcb_gsbase = 0;
 	clear_pcb_flags(pcb, PCB_32BIT | PCB_GS32BIT);
@@ -906,7 +907,11 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	regs->tf_gs = _ugssel;
 	regs->tf_flags = TF_HASSEGS;
 	td->td_retval[1] = 0;
+#else
+  sva_reinit_icontext (imgp->entry_addr, 0, ((stack - 8) & ~0xFul) + 8, stack);
+#endif
 
+#if 0
 	/*
 	 * Reset the hardware debug registers if they were in use.
 	 * They won't have any meaning for the newly exec'd process.
@@ -928,6 +933,7 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 		}
 		clear_pcb_flags(pcb, PCB_DBREGS);
 	}
+#endif
 
 	/*
 	 * Drop the FP state if we hold it, so that the process gets a
@@ -2505,6 +2511,7 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
   printf ("SVA: switch: [%d:%d](%lx/%d) -> [%d:%d](%lx:%d)\n",
           old->td_proc->p_pid, old->td_tid, old->svaID, old->sva,
           new->td_proc->p_pid, new->td_tid, new->svaID, new->sva);
+  printf ("SVA: switch: %p %p\n", old->td_lock, new->td_lock);
 #endif
 
   /*
@@ -2523,15 +2530,72 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     old->sva = 1;
 
     /*
+     * Release the old thread (I think this does some unlocking stuff when
+     * sharing page tables).
+     */
+    if ((old->td_pcb->pcb_cr3) == (new->td_pcb->pcb_cr3)) {
+      /* Release the old thread */
+#if 1
+      mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
+#else
+      old->td_lock = mtx;
+#endif
+    } else {
+      /*
+       * Fetch the pmap (physical page mapping) structure from the per-CPU
+       * data structure.
+       */
+      struct pmap * pmap = PCPU_GET(curpmap);
+
+      /*
+       * Change the flag in pmap based on the current active CPU.
+       */
+      unsigned int cpuid = PCPU_GET(cpuid);
+      __asm__ __volatile__ ("lock btrl %1, %0\n"
+                            : "=m" (pmap->pm_active)
+                            : "r" (cpuid));
+
+      /* Release the old thread */
+#if 1
+      mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
+#else
+      old->td_lock = mtx;
+#endif
+
+      /*
+       * Set the flag in the new process's pmap structure.
+       */
+      __asm__ __volatile__ ("lock btsl %1, %0\n"
+                            : "=m" (new->td_proc->p_vmspace->vm_pmap.pm_active)
+                            : "r" (cpuid));
+
+      PCPU_SET (curpmap, &(new->td_proc->p_vmspace->vm_pmap));
+    }
+
+#if defined(SCHED_ULE) && defined(SMP)
+    panic ("SVA: SMP Swap Start\n");
+    /* Do some locking blocking stuff for the ULE scheduler */
+    extern struct mtx blocked_lock;
+    while (old->td_lock == &blocked_lock) {
+      __asm__ __volatile__ ("pause");
+    }
+    printf ("SVA: SMP Swap End\n");
+#endif
+
+    /*
      * Update the FreeBSD per-cpu data structure to know which thread is
      * running on this CPU.
      */
     PCPU_SET (curthread, new);
 
+#if 0
+    extern struct mtx sched_lock;
+    mtx_unlock(&sched_lock);
+#endif
+
     /*
      * Swap to the new state.
      */
-    uintptr_t rsp;
     didSwap = sva_swap_integer (new->svaID, &(old->svaID));
   } else {
 #if 0
@@ -2544,45 +2608,6 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     panic ("SVA: Should not do old context switch anymore!\n");
 #endif
   }
-
-  /*
-   * Release the old thread (I think this does some unlocking stuff when
-   * sharing page tables).
-   */
-  mtx = old->mtx;
-  if ((old->prev->td_pcb->pcb_cr3) == (old->td_pcb->pcb_cr3)) {
-    /* Release the old thread */
-    extern struct mtx blocked_lock;
-    mtx = __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
-  } else {
-    /*
-     * Fetch the pmap (physical page mapping) structure from the per-CPU
-     * data structure.
-     */
-    struct pmap * pmap = PCPU_GET(curpmap);
-
-    /*
-     * Change the flag in pmap based on the current active CPU.
-     */
-    unsigned int cpuid = curcpu;
-    __asm__ __volatile__ ("lock btrl %1, %0\n"
-                          : "=m" (pmap->pm_active)
-                          : "r" (cpuid));
-
-    /* Release the old thread */
-    __sync_lock_test_and_set (&(old->prev->td_lock), mtx);
-  }
-
-#if defined(SCHED_ULE) && defined(SMP)
-  panic ("SVA: SMP Swap Start\n");
-  /* Do some locking blocking stuff for the ULE scheduler */
-  extern struct mtx blocked_lock;
-  while (old->td_lock == &blocked_lock) {
-    __asm__ __volatile__ ("pause");
-  }
-  printf ("SVA: SMP Swap End\n");
-#endif
-
   return;
 }
 
