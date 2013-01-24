@@ -2535,11 +2535,7 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
      */
     if ((old->td_pcb->pcb_cr3) == (new->td_pcb->pcb_cr3)) {
       /* Release the old thread */
-#if 1
       mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
-#else
-      old->td_lock = mtx;
-#endif
     } else {
       /*
        * Fetch the pmap (physical page mapping) structure from the per-CPU
@@ -2556,11 +2552,7 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
                             : "r" (cpuid));
 
       /* Release the old thread */
-#if 1
       mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
-#else
-      old->td_lock = mtx;
-#endif
 
       /*
        * Set the flag in the new process's pmap structure.
@@ -2587,11 +2579,6 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
      * running on this CPU.
      */
     PCPU_SET (curthread, new);
-
-#if 0
-    extern struct mtx sched_lock;
-    mtx_unlock(&sched_lock);
-#endif
 
     /*
      * Swap to the new state.
