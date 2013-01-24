@@ -171,7 +171,7 @@ load_integer:
    * Restore the traditional registers except for %rax and %rdi:
    *  %rax: This holds the return value, so we don't bother restoring it.
    *  %rcx: This register is used for the CFI jump back to the caller.
-   %  %rdi: We wait to restore this register because we're using it to store
+   *  %rdi: We wait to restore this register because we're using it to store
    *        the pointer to the integer state buffer.
    */
   movq IC_RBX(%rdi), %rbx
@@ -213,7 +213,7 @@ load_integer:
    */
   popq %rcx
 
-#if 1
+#if 0
   /* Put the EFLAGS register on the new stack */
   pushq IC_RFLAGS(%rdi)
 #endif
@@ -234,7 +234,7 @@ load_integer:
   /* Set the return value to 1 */
   movq $1, %rax
 
-#if 1
+#if 0
   /* Restore RFLAGS, potentially re-enabling interrupts */
   popfq
 #endif
