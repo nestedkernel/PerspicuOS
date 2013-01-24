@@ -1309,7 +1309,6 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
    * Check the memory.
    */
   sva_check_memory_write (ep, sizeof (sva_icontext_t));
-  sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
 
   /*
    * Setup the call to the new function.
@@ -1481,6 +1480,13 @@ sva_init_stack (unsigned char * start_stackp,
   uintptr_t cr3;
   __asm__ __volatile__ ("movq %%cr3, %0\n"
                         "movq %0, %1\n" : "=a" (cr3), "=m" (integerp->cr3));
+
+  /*
+   * Initialize the interrupt context of the new thread.
+   */
+  icontextp = integerp->currentIC = &(newThread[maxIC]);
+  bzero (icontextp, sizeof (sva_icontext_t));
+  icontextp->rip = 0xbeefu;
 
   /*
    * Re-enable interrupts.
