@@ -506,9 +506,10 @@ SVAsyscall:
    * Call the system software system call handler.
    */
   callq sva_syscall
-  RETTARGET
 
 sc_ret:
+  RETTARGET
+
   /*
    * Switch the stack pointer back to the interrupt context.
    */
