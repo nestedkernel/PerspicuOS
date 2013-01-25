@@ -1280,6 +1280,12 @@ sva_load_tsc (long long tsc)
 }
 #endif
 
+void
+svaDummy (void) {
+  panic ("SVA: svaDummy: Return to user space!\n");
+  return;
+}
+
 /*
  * Intrinsic: sva_reinit_icontext()
  *
@@ -1293,8 +1299,6 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /* Old interrupt flags */
   unsigned int rflags;
 
-  printf ("SVA: sva_reinit_icontext\n");
-
   /*
    * Disable interrupts.
    */
@@ -1304,6 +1308,7 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
    * Get the most recent interrupt context.
    */
   sva_icontext_t * ep = getCPUState()->newCurrentIC;
+  printf ("SVA: sva_reinit_icontext: %p\n", ep);
 
   /*
    * Check the memory.
@@ -1313,11 +1318,7 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /*
    * Setup the call to the new function.
    */
-#if 0
   ep->rip = func;
-#else
-  ep->rip = 0x0bee;
-#endif
   ep->rsp = stackp;
   ep->rdi = arg;
 
@@ -1340,12 +1341,6 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
 
-  return;
-}
-
-void
-svaDummy (void) {
-  panic ("SVA: svaDummy: Return to user space!\n");
   return;
 }
 
@@ -1456,17 +1451,12 @@ sva_init_stack (unsigned char * start_stackp,
    */
   stackp -= sizeof (struct frame);
   args = stackp;
-  printf ("SVA: sva_init_stack: RIP is at %p\n", stackp);
 
   /*
    * Initialize the arguments to the system call.  Also setup the interrupt
    * context and return function pointer.
    */
-#if 0
   args->return_rip = sc_ret;
-#else
-  args->return_rip = svaDummy;
-#endif
 
   /*
    * Initialze the integer state of the new thread of control.
@@ -1478,7 +1468,8 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->rsi = arg2;
   integerp->rdx = arg3;
   integerp->rsp = stackp;
-  integerp->cs  = 0x10;
+  integerp->cs  = 0x43;
+  integerp->ss  = 0x3b;
   integerp->valid = 1;
   integerp->rflags = rflags;
 
