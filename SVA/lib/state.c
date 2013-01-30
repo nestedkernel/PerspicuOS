@@ -1318,7 +1318,12 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /*
    * Setup the call to the new function.
    */
+#if 0
   ep->rip = func;
+#else
+  /* Setup PC to start at special location within code segment */
+  ep->rip = 0x40029bu;
+#endif
   ep->rsp = stackp;
   ep->rdi = arg;
 
@@ -1331,11 +1336,12 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
     ep->cs = 0x43;
     ep->ss = 0x3b;
 #if 0
-    ep->ds = 0x00;
+    ep->ds = 0x3b;
 #endif
     ep->es = 0x00;
     ep->fs = 0x00;
     ep->gs = 0x00;
+    ep->rflags = (rflags & 0xfffu);
   }
 
   /* Re-enable interupts if they were enabled before */
@@ -1442,11 +1448,6 @@ sva_init_stack (unsigned char * start_stackp,
   sva_check_memory_write (newThread, sizeof (struct SVAThread));
 
   /*
-   * Copy the old SVA thread state into the new thread state.
-   */
-  *newThread = *oldThread;
-
-  /*
    * Allocate the call frame for the call to the system call.
    */
   stackp -= sizeof (struct frame);
@@ -1476,9 +1477,14 @@ sva_init_stack (unsigned char * start_stackp,
   /*
    * Initialize the interrupt context of the new thread.
    */
-  icontextp = integerp->currentIC = &(newThread[maxIC]);
+  icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
   bzero (icontextp, sizeof (sva_icontext_t));
   icontextp->rip = 0xbeefu;
+  icontextp->cs = 0x43;
+  icontextp->ss = 0x3b;
+  icontextp->rflags = 0x0;
+  icontextp->rsp = 0xfeeb;
+  icontextp->invokep = (void *)(0xbeeeeeeeu);
 
   /*
    * Re-enable interrupts.
