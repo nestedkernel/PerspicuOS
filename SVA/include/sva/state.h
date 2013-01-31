@@ -60,7 +60,7 @@ typedef struct sva_icontext {
   unsigned short fs;                  // 0x08
   unsigned short gs;
   unsigned short es;
-  unsigned short pad1;
+  unsigned short ds;
 
   unsigned long rdi;                  // 0x10
   unsigned long rsi;                  // 0x18
@@ -121,7 +121,7 @@ typedef struct {
   unsigned short fs;                  // 0x08
   unsigned short gs;
   unsigned short es;
-  unsigned short pad1;
+  unsigned short ds;
 
   unsigned long rdi;                  // 0x10
   unsigned long rsi;                  // 0x18
