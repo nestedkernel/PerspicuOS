@@ -1857,7 +1857,6 @@ sched_switch(struct thread *td, struct thread *newtd, int flags)
      * I'm currently testing on the 4BSD scheduler because it appears to have
      * a simpler locking discipline.
      */
-    panic ("SVA: Not supporting ULE right now!\n");
 		cpu_switch_sva (td, newtd, mtx);
 #endif
 		/*
@@ -2590,6 +2589,9 @@ sched_throw(struct thread *td)
 	struct thread *newtd;
 	struct tdq *tdq;
 
+#if 1
+  panic ("SVA: sched_throw: ULE\n");
+#endif
 	tdq = TDQ_SELF();
 	if (td == NULL) {
 		/* Correct spinlock nesting and acquire the correct lock. */

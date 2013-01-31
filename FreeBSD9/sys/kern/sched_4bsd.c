@@ -1579,6 +1579,9 @@ sched_throw(struct thread *td)
 	 * spinlock_exit() will simply adjust the counts without allowing
 	 * spin lock using code to interrupt us.
 	 */
+#if 1
+  panic ("SVA: sched_throw: 4.4BSD\n");
+#endif
 	if (td == NULL) {
 		mtx_lock_spin(&sched_lock);
 		spinlock_exit();
