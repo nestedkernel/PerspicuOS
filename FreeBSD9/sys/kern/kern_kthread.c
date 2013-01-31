@@ -278,9 +278,18 @@ kthread_add(void (*func)(void *), void *arg, struct proc *p,
 	/* XXX optimise this probably? */
 	/* On x86 (and probably the others too) it is way too full of junk */
 	/* Needs a better name */
+#if 0
 	cpu_set_upcall(newtd, oldtd);
 	/* put the designated function(arg) as the resume context */
 	cpu_set_fork_handler(newtd, func, arg);
+#else
+  /* SVA: Make this one operation on interrupted state */
+  extern void cpu_create_upcall(struct thread *td,
+                  struct thread *td0,
+                  void (*func)(void *),
+                  void *arg);
+  cpu_create_upcall (newtd, oldtd, func, arg);
+#endif
 
 	newtd->td_pflags |= TDP_KTHREAD;
 	newtd->td_ucred = crhold(p->p_ucred);
