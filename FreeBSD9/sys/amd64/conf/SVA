@@ -71,6 +71,11 @@ options		DDB
 options		BREAK_TO_DEBUGGER # Break signal on console goes into debugger
 options		ALT_BREAK_TO_DEBUGGER # Break signal on console goes into debugger
 
+# JTC: lock debugging stuff
+#options WITNESS
+#options WITNESS_KDB
+#options WITNESS_SKIPSPIN
+
 # Make an SMP-capable kernel by default
 #options 	SMP			# Symmetric MultiProcessor Kernel
 
