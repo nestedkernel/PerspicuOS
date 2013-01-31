@@ -1250,10 +1250,10 @@ sva_iset_privileged (void * icontext, unsigned char privileged)
   }
   else
   {
-    p->cs = 0x23;
-    p->ds = 0x2B;
-    p->es = 0x2B;
-    p->ss = 0x2B;
+    p->cs = 0x43;
+    p->ds = 0x3B;
+    p->es = 0x3B;
+    p->ss = 0x3B;
   }
 
   /*
@@ -1318,12 +1318,7 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /*
    * Setup the call to the new function.
    */
-#if 0
   ep->rip = func;
-#else
-  /* Setup PC to start at special location within code segment */
-  ep->rip = 0x40029bu;
-#endif
   ep->rsp = stackp;
   ep->rdi = arg;
 
@@ -1335,12 +1330,10 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   } else {
     ep->cs = 0x43;
     ep->ss = 0x3b;
-#if 0
     ep->ds = 0x3b;
-#endif
-    ep->es = 0x00;
-    ep->fs = 0x00;
-    ep->gs = 0x00;
+    ep->es = 0x3b;
+    ep->fs = 0x13;
+    ep->gs = 0x1b;
     ep->rflags = (rflags & 0xfffu);
   }
 
@@ -1463,7 +1456,6 @@ sva_init_stack (unsigned char * start_stackp,
    * Initialze the integer state of the new thread of control.
    */
   integerp = &(newThread->integerState);
-  bzero (integerp, sizeof (sva_integer_state_t));
   integerp->rip = func;
   integerp->rdi = arg1;
   integerp->rsi = arg2;
@@ -1472,17 +1464,21 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->cs  = 0x43;
   integerp->ss  = 0x3b;
   integerp->valid = 1;
-  integerp->rflags = rflags;
+  integerp->rflags = 0x202;
+  integerp->ist3 = integerp->kstackp;
 
   /*
    * Initialize the interrupt context of the new thread.
    */
   icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
-  bzero (icontextp, sizeof (sva_icontext_t));
   icontextp->rip = 0xbeefu;
   icontextp->cs = 0x43;
   icontextp->ss = 0x3b;
-  icontextp->rflags = 0x0;
+  icontextp->ds = 0x3b;
+  icontextp->es = 0x3b;
+  icontextp->fs = 0x13;
+  icontextp->gs = 0x1b;
+  icontextp->rflags = 0x202;
   icontextp->rsp = 0xfeeb;
   icontextp->invokep = (void *)(0xbeeeeeeeu);
 
