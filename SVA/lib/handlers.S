@@ -304,6 +304,7 @@ Trap:
    */
   movq $interrupt_table, %rax
   callq *(%rax,%rdi,8)
+  RETTARGET
 
   /*
    * Switch the stack pointer back to the interrupt context.
@@ -323,10 +324,14 @@ Trap:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-#if 0
+#if 1
+  andl $0xffff, IC_FS(%rsp)
+  andl $0xffff, IC_ES(%rsp)
+  andl $0xffff, IC_DS(%rsp)
   movw IC_FS(%rsp), %fs
-  movw IC_GS(%rsp), %gs
   movw IC_ES(%rsp), %es
+  movw IC_DS(%rsp), %ax
+  movw %ax, %ds
 #endif
 
   movq IC_RDI(%rsp), %rdi
@@ -506,7 +511,6 @@ SVAsyscall:
    * Call the system software system call handler.
    */
   callq sva_syscall
-
 sc_ret:
   RETTARGET
 
@@ -528,11 +532,17 @@ sc_ret:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-#if 0
+  andl $0xffff, IC_GS(%rsp)
+  andl $0xffff, IC_FS(%rsp)
+  andl $0xffff, IC_ES(%rsp)
+  andl $0xffff, IC_DS(%rsp)
   movw IC_FS(%rsp), %fs
+#if 0
   movw IC_GS(%rsp), %gs
-  movw IC_ES(%rsp), %es
 #endif
+  movw IC_ES(%rsp), %es
+  movw IC_DS(%rsp), %ax
+  movw %ax, %ds
 
   movq IC_RDI(%rsp), %rdi
   movq IC_RSI(%rsp), %rsi
