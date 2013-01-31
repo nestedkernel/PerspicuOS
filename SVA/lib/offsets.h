@@ -18,6 +18,7 @@
 #define IC_FS      0x08
 #define IC_GS      0x0a
 #define IC_ES      0x0c
+#define IC_DS      0x0e
 
 #define IC_RDI     0x10
 #define IC_RSI     0x18
