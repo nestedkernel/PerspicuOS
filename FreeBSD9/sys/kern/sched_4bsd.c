@@ -70,6 +70,7 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 
 #if 1
 #include "sva/state.h"
+extern void cpu_switch_sva (struct thread *, struct thread *, struct mtx *);
 #endif
 
 /*
@@ -1005,10 +1006,7 @@ sched_switch(struct thread *td, struct thread *newtd, int flags)
 #if 0
 		cpu_switch(td, newtd, tmtx != NULL ? tmtx : td->td_lock);
 #else
-    {
-    extern void cpu_switch_sva (struct thread *, struct thread *, struct mtx *);
 		cpu_switch_sva (td, newtd, tmtx != NULL ? tmtx : td->td_lock);
-    }
 #endif
 		lock_profile_obtain_lock_success(&sched_lock.lock_object,
 		    0, 0, __FILE__, __LINE__);
@@ -1579,9 +1577,6 @@ sched_throw(struct thread *td)
 	 * spinlock_exit() will simply adjust the counts without allowing
 	 * spin lock using code to interrupt us.
 	 */
-#if 1
-  panic ("SVA: sched_throw: 4.4BSD\n");
-#endif
 	if (td == NULL) {
 		mtx_lock_spin(&sched_lock);
 		spinlock_exit();
@@ -1593,7 +1588,11 @@ sched_throw(struct thread *td)
 	KASSERT(curthread->td_md.md_spinlock_count == 1, ("invalid count"));
 	PCPU_SET(switchtime, cpu_ticks());
 	PCPU_SET(switchticks, ticks);
+#if 0
 	cpu_throw(td, choosethread());	/* doesn't return */
+#else
+  cpu_switch_sva (td, choosethread(), td->td_lock);
+#endif
 }
 
 void
