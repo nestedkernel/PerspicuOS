@@ -594,6 +594,7 @@ secmemtrap:
 
   /* Call the secure memory allocator function */
   call  allocSecureMemory
+  RETTARGET
 
   /* Use the swapgs instruction to switch back to user mode */
   swapgs
@@ -618,6 +619,7 @@ secfreetrap:
 
   /* Call the secure memory deallocator function */
   call  freeSecureMemory
+  RETTARGET
 
   /* Use the swapgs instruction to switch back to user mode */
   swapgs
