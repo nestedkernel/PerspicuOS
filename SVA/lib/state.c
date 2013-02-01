@@ -1471,16 +1471,7 @@ sva_init_stack (unsigned char * start_stackp,
    * Initialize the interrupt context of the new thread.
    */
   icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
-  icontextp->rip = 0xbeefu;
-  icontextp->cs = 0x43;
-  icontextp->ss = 0x3b;
-  icontextp->ds = 0x3b;
-  icontextp->es = 0x3b;
-  icontextp->fs = 0x13;
-  icontextp->gs = 0x1b;
-  icontextp->rflags = 0x202;
-  icontextp->rsp = 0xfeeb;
-  icontextp->invokep = (void *)(0xbeeeeeeeu);
+  newThread->interruptContexts[maxIC] = oldThread->interruptContexts[maxIC];
 
   /*
    * Re-enable interrupts.
