@@ -719,15 +719,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   old->ist3 = cpup->tssp->ist3;
   old->currentIC = cpup->newCurrentIC;
 
-#if 0
-  /*
-   * Save the value of the CR3 register.
-   */
-  __asm__ __volatile__ ("movq %%cr3, %0\n"
-                        "movq %0, %1\n"
-                        : "=r" (cr3), "=m" (old->cr3));
-#endif
-
   /*
    * Save the current integer state.  Note that returning from sva_integer()
    * with a non-zero value means that we've just woken up from a context
@@ -749,13 +740,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     pchk_update_stack ();
 #endif
 
-#if 0
-    /*
-     * Fixup to where we will return.
-     */
-    uintptr_t * pcptr = __builtin_frame_address(0) + sizeof (void *);
-    *pcptr = old->hackRIP;
-#endif
     return 1;
   }
 
@@ -776,30 +760,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   *statep = (uintptr_t) oldThread;
 
   /*
-   * If there is no place for new state, create a new SVA thread and start
-   * using it without trying to load the new state.
+   * If there is no place for new state, flag an error.
    */
-#if 0
-  if (!newThread) {
-    /*
-     * Create the new SVA Thread.
-     */
-    extern uintptr_t sva_mk_thread (void);
-    newThread = (struct SVAThread *) sva_mk_thread ();
-
-    /*
-     * Switch the CPU over to using the new set of interrupt contexts.
-     */
-    cpup->currentThread = newThread;
-#if 0
-    cpup->tssp->ist3 = newThread->integerState.kstackp;
-#endif
-
-    return (uintptr_t) newThread;
-  }
-#else
   if (!newThread) panic ("SVA: No New Thread!\n");
-#endif
 
   /*
    * Switch the CPU over to using the new set of interrupt contexts.  However,
@@ -807,7 +770,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    */
   cpup->currentThread = newThread;
 
-#if 1
   /*
    * Now, reload the integer state pointed to by new.
    */
@@ -830,23 +792,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      */
     new->valid = 0;
 
-#if 0
-    /*
-     * Switch to the new address space.  We only modify CR3 if the two states
-     * use different page tables because any changes to CR3 may flush the TLB.
-     */
-    if (old->cr3 != new->cr3) {
-      cr3 = new->cr3;
-      __asm__ __volatile__ ("movq %0, %%cr3\n" : : "r" (cr3));
-    }
-#endif
-
     /*
      * Load the rest of the integer state.
      */
     load_integer (new);
   }
-#endif
 
   /*
    * The context switch failed.
