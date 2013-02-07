@@ -591,8 +591,10 @@ checkIntegerForLoad (sva_integer_state_t * p) {
   /* System call disable mask */
   extern unsigned int sva_sys_disabled;
 
+#if 0
   /* Disable interrupts */
   __asm__ __volatile__ ("cli");
+#endif
 
 #if 0
   do

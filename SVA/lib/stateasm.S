@@ -206,7 +206,7 @@ load_integer:
    */
   popq %rcx
 
-#if 1
+#if 0
   /* Put the EFLAGS register on the new stack */
   pushq IC_RFLAGS(%rdi)
 #endif
@@ -227,7 +227,7 @@ load_integer:
   /* Set the return value to 1 */
   movq $1, %rax
 
-#if 1
+#if 0
   /* Restore RFLAGS, potentially re-enabling interrupts */
   popfq
 #endif
