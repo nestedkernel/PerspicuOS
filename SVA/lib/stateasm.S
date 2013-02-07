@@ -60,9 +60,6 @@ save_integer:
    */
   pushfq
 
-  /* Disable Interrupts */
-  cli
-
 #if 0
   /*
    * Verify that the buffer is writable (i.e. fault here before doing anything
@@ -135,10 +132,6 @@ save_integer:
    */
   movq (%rsp), %rax
   movq %rax, IC_RIP(%rdi)
-
-  /* Restore interrupts */
-  pushq IC_RFLAGS(%rdi)
-  popfq
 
   /* Return a zero to the caller */
   movq $0, %rax
@@ -213,7 +206,7 @@ load_integer:
    */
   popq %rcx
 
-#if 0
+#if 1
   /* Put the EFLAGS register on the new stack */
   pushq IC_RFLAGS(%rdi)
 #endif
@@ -234,7 +227,7 @@ load_integer:
   /* Set the return value to 1 */
   movq $1, %rax
 
-#if 0
+#if 1
   /* Restore RFLAGS, potentially re-enabling interrupts */
   popfq
 #endif

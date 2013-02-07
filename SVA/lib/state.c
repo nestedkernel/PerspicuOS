@@ -225,7 +225,7 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
                      uintptr_t p3,
                      uintptr_t p4) {
   /* Old interrupt flags */
-  unsigned int rflags;
+  uintptr_t rflags;
 
   /*
    * Disable interrupts.
@@ -682,6 +682,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   extern unsigned int save_integer (sva_integer_state_t * buffer);
   extern void load_integer (sva_integer_state_t * p);
 
+  /* Old interrupt flags */
+  uintptr_t rflags = sva_enter_critical();
+
   /* Pointer to the current CPU State */
   struct CPUState * cpup = getCPUState();
 
@@ -740,6 +743,10 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     pchk_update_stack ();
 #endif
 
+    /*
+     * Re-enable interrupts.
+     */
+    sva_exit_critical (rflags);
     return 1;
   }
 
@@ -1247,7 +1254,7 @@ svaDummy (void) {
 void
 sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
   /* Old interrupt flags */
-  unsigned int rflags;
+  uintptr_t rflags;
 
   /*
    * Disable interrupts.
