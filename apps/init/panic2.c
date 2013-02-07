@@ -17,11 +17,12 @@ main (int argc, char ** argv) {
   static char * msg = "SVA: child: I can do stuff!\n";
 
   __asm__ __volatile__ ("int $0x7e\n");
+#if 0
   fd = open ("/tmp/log2", O_WRONLY | O_CREAT | O_TRUNC | O_FSYNC, 0644);
   write (fd, msg, strlen(msg));
   close (fd);
+#endif
 
-  while (1) { ; }
-  return 0;
+  exit(0);
 }
 
