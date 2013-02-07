@@ -808,6 +808,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /*
    * The context switch failed.
    */
+  sva_exit_critical (rflags);
   return 0; 
 }
 
