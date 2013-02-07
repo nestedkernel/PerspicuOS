@@ -56,7 +56,9 @@ main (int argc, char ** argv) {
                             "int $0x7f\n" : : "m" (pid));
 #if  0
       write (fd, msg, strlen(msg));
-      execlp ("/sbin/mount", "/sbin/mount", 0);
+#endif
+      execlp ("/sbin/panic2", "/sbin/panic2", 0);
+#if 0
       __asm__ __volatile__ ("movq %0, %%rdi\n"
                             "int $0x7e\n" : : "m" (errno));
       write (fd, bad, strlen(bad));
