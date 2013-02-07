@@ -1471,7 +1471,19 @@ sva_init_stack (unsigned char * start_stackp,
    * Initialize the interrupt context of the new thread.
    */
   icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
-  newThread->interruptContexts[maxIC] = oldThread->interruptContexts[maxIC];
+  if (cpup->newCurrentIC) {
+    *icontextp = *(cpup->newCurrentIC);
+  } else {
+    *icontextp = oldThread->interruptContexts[maxIC];
+  }
+
+  /*
+   * Set the return value to zero.
+   *
+   * FIXME: This is a hack.  Ideally, the return value setting code should do
+   *        this.
+   */
+  icontextp->rax = 0;
 
   /*
    * Re-enable interrupts.
