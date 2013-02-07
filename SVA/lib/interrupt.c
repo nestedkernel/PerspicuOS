@@ -164,9 +164,12 @@ sva_icontext_setretval (unsigned long high,
                         unsigned long low,
                         unsigned char error) {
   /*
+   * FIXME: This should ensure that the interrupt context is for a system
+   *        call.
+   *
    * Get the current processor's user-space interrupt context.
    */
-  sva_icontext_t * icontextp = get_uicontext();
+  sva_icontext_t * icontextp = getCPUState()->newCurrentIC;
 
   /*
    * Set the return value.  The high order bits go in %edx, and the low
@@ -180,9 +183,9 @@ sva_icontext_setretval (unsigned long high,
    * the system call succeeded for failed.
    */
   if (error) {
-    icontextp->r11 |= 1;
+    icontextp->rflags |= 1;
   } else {
-    icontextp->r11 &= 0xfffffffffffffffe;
+    icontextp->rflags &= 0xfffffffffffffffeu;
   }
 
   return;
@@ -202,9 +205,12 @@ sva_icontext_setretval (unsigned long high,
 void
 sva_icontext_restart (unsigned long r10, unsigned long rip) {
   /*
+   * FIXME: This should ensure that the interrupt context is for a system
+   *        call.
+   *
    * Get the current processor's user-space interrupt context.
    */
-  sva_icontext_t * icontextp = get_uicontext();
+  sva_icontext_t * icontextp = getCPUState()->newCurrentIC;
 
   /*
    * Modify the saved %rcx register so that it re-executes the syscall
