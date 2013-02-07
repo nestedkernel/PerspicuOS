@@ -256,9 +256,6 @@ cpu_fork(td1, p2, td2, flags)
 	                             td2,
 	                             0,
                                0);
-#if 0
-	printf ("SVA: cpu_fork: [%d:%d] %lx\n", td2->td_proc->p_pid, td2->td_tid, td2->svaID);
-#endif
 #endif
 	/*
 	 * Now, cpu_switch() can schedule the new process.
@@ -290,14 +287,8 @@ cpu_set_fork_handler(td, func, arg)
 	td->td_pcb->pcb_r12 = (long) func;	/* function */
 	td->td_pcb->pcb_rbx = (long) arg;	/* first arg */
 #if 1
-  printf ("SVA: cpu_fork_set_handler: [%d:%d] : func=%p, arg=%p: %lx\n", td->td_proc->p_pid, td->td_tid, func, arg, td->svaID);
   td->callout = func;
   td->callarg = arg;
-#if 0
-  if (td->svaID) {
-    sva_push_function2 (td->svaID, kernel_thread_trampoline, func, arg);
-  }
-#endif
 #endif
 }
 
@@ -504,7 +495,6 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
                               td,
                               0,
 	                            0);
-  printf ("SVA: cpu_set_upcall: [%d:%d] %lx\n", td->td_proc->p_pid, td->td_tid, td->svaID);
 #endif
 }
 
@@ -587,7 +577,6 @@ cpu_create_upcall(struct thread *td,
                               td,
                               0,
 	                            0);
-  printf ("SVA: cpu_set_upcall: [%d:%d] %lx\n", td->td_proc->p_pid, td->td_tid, td->svaID);
 #endif
 }
 #endif
