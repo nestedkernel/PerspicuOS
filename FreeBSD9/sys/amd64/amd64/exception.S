@@ -362,8 +362,7 @@ IDTVEC(fast_syscall)
    * it is an SVA system call (the upper bit in the system call number is set),
    * let SVA handle it.
    */
-  testl $0x80000000, %eax
-  js SVAsyscall
+  jmp SVAsyscall
 #endif
 	swapgs
 	movq	%rsp,PCPU(SCRATCH_RSP)
