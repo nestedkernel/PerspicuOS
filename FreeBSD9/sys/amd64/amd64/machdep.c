@@ -892,7 +892,9 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	pcb->pcb_fsbase = 0;
 	pcb->pcb_gsbase = 0;
 	clear_pcb_flags(pcb, PCB_32BIT | PCB_GS32BIT);
+#endif
 	pcb->pcb_initial_fpucw = __INITIAL_FPUCW__;
+#if 0
 	set_pcb_flags(pcb, PCB_FULL_IRET);
 
 	bzero((char *)regs, sizeof(struct trapframe));
