@@ -1049,6 +1049,13 @@ fork_return(struct thread *td, struct trapframe *frame)
 
 	userret(td, frame);
 
+#if 1
+  /* For SVA, we have to set the return value here */
+  td->td_retval[0] = 0;
+  td->td_retval[1] = 0;
+  td->td_proc->p_sysent->sv_set_syscall_retval (td, 0);
+#endif
+
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET))
 		ktrsysret(SYS_fork, 0, 0);

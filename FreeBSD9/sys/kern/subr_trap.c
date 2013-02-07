@@ -144,12 +144,6 @@ userret(struct thread *td, struct trapframe *frame)
 #ifdef XEN
 	PT_UPDATES_FLUSH();
 #endif
-#if 1
-  /* For SVA, we have to set the return value here */
-  td->td_retval[0] = 0;
-  td->td_retval[1] = 0;
-  cpu_set_syscall_retval (td, 0);
-#endif
 }
 
 /*
