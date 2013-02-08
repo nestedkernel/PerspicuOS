@@ -50,8 +50,6 @@
  *  Saved EFLAGS Register
  *  Saved EAX Register
  *
- * TODO:
- *  o I think sva_swap_integer should disable interrupts.
  */
 save_integer:
   /*
