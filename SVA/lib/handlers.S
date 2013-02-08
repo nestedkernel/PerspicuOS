@@ -270,6 +270,12 @@ Trap:
   movq IC_TRAPNO(%rsp), %rdi
 
   /*
+   * Move the address causing the fault (which may or may not be applicable)
+   * into the %rsi register to make it the second argument.
+   */
+  movq %cr2, %rsi
+
+  /*
    * Save the address of the current interrupt context into this processor's
    * CPU state.
    */
@@ -642,8 +648,10 @@ ECTRAP(10)
 ECTRAP(11)
 ECTRAP(12)
 ECTRAP(13)
+ECTRAP(14)
 TRAP(15)
 TRAP(16)
+ECTRAP(17)
 TRAP(18)
 TRAP(19)
 TRAP(20)

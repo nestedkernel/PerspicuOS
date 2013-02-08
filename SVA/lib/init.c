@@ -538,11 +538,6 @@ init_dispatcher ()
    */
   register_x86_trap (0x7e, secfreetrap);
   register_x86_trap (0x7f, secmemtrap);
-#if 0
-  /* Page Fault and Memory Alignment Trap, respectively */
-  register_x86_interrupt (0x0e, mem_trap14, 0);
-  register_x86_interrupt (0x11, mem_trap17, 0);
-#endif
 
   /* Register general exception */
   REGISTER_EXCEPTION(0);
@@ -559,8 +554,10 @@ init_dispatcher ()
   REGISTER_EXCEPTION(11);
   REGISTER_EXCEPTION(12);
   REGISTER_EXCEPTION(13);
+  REGISTER_EXCEPTION(14);   // Memory trap exception
   REGISTER_EXCEPTION(15);
   REGISTER_EXCEPTION(16);
+  REGISTER_EXCEPTION(17);   // Memory trap exception
   REGISTER_EXCEPTION(18);
   REGISTER_EXCEPTION(19);
   REGISTER_EXCEPTION(20);
