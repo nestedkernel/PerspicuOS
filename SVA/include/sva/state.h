@@ -296,6 +296,16 @@ sva_was_privileged (void) {
   return (((cpuState->newCurrentIC->cs) & KERNELCS) == KERNELCS);
 }
 
+/*
+ * FIXME: This is a hack because we don't have invokememcpy() implemented yet.
+ */
+static inline void
+sva_icontext_setrip (uintptr_t pc) {
+  struct CPUState * cpuState = getCPUState();
+  cpuState->newCurrentIC->rip = pc;
+  return;
+}
+
 #if 0
 /* Prototypes for Execution Engine Functions */
 extern unsigned char * sva_get_integer_stackp  (void * integerp);
