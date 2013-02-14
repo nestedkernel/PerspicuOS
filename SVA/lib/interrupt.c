@@ -31,9 +31,9 @@ extern void * interrupt_table[256];
  * Default LLVA interrupt, exception, and system call handlers.
  */
 void
-default_interrupt (unsigned int number, void * state) {
+default_interrupt (unsigned int number, uintptr_t address) {
 #if 1
-  printf ("SVA: default interrupt handler: %p\n", interrupt_table);
+  printf ("SVA: default interrupt handler: %d %d\n", number, address);
 #else
   __asm__ __volatile__ ("hlt");
 #endif
@@ -128,6 +128,11 @@ sva_getCPUState (tss_t * tssp) {
      * Initialize the interrupt context link list pointer.
      */
     CPUState[index].currentThread = st = findNextFreeThread();
+
+    /*
+     * Initialize the interrupt context pointer.
+     */
+    CPUState[index].newCurrentIC = 0;
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
@@ -250,8 +255,6 @@ sva_register_general_exception (unsigned char number,
     case 10:
     case 11:
     case 12:
-    case 14:
-    case 17:
       __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
       return 1;
       break;
