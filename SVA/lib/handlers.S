@@ -330,15 +330,10 @@ Trap:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-#if 1
-  andl $0xffff, IC_FS(%rsp)
-  andl $0xffff, IC_ES(%rsp)
-  andl $0xffff, IC_DS(%rsp)
   movw IC_FS(%rsp), %fs
   movw IC_ES(%rsp), %es
   movw IC_DS(%rsp), %ax
   movw %ax, %ds
-#endif
 
   movq IC_RDI(%rsp), %rdi
   movq IC_RSI(%rsp), %rsi
