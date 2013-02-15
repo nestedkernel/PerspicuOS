@@ -43,11 +43,14 @@
   .type   trap##x, @function ; \
 ; \
 trap##x: \
+  /* Adjust the stack pointer so that we can push items using %ds */ \
+  subq $16, %rsp ; \
+ \
   /* Push a zero code */ \
-  pushq $0 ; \
+  movq $0, 8(%rsp) ; \
 \
   /* Push the trap number */ \
-  pushq $x ; \
+  movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $USERCS, 24(%rsp) ; \
@@ -71,8 +74,11 @@ trap##x: \
   .type   trap##x, @function ; \
 ; \
 trap##x: \
+  /* Adjust the stack pointer so that we can push items using %ds */ \
+  subq $8, %rsp ; \
+ \
   /* Push the trap number */ \
-  pushq $x ; \
+  movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $USERCS, 24(%rsp) ; \
@@ -99,11 +105,14 @@ trap##x: \
   .type   interrupt##x, @function ; \
 ; \
 interrupt##x: \
+  /* Adjust the stack pointer so that we can push items using %ds */ \
+  subq $16, %rsp ; \
+ \
   /* Push a zero code */ \
-  pushq $0 ; \
+  movq $0, 8(%rsp) ; \
 \
   /* Push the trap number */ \
-  pushq $x ; \
+  movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
   testw $USERCS, 24(%rsp) ; \
@@ -236,6 +245,16 @@ restoreRegs:
  */
 Trap:
   /*
+   * Switch to the stack segment.
+   */
+  subq $8, %rsp
+  movq %rax, (%rsp)
+  movw %gs, %ax
+  movw %ax, %ss
+  movq (%rsp), %rax
+  addq $8, %rsp
+
+  /*
    * Save a copy of the interrupt context into SVA memory.
    */
   pushq %rbp
@@ -256,7 +275,8 @@ Trap:
   pushq %rsi
   pushq %rdi
 
-  pushw $0
+  movw %ds, %ax
+  pushw %ax
   movw  %es, 0(%rsp)
   subq $2, %rsp
   pushw %gs
@@ -330,10 +350,22 @@ Trap:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
+#if 0
   movw IC_FS(%rsp), %fs
   movw IC_ES(%rsp), %es
   movw IC_DS(%rsp), %ax
   movw %ax, %ds
+#else
+  movw IC_FS(%rsp), %ax
+  movw IC_ES(%rsp), %bx
+  movw IC_DS(%rsp), %cx
+  andl $0xffff, %eax
+  andl $0xffff, %ebx
+  andl $0xffff, %ecx
+  movw %ax, %fs
+  movw %bx, %es
+  movw %cx, %ds
+#endif
 
   movq IC_RDI(%rsp), %rdi
   movq IC_RSI(%rsp), %rsi
@@ -474,7 +506,8 @@ SVAsyscall:
   pushq 0x00(%rsi)
   pushq 0x08(%rsi)
 
-  pushw $0
+  movw %ds, %ax
+  pushw %ax
   movw  %es, 0(%rsp)
   subq $2, %rsp
   pushw %gs
@@ -533,14 +566,13 @@ sc_ret:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
+#if 0
   andl $0xffff, IC_GS(%rsp)
   andl $0xffff, IC_FS(%rsp)
   andl $0xffff, IC_ES(%rsp)
   andl $0xffff, IC_DS(%rsp)
-  movw IC_FS(%rsp), %fs
-#if 0
-  movw IC_GS(%rsp), %gs
 #endif
+  movw IC_FS(%rsp), %fs
   movw IC_ES(%rsp), %es
   movw IC_DS(%rsp), %ax
   movw %ax, %ds
