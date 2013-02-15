@@ -122,10 +122,10 @@ CFLAGS+=	-ffreestanding
 #
 # GCC SSP support
 #
-.if ${MK_SSP} != "no" && ${MACHINE_CPUARCH} != "ia64" && \
-    ${MACHINE_CPUARCH} != "arm" && ${MACHINE_CPUARCH} != "mips"
-CFLAGS+=	-fstack-protector
-.endif
+#.if ${MK_SSP} != "no" && ${MACHINE_CPUARCH} != "ia64" && \
+#    ${MACHINE_CPUARCH} != "arm" && ${MACHINE_CPUARCH} != "mips"
+#CFLAGS+=	-fstack-protector
+#.endif
 
 #
 # Enable CTF conversation on request
