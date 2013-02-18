@@ -575,12 +575,6 @@ sc_ret:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-#if 0
-  andl $0xffff, IC_GS(%rsp)
-  andl $0xffff, IC_FS(%rsp)
-  andl $0xffff, IC_ES(%rsp)
-  andl $0xffff, IC_DS(%rsp)
-#endif
   movw IC_FS(%rsp), %cx
   movw IC_ES(%rsp), %bx
   movw IC_DS(%rsp), %ax
