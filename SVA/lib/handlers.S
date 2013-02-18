@@ -275,13 +275,15 @@ Trap:
   pushq %rsi
   pushq %rdi
 
+  /* Save the segment registers */
   movw %ds, %ax
   pushw %ax
-  movw  %es, 0(%rsp)
-  subq $2, %rsp
+  movw %es, %ax
+  pushw %ax
   pushw %gs
   pushw %fs
 
+  /* Push the invoke frame pointer */
   pushq $0
 
   /*
@@ -321,7 +323,11 @@ Trap:
    * kernel stack pointer.
    */
   movq CPU_TSSP(%rbp), %rbp
-  cmpw $USERCS, 0xa8(%rsp)
+#if 0
+  cmpw $0x43, 0xa8(%rsp)
+#else
+  cmpw $0x43, 0xa0(%rsp)
+#endif
   cmoveq 4(%rbp), %rsp
   cmovneq IC_RSP(%rsp), %rsp
 
@@ -359,9 +365,11 @@ Trap:
   movw IC_FS(%rsp), %ax
   movw IC_ES(%rsp), %bx
   movw IC_DS(%rsp), %cx
+#if 0
   andl $0xffff, %eax
   andl $0xffff, %ebx
   andl $0xffff, %ecx
+#endif
   movw %ax, %fs
   movw %bx, %es
   movw %cx, %ds
@@ -391,8 +399,8 @@ Trap:
   addq $0x98, %rsp
 
   /* Determine whether we interrupted user or supervisor mode execution. */
-  testw $USERCS, 8(%rsp)
-  jz 1f
+  cmpq $0x43, 8(%rsp)
+  jne 1f
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
@@ -572,9 +580,11 @@ sc_ret:
   andl $0xffff, IC_ES(%rsp)
   andl $0xffff, IC_DS(%rsp)
 #endif
-  movw IC_FS(%rsp), %fs
-  movw IC_ES(%rsp), %es
+  movw IC_FS(%rsp), %cx
+  movw IC_ES(%rsp), %bx
   movw IC_DS(%rsp), %ax
+  movw %cx, %fs
+  movw %bx, %es
   movw %ax, %ds
 
   movq IC_RDI(%rsp), %rdi
