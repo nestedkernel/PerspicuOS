@@ -123,6 +123,9 @@ extern void syscall(struct trapframe *frame);
 void dblfault_handler(struct trapframe *frame);
 
 static int trap_pfault(struct trapframe *, int);
+#if 1
+static int trap_pfault_sva (register_t eva, unsigned long code, int usermode, struct trapframe * frame);
+#endif
 static void trap_fatal(struct trapframe *, vm_offset_t);
 
 #define MAX_TRAP_MSG		33
@@ -640,9 +643,9 @@ out:
 }
 
 #if 1
-void fr_sva_trap(void);
+void fr_sva_trap(unsigned trapno, void * trapAddr);
 void
-fr_sva_trap(void)
+fr_sva_trap(unsigned trapno, void * trapAddr)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -654,13 +657,18 @@ fr_sva_trap(void)
 	struct trapframe localframe;
 	struct trapframe * frame = &localframe;
 
+  /*
+   * Enable interrupts.
+   */
+  sva_load_lif (1);
+
 	/*
 	 * Convert the SVA interrupt context to a FreeBSD trapframe.
 	 */
 	extern void sva_trapframe (struct trapframe * tf);
 	sva_trapframe (frame);
+  localframe.tf_addr = trapAddr;
   type = localframe.tf_trapno;
-  printf ("SVA: trap: %x\n", type);
 
   /*
    * Translate the SVA trap number into a FreeBSD trap number.
@@ -726,7 +734,12 @@ fr_sva_trap(void)
       type = T_XMMFLT;
       break;
 
+    case IDT_PF:
+      type = T_PAGEFLT;
+      break;
+
     default:
+      panic ("SVA: fr_sva_trap: Did not translate trap type: %x!\n", type);
       break;
   }
 #endif
@@ -912,7 +925,11 @@ fr_sva_trap(void)
 
 		case T_PAGEFLT:		/* page fault */
 			addr = frame->tf_addr;
+#if 0
 			i = trap_pfault(frame, TRUE);
+#else
+			i = trap_pfault_sva(addr, frame->tf_err, TRUE, frame);
+#endif
 			if (i == -1)
 				goto userout;
 			if (i == 0)
@@ -1010,7 +1027,11 @@ fr_sva_trap(void)
 		    ("kernel trap doesn't have ucred"));
 		switch (type) {
 		case T_PAGEFLT:			/* page fault */
+#if 0
 			(void) trap_pfault(frame, FALSE);
+#else
+			(void) trap_pfault_sva(frame->tf_addr, frame->tf_err, FALSE, frame);
+#endif
 			goto out;
 
 		case T_DNA:
@@ -1284,6 +1305,138 @@ nogo:
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
+
+#if 1
+/*
+ * Function: trap_pfault_sva()
+ *
+ * Descrption:
+ *  This is a replacement for trap_pfault() that uses SVA intrinsics.
+ *
+ * Inputs:
+ *	eva      : The effective virtual address responsible for the page fault.
+ *	code     : The amd64 error code providing information about the fault.
+ *	usermode : A flag indicating whether the fault occured in user mode.
+ *	frame    : A fake trapframe used solely for trap_fatal() calls.
+ */
+static int
+trap_pfault_sva (register_t eva, unsigned long code, int usermode, struct trapframe * frame)
+{
+	vm_offset_t va;
+	struct vmspace *vm = NULL;
+	vm_map_t map;
+	int rv = 0;
+	vm_prot_t ftype;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
+#if 0
+  if (usermode)
+    __asm__ __volatile__ ("xchg %bx, %bx\n");
+  else
+    printf ("trap_pfault_sva: %lx %lx %d %p\n", eva, code, usermode, frame);
+#endif
+
+	va = trunc_page(eva);
+	if (va >= VM_MIN_KERNEL_ADDRESS) {
+		/*
+		 * Don't allow user-mode faults in kernel address space.
+		 */
+		if (usermode)
+			goto nogo;
+
+		map = kernel_map;
+	} else {
+		/*
+		 * This is a fault on non-kernel virtual memory.
+		 * vm is initialized above to NULL. If curproc is NULL
+		 * or curproc->p_vmspace is NULL the fault is fatal.
+		 */
+		if (p != NULL)
+			vm = p->p_vmspace;
+
+		if (vm == NULL)
+			goto nogo;
+
+		map = &vm->vm_map;
+
+		/*
+		 * When accessing a usermode address, kernel must be
+		 * ready to accept the page fault, and provide a
+		 * handling routine.  Since accessing the address
+		 * without the handler is a bug, do not try to handle
+		 * it normally, and panic immediately.
+		 */
+		if (!usermode && (td->td_intr_nesting_level != 0 ||
+		    PCPU_GET(curpcb)->pcb_onfault == NULL)) {
+			trap_fatal(frame, eva);
+			return (-1);
+		}
+	}
+
+	/*
+	 * PGEX_I is defined only if the execute disable bit capability is
+	 * supported and enabled.
+	 */
+#if 0
+	if (frame->tf_err & PGEX_W)
+		ftype = VM_PROT_WRITE;
+	else if ((frame->tf_err & PGEX_I) && pg_nx != 0)
+		ftype = VM_PROT_EXECUTE;
+	else
+		ftype = VM_PROT_READ;
+#else
+	if (code & PGEX_W)
+		ftype = VM_PROT_WRITE;
+	else if ((code & PGEX_I) && pg_nx != 0)
+		ftype = VM_PROT_EXECUTE;
+	else
+		ftype = VM_PROT_READ;
+#endif
+
+	if (map != kernel_map) {
+		/*
+		 * Keep swapout from messing with us during this
+		 *	critical time.
+		 */
+		PROC_LOCK(p);
+		++p->p_lock;
+		PROC_UNLOCK(p);
+
+		/* Fault in the user page: */
+		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
+
+		PROC_LOCK(p);
+		--p->p_lock;
+		PROC_UNLOCK(p);
+	} else {
+		/*
+		 * Don't have to worry about process locking or stacks in the
+		 * kernel.
+		 */
+		rv = vm_fault(map, va, ftype, VM_FAULT_NORMAL);
+	}
+	if (rv == KERN_SUCCESS)
+		return (0);
+nogo:
+	if (!usermode) {
+		if (td->td_intr_nesting_level == 0 &&
+		    PCPU_GET(curpcb)->pcb_onfault != NULL) {
+#if 0
+			frame->tf_rip = (long)PCPU_GET(curpcb)->pcb_onfault;
+#else
+			sva_icontext_setrip ((long)PCPU_GET(curpcb)->pcb_onfault);
+#endif
+			return (0);
+		}
+		trap_fatal(frame, eva);
+		return (-1);
+	}
+
+	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
+}
+
+#endif
 
 static void
 trap_fatal(frame, eva)
