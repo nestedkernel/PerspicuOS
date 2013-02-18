@@ -321,13 +321,14 @@ Trap:
    * Switch to the kernel stack.  If coming from user space, use the kernel
    * stack pointer specified by the kernel.  Otherwise, use the previous
    * kernel stack pointer.
+   *
+   * NOTE: The offset to the code segment is hard-coded here because I couldn't
+   *       get the macro magic working properly.  If the interrupt context
+   *       layout changes, the offset used to look for the code segment will
+   *       also need to change.
    */
   movq CPU_TSSP(%rbp), %rbp
-#if 0
-  cmpw $0x43, 0xa8(%rsp)
-#else
   cmpw $0x43, 0xa0(%rsp)
-#endif
   cmoveq 4(%rbp), %rsp
   cmovneq IC_RSP(%rsp), %rsp
 
