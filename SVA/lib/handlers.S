@@ -249,7 +249,7 @@ Trap:
    */
   subq $8, %rsp
   movq %rax, (%rsp)
-  movw %gs, %ax
+  movw $0x28, %ax
   movw %ax, %ss
   movq (%rsp), %rax
   addq $8, %rsp
