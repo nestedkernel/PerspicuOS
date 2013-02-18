@@ -515,10 +515,14 @@ SVAsyscall:
   pushq 0x00(%rsi)
   pushq 0x08(%rsi)
 
+#if 0
+  movq $0, %rax
+  movq $0, %rbx
+#endif
   movw %ds, %ax
+  movw %es, %bx
   pushw %ax
-  movw  %es, 0(%rsp)
-  subq $2, %rsp
+  pushw %bx
   pushw %gs
   pushw %fs
 
