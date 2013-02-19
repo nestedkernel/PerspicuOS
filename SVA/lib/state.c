@@ -985,6 +985,7 @@ sva_save_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
     __asm__ __volatile__ ("sti":::"memory");
   return;
 }
+#endif
 
 /*
  * Intrinsic: sva_load_fp()
@@ -993,20 +994,19 @@ sva_save_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
  *  This intrinsic loads floating point state back on to the processor.
  */
 void
-sva_load_fp (void * buffer)
-{
-  const int ts = 0x00000008;
-  unsigned int cr0;
+sva_load_fp (void * buffer) {
+  const uintptr_t ts = 0x00000008;
+  uintptr_t cr0;
   sva_fp_state_t * p = buffer;
   extern unsigned char sva_fp_used;
  
   /* Old interrupt flags */
-  unsigned int eflags;
+  uintptr_t rflags;
 
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
+  rflags = sva_enter_critical();
 
 #if LLVA_COUNTERS
   ++sva_counters.sva_load_fp;
@@ -1023,16 +1023,15 @@ sva_load_fp (void * buffer)
    * Mark the FPU has having been unused.  The first FP operation will cause
    * an exception into the Execution Engine.
    */
-  __asm__ __volatile__ ("movl %%cr0, %0\n"
-                        "orl  %1,    %0\n"
-                        "movl %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
+  __asm__ __volatile__ ("movq %%cr0, %0\n"
+                        "orq  %1,    %0\n"
+                        "movq %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
   sva_fp_used = 0;
 
   /*
    * Re-enable interrupts.
    */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+  sva_exit_critical (rflags);
   return;
 }
 
@@ -1048,21 +1047,19 @@ sva_load_fp (void * buffer)
  *  always - Only save state if it was modified since the last load FP state.
  */
 int
-sva_save_fp (void * buffer, int always)
-{
+sva_save_fp (void * buffer, int always) {
   sva_fp_state_t * p = buffer;
   extern unsigned char sva_fp_used;
 
   /* Old interrupt flags */
-  unsigned int eflags;
+  uintptr_t rflags;
 
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
+  rflags = sva_enter_critical();
 
-  if (always || sva_fp_used)
-  {
+  if (always || sva_fp_used) {
 #if LLVA_COUNTERS
     ++sva_counters.sva_save_fp;
     if (sva_debug) ++sva_local_counters.sva_save_fp;
@@ -1073,19 +1070,18 @@ sva_save_fp (void * buffer, int always)
     /*
      * Re-enable interrupts.
      */
-    if (eflags & 0x00000200)
-      __asm__ __volatile__ ("sti":::"memory");
+    sva_exit_critical (rflags);
     return 1;
   }
 
   /*
    * Re-enable interrupts.
    */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+  sva_exit_critical (rflags);
   return 0;
 }
 
+#if 0
 /*
  * Intrinsic: sva_load_stackp ()
  *

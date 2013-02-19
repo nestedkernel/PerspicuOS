@@ -93,16 +93,16 @@ extern void panic(const char *, ...);
 
 void register_x86_interrupt (int number, void *interrupt, unsigned char priv);
 void register_x86_trap (int number, void *trap);
-#if 0
 static void fptrap (void);
+#if 0
 static void init_debug (void);
 static void init_mmu (void);
-static void init_fpu ();
 #endif
+void init_fpu ();
 static void init_dispatcher ();
 
 /* Flags whether the FPU has been used */
-unsigned char llva_fp_used = 0;
+unsigned char sva_fp_used = 0;
 
 /* Default LLVA interrupt, exception, and system call handlers */
 extern void default_interrupt (unsigned int number, void * icontext);
@@ -235,33 +235,31 @@ register_x86_trap (int number, void *trap) {
   return;
 }
 
-#if 0
 /*
  * Function: fptrap()
  *
  * Description:
- *  Function that captures FP traps and flags use of the FP unit accordingly.
+ *  This function captures FP traps and flags use of the FP unit accordingly.
  */
 static void
-fptrap (void)
-{
-  const int ts = 0x00000008;
-  int cr0;
+fptrap (void) {
+  const unsigned int ts = 0x00000008;
+  unsigned int cr0;
 
   /*
    * Flag that the floating point unit has now been used.
    */
-  llva_fp_used = 1;
+  sva_fp_used = 1;
 
   /*
    * Turn off the TS bit in CR0; this allows the FPU to proceed with floating
    * point operations.
    */
-  __asm__ __volatile__ ("mov %%cr0, %0\n"
+  __asm__ __volatile__ ("movl %%cr0, %0\n"
                         "andl  %1,  %0\n"
-                        "mov %0, %%cr0\n" : "=&r" (cr0) : "r" (~(ts)));
+                        "movl %0, %%cr0\n" : "=&r" (cr0) : "r" (~(ts)));
+  return;
 }
-#endif
 
 /*
  * Function: init_procID()
@@ -400,6 +398,7 @@ init_mmu (void)
 
   return;
 }
+#endif
 
 /*
  * Function: init_fpu()
@@ -407,21 +406,20 @@ init_mmu (void)
  * Description:
  *  Initialize various things that needs to be initialized for the FPU.
  */
-static void
-init_fpu ()
-{
-  const int mp = 0x00000002;
-  const int em = 0x00000004;
-  const int ts = 0x00000008;
-  int cr0;
+void
+init_fpu () {
+  const unsigned int mp = 0x00000002u;
+  const unsigned int em = 0x00000004u;
+  const unsigned int ts = 0x00000008u;
+  unsigned int cr0;
 
   /*
    * Configure the processor so that the first use of the FPU generates an
    * exception.
    */
   __asm__ __volatile__ ("mov %%cr0, %0\n"
-                        "andl  %1, %0\n"
-                        "orl   %2, %0\n"
+                        "and  %1, %0\n"
+                        "or   %2, %0\n"
                         "mov %0, %%cr0\n"
                         : "=&r" (cr0)
                         : "r" (~(em)),
@@ -431,15 +429,14 @@ init_fpu ()
    * Register the co-processor trap so that we know when an FP operation has
    * been performed.
    */
-  llva_register_general_exception (0x7, fptrap);
+  sva_register_general_exception (0x7, fptrap);
 
   /*
    * Flag that the floating point unit has not been used.
    */
-  llva_fp_used = 0;
+  sva_fp_used = 0;
   return;
 }
-#endif
 
 /*
  * Intrinsic: sva_init_primary()
@@ -466,7 +463,9 @@ sva_init_primary () {
 
 #if 0
   init_mmu ();
+#endif
   init_fpu ();
+#if 0
   llva_reset_counters();
   llva_reset_local_counters();
 #endif
@@ -501,7 +500,9 @@ sva_init_secondary () {
 #endif
 #if 0
   init_mmu ();
+#endif
   init_fpu ();
+#if 0
   llva_reset_counters();
   llva_reset_local_counters();
 #endif
