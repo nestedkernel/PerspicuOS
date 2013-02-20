@@ -123,11 +123,18 @@ userret(struct thread *td, struct trapframe *frame)
 	if (td->td_pflags & TDP_GEOM)
 		g_waitidle();
 
+#if 0
 	/*
 	 * Charge system time if profiling.
 	 */
 	if (p->p_flag & P_PROFIL)
 		addupc_task(td, TRAPF_PC(frame), td->td_pticks * psratio);
+#else
+  /*
+   * SVA: We don't do time profiling, and that is the only use of the frame
+   * in this function
+   */
+#endif
 	/*
 	 * Let the scheduler adjust our priority etc.
 	 */
