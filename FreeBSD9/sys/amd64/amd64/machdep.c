@@ -1715,13 +1715,12 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_DE, fr_sva_trap);
 #endif
 	setidt(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
-#if 1
  	setidt(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
+#if 0
 	setidt(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_BR, &IDTVEC(bnd),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_UD, &IDTVEC(ill),  SDT_SYSIGT, SEL_KPL, 0);
 #else
- 	sva_register_general_exception(IDT_BP, fr_sva_trap);
 	sva_register_general_exception(IDT_OF, fr_sva_trap);
 	sva_register_general_exception(IDT_BR, fr_sva_trap);
 	sva_register_general_exception(IDT_UD, fr_sva_trap);
