@@ -1739,16 +1739,15 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_SS, &IDTVEC(stk),  SDT_SYSIGT, SEL_KPL, 0);
+	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
+	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
+	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
 #else
 	sva_register_general_exception(IDT_TS, fr_sva_trap);
 	sva_register_general_exception(IDT_NP, fr_sva_trap);
 	sva_register_general_exception(IDT_SS, fr_sva_trap);
-#endif
-	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
-	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
-	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
-#else
+	sva_register_general_exception(IDT_NMI, fr_sva_trap);
+	sva_register_general_exception(IDT_GP, fr_sva_trap);
 	sva_register_general_exception(IDT_PF, fr_sva_trap);
 #endif
 	setidt(IDT_MF, &IDTVEC(fpu),  SDT_SYSIGT, SEL_KPL, 0);
