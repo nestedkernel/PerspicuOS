@@ -321,6 +321,9 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	int sig;
 	int oonstack;
 
+#if 1
+  panic ("SVA: sendsig\n");
+#endif
 	td = curthread;
 	pcb = td->td_pcb;
 	p = td->td_proc;
@@ -1649,7 +1652,11 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	wrmsr(MSR_FSBASE, 0);		/* User value */
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
+#if 0
 	wrmsr(MSR_KGSBASE, 0);		/* User value while in the kernel */
+#else
+	wrmsr(MSR_KGSBASE, (u_int64_t)pc);		/* User value while in the kernel */
+#endif
 
 #if 1
   /*
@@ -1719,22 +1726,34 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_BR, fr_sva_trap);
 	sva_register_general_exception(IDT_UD, fr_sva_trap);
 #endif
+#if 0
 	setidt(IDT_NM, &IDTVEC(dna),  SDT_SYSIGT, SEL_KPL, 0);
-#if 1
+#endif
+#if 0
 	setidt(IDT_DF, &IDTVEC(dblfault), SDT_SYSIGT, SEL_KPL, 1);
 	setidt(IDT_FPUGP, &IDTVEC(fpusegm),  SDT_SYSIGT, SEL_KPL, 0);
 #else
 	sva_register_general_exception(IDT_DF, fr_sva_trap);
 	sva_register_general_exception(IDT_FPUGP, fr_sva_trap);
 #endif
+#if 0
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_SS, &IDTVEC(stk),  SDT_SYSIGT, SEL_KPL, 0);
+#else
+	sva_register_general_exception(IDT_TS, fr_sva_trap);
+	sva_register_general_exception(IDT_NP, fr_sva_trap);
+	sva_register_general_exception(IDT_SS, fr_sva_trap);
+#endif
 	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
 	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
+#if 0
 	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
+#else
+	sva_register_general_exception(IDT_PF, fr_sva_trap);
+#endif
 	setidt(IDT_MF, &IDTVEC(fpu),  SDT_SYSIGT, SEL_KPL, 0);
-#if 1
+#if 0
 	setidt(IDT_AC, &IDTVEC(align), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MC, &IDTVEC(mchk),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_XF, &IDTVEC(xmm), SDT_SYSIGT, SEL_KPL, 0);
@@ -2593,6 +2612,10 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     /*
      * Swap to the new state.
      */
+#if 0
+    sva_save_fp (&(old->svaFP));
+    sva_load_fp (&(new->svaFP));
+#endif
     didSwap = sva_swap_integer (new->svaID, &(old->svaID));
   } else {
 #if 0
