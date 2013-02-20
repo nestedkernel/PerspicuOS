@@ -65,6 +65,10 @@
 #include <sys/ucred.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
+#if 1
+#include <sva/state.h>
+#endif
+
 /*
  * One structure allocated per session.
  *
@@ -317,6 +321,7 @@ struct thread {
   unsigned char sva; /* Flag whether SVA saved state on context switch */
   void (*callout)(void *, struct trapframe *); /* Thread startup function */
   void * callarg; /* Thread startup argument */
+  sva_fp_state_t svaFP; /* SVA floating point state */
 #endif
 };
 
