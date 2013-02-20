@@ -835,10 +835,12 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 		 * enabled later.
 		 */
 		if (ISPL(frame->tf_cs) == SEL_UPL)
-#if 0
+#if 1
 			uprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curthread->td_name, type);
+#else
+      ;
 #endif
 		else if (type != T_NMI && type != T_BPTFLT &&
 		    type != T_TRCTRAP) {
@@ -846,7 +848,7 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 			 * XXX not quite right, since this may be for a
 			 * multiple fault in user mode.
 			 */
-#if 0
+#if 1
 			printf("kernel trap %d with interrupts disabled\n",
 			    type);
 #endif
@@ -1675,6 +1677,11 @@ sva_syscall(struct thread *td, int traced)
 	ksiginfo_t ksi;
 
 #if 1
+  /*
+   * Enable interrupts.
+   */
+  sva_load_lif (1);
+
   /*
    * SVA will not pass the thread pointer nor will it indicate whether tracing
    * is enabled.
