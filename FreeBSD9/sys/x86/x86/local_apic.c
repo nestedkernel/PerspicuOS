@@ -239,16 +239,28 @@ lapic_init(vm_paddr_t addr)
 	/* Set BSP's per-CPU local APIC ID. */
 	PCPU_SET(apic_id, lapic_id());
 
+#if 1
 	/* Local APIC timer interrupt. */
 	setidt(APIC_TIMER_INT, IDTVEC(timerint), SDT_APIC, SEL_KPL, GSEL_APIC);
+#else
+	sva_register_interrupt(APIC_TIMER_INT, lapic_handle_timer);
+#endif
 
 	/* Local APIC error interrupt. */
+#if 0
 	setidt(APIC_ERROR_INT, IDTVEC(errorint), SDT_APIC, SEL_KPL, GSEL_APIC);
+#else
+	sva_register_interrupt(APIC_TIMER_INT, lapic_handle_error);
+#endif
 
 	/* XXX: Thermal interrupt */
 
 	/* Local APIC CMCI. */
+#if 0
 	setidt(APIC_CMC_INT, IDTVEC(cmcint), SDT_APICT, SEL_KPL, GSEL_APIC);
+#else
+	sva_register_interrupt(APIC_TIMER_INT, lapic_handle_cmc);
+#endif
 
 	if ((resource_int_value("apic", 0, "clock", &i) != 0 || i != 0)) {
 		arat = 0;
@@ -785,12 +797,28 @@ lapic_handle_intr(int vector, struct trapframe *frame)
 	intr_execute_handlers(isrc, frame);
 }
 
+#if 1
 void
 lapic_handle_timer(struct trapframe *frame)
+#else
+void
+lapic_handle_timer(int type)
+#endif
 {
 	struct lapic *la;
 	struct trapframe *oldframe;
 	struct thread *td;
+#if 0
+  struct trapframe entryframe;
+  struct trapframe newframe;
+  struct trapframe * frame = &newframe;
+
+	/*
+	 * Convert the SVA interrupt context to a FreeBSD trapframe.
+	 */
+	extern void sva_trapframe (struct trapframe * tf);
+	sva_trapframe (frame);
+#endif
 
 	/* Send EOI first thing. */
 	lapic_eoi();
@@ -807,8 +835,20 @@ lapic_handle_timer(struct trapframe *frame)
 	 * and unlike other schedulers it actually schedules threads to
 	 * those CPUs.
 	 */
+#if 1
 	if (CPU_ISSET(PCPU_GET(cpuid), &hlt_cpus_mask))
 		return;
+#else
+	if (CPU_ISSET(PCPU_GET(cpuid), &hlt_cpus_mask)) {
+		/*
+		 * Convert trap frame changes back into the SVA interrupt context.
+		 */
+    if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+      ast (frame);
+		sva_icontext (frame);
+		return;
+	}
+#endif
 #endif
 
 	/* Look up our local APIC structure for the tick counters. */
@@ -825,6 +865,47 @@ lapic_handle_timer(struct trapframe *frame)
 		td->td_intr_nesting_level--;
 	}
 	critical_exit();
+#if 0
+  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+    ast (frame);
+
+	/*
+	 * Convert trap frame changes back into the SVA interrupt context.
+	 */
+  sva_icontext (frame);
+
+#if 0
+  /*
+   * Convert the SVA interrupt context back into a trap frame and do a
+   * comparison.
+   */
+	sva_trapframe (&entryframe);
+  entryframe.tf_flags = frame->tf_flags;
+  entryframe.tf_addr = frame->tf_addr;
+  if (memcmp (&entryframe, frame, sizeof (struct trapframe)) != 0) {
+    printf ("rip  : %lx %lx\n", entryframe.tf_rip, frame->tf_rip);
+    printf ("rsp  : %lx %lx\n", entryframe.tf_rsp, frame->tf_rsp);
+    printf ("rbp  : %lx %lx\n", entryframe.tf_rbp, frame->tf_rbp);
+    printf ("flags: %lx %lx\n", entryframe.tf_flags, frame->tf_flags);
+    printf ("rax  : %lx %lx\n", entryframe.tf_rax, frame->tf_rax);
+    printf ("rbx  : %lx %lx\n", entryframe.tf_rbx, frame->tf_rbx);
+    printf ("rcx  : %lx %lx\n", entryframe.tf_rcx, frame->tf_rcx);
+    printf ("rdx  : %lx %lx\n", entryframe.tf_rdx, frame->tf_rdx);
+    printf ("rsi  : %lx %lx\n", entryframe.tf_rsi, frame->tf_rsi);
+    printf ("rdi  : %lx %lx\n", entryframe.tf_rdi, frame->tf_rdi);
+    printf ("r8   : %lx %lx\n", entryframe.tf_r8 , frame->tf_r8 );
+    printf ("r9   : %lx %lx\n", entryframe.tf_r9 , frame->tf_r9 );
+    printf ("r10  : %lx %lx\n", entryframe.tf_r10, frame->tf_r10);
+    printf ("r11  : %lx %lx\n", entryframe.tf_r11, frame->tf_r11);
+    printf ("r13  : %lx %lx\n", entryframe.tf_r13, frame->tf_r13);
+    printf ("r14  : %lx %lx\n", entryframe.tf_r14, frame->tf_r14);
+    printf ("r15  : %lx %lx\n", entryframe.tf_r15, frame->tf_r15);
+    printf ("trapno : %lx %lx\n", entryframe.tf_trapno, frame->tf_trapno);
+    printf ("addr : %lx %lx\n", entryframe.tf_addr, frame->tf_addr);
+    panic ("SVA: Trap frame changed during conversion!\n");
+  }
+#endif
+#endif
 }
 
 static void
