@@ -215,6 +215,10 @@ trap(struct trapframe *frame)
 	}
 #endif
 
+#if 1
+  if (type != T_BPTFLT)
+    panic ("SVA: trap: %lx: %d\n", frame->tf_rip, type);
+#endif
 	if (type == T_RESERVED) {
 		trap_fatal(frame, 0);
 		goto out;
@@ -831,17 +835,21 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 		 * enabled later.
 		 */
 		if (ISPL(frame->tf_cs) == SEL_UPL)
+#if 0
 			uprintf(
 			    "pid %ld (%s): trap %d with interrupts disabled\n",
 			    (long)curproc->p_pid, curthread->td_name, type);
+#endif
 		else if (type != T_NMI && type != T_BPTFLT &&
 		    type != T_TRCTRAP) {
 			/*
 			 * XXX not quite right, since this may be for a
 			 * multiple fault in user mode.
 			 */
+#if 0
 			printf("kernel trap %d with interrupts disabled\n",
 			    type);
+#endif
 
 			/*
 			 * We shouldn't enable interrupts while holding a
@@ -1007,6 +1015,10 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 			/* transparent fault (due to context switch "late") */
 			KASSERT(PCB_USER_FPU(td->td_pcb),
 			    ("kernel FPU ctx has leaked"));
+#if 1
+      sva_print_icontext("FPU");
+      panic ("SVA: No FPU support yet!\n");
+#endif
 			fpudna();
 			goto userout;
 
@@ -1187,7 +1199,10 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 	ksi.ksi_code = ucode;
 	ksi.ksi_trapno = type;
 	ksi.ksi_addr = (void *)addr;
+#if 0
+  /* SVA: Disable for now */
 	trapsignal(td, &ksi);
+#endif
 
 user:
 	userret(td, frame);
@@ -1676,8 +1691,8 @@ sva_syscall(struct thread *td, int traced)
 	/*
 	 * Convert the SVA interrupt context to a FreeBSD trapframe.
 	 */
-	extern void sva_trapframe (struct trapframe * tf);
-	sva_trapframe (&localframe);
+	extern void sva_syscall_trapframe (struct trapframe * tf);
+	sva_syscall_trapframe (&localframe);
   traced = localframe.tf_rflags & PSL_T;
 #endif
 #ifdef DIAGNOSTIC
