@@ -91,6 +91,71 @@ sva_trapframe (struct trapframe * tf) {
 }
 
 /*
+ * Function: sva_syscall_trapframe()
+ *
+ * Description:
+ *  Convert the state as represented by the Execution Engine back into FreeBSD's
+ *  trapframe structure.
+ *
+ *  The reason for doing this is that it allows me to progressively move the
+ *  kernel to using SVA for interrupts without completely breaking it.
+ *
+ *  This version of the function does some translating between registers.
+ */
+void
+sva_syscall_trapframe (struct trapframe * tf) {
+  /*
+   * Fetch the currently available interrupt context.
+   */
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * p = getCPUState()->newCurrentIC;
+
+#if 0
+  printf ("SVA: (%p): %p: %p %p\n\n", cpup,
+                                      cpup->newCurrentIC,
+                                      cpup->interruptContexts + maxIC,
+                                      cpup->interruptContexts + maxIC - 1);
+#endif
+
+  /*
+   * Store the fields into the trap frame.
+   */
+  tf->tf_rdi = p->rdi;
+  tf->tf_rsi = p->rsi;
+  tf->tf_rcx = p->r10;  /* Done for system call ABI */
+  tf->tf_r8  = p->r8;
+  tf->tf_r9  = p->r9;
+  tf->tf_rax = p->rax;
+  tf->tf_rbx = p->rbx;
+  tf->tf_rdx = p->rdx;
+  tf->tf_rbp = p->rbp;
+  tf->tf_r10 = p->r10;
+  tf->tf_r11 = p->r11;
+  tf->tf_r12 = p->r12;
+  tf->tf_r13 = p->r13;
+  tf->tf_r14 = p->r14;
+  tf->tf_r15 = p->r15;
+
+  tf->tf_trapno = p->trapno;
+
+
+  tf->tf_fs = p->fs;
+  tf->tf_gs = p->gs;
+  tf->tf_addr = 0;
+  tf->tf_es = p->es;
+  tf->tf_ds = p->ds;
+
+  tf->tf_err = p->code;
+  tf->tf_rip = p->rcx;
+  tf->tf_cs = p->cs;
+  tf->tf_rflags = p->r11;
+  tf->tf_rsp = (unsigned long)(p->rsp);
+  tf->tf_ss = p->ss;
+
+  return;
+}
+
+/*
  * Function: sva_icontext()
  *
  * Description:
