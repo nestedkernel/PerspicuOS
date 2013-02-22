@@ -270,6 +270,16 @@ sva_print_icontext (char * s) {
   return 0;
 }
 
+void
+sva_print_ist3 (unsigned long id) {
+  struct CPUState * cpup = getCPUState();
+  printf ("SVA: %d: ist3 = %p: %lx\n", id, &(cpup->tssp->ist3), cpup->tssp->ist3);
+  if (cpup->tssp->ist3 == 0) {
+    __asm__ __volatile__ ("xchg %%bx, %%bx\n" :: "a" (id));
+  }
+  return;
+}
+
 #if 0
 void
 llva_psysnum (int a, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, void * icontext)
