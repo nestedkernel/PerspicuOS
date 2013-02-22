@@ -1728,25 +1728,23 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #if 0
 	setidt(IDT_NM, &IDTVEC(dna),  SDT_SYSIGT, SEL_KPL, 0);
 #endif
-#if 0
 	setidt(IDT_DF, &IDTVEC(dblfault), SDT_SYSIGT, SEL_KPL, 1);
+#if 0
 	setidt(IDT_FPUGP, &IDTVEC(fpusegm),  SDT_SYSIGT, SEL_KPL, 0);
 #else
-	sva_register_general_exception(IDT_DF, fr_sva_trap);
 	sva_register_general_exception(IDT_FPUGP, fr_sva_trap);
 #endif
 #if 0
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_SS, &IDTVEC(stk),  SDT_SYSIGT, SEL_KPL, 0);
+#endif
+#if 0
 	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
 	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
 #else
-	sva_register_general_exception(IDT_TS, fr_sva_trap);
-	sva_register_general_exception(IDT_NP, fr_sva_trap);
-	sva_register_general_exception(IDT_SS, fr_sva_trap);
-	sva_register_general_exception(IDT_NMI, fr_sva_trap);
+	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
 	sva_register_general_exception(IDT_GP, fr_sva_trap);
 	sva_register_general_exception(IDT_PF, fr_sva_trap);
 #endif
