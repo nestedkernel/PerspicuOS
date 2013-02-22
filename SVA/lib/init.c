@@ -335,7 +335,7 @@ init_idt (unsigned int procID) {
   /*
    * Load our descriptor table on to the processor.
    */
-  sva_idtreg.rd_limit = sizeof (struct gate_descriptor[256]) - 1;
+  sva_idtreg.rd_limit = sizeof (sva_idt);
   sva_idtreg.rd_base = (uintptr_t) &(sva_idt[0]);
   __asm__ __volatile__ ("lidt (%0)" : : "r" (&sva_idtreg));
   idt = (void *) sva_idtreg.rd_base;
