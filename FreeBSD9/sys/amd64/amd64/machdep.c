@@ -1120,6 +1120,22 @@ setidt(idx, func, typ, dpl, ist)
 	struct gate_descriptor *ip;
 
 #if 1
+  switch (idx) {
+    case IDT_DB:
+    case IDT_BP:
+    case IDT_DF:
+    case IDT_MF:
+    case IDT_NMI:
+      break;
+
+    default:
+      printf ("SVA: setidt: %d\n", idx);
+      __asm__ __volatile__ ("xchg %%bx, %%bx\n" : : "a" (idx));
+      break;
+  }
+#endif
+
+#if 1
   /*
    * Do not change the vectors used by SVA.
    */
@@ -1791,7 +1807,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Point the ICU spurious interrupt vectors at the APIC spurious
 	 * interrupt handler.
 	 */
-#if 1
+#if 0
 	setidt(IDT_IO_INTS + 7, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_IO_INTS + 15, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 #else
