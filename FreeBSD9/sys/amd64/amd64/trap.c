@@ -1700,7 +1700,9 @@ sva_syscall(struct thread *td, int traced)
 	 */
 	extern void sva_syscall_trapframe (struct trapframe * tf);
 	sva_syscall_trapframe (&localframe);
+#if 0
   traced = localframe.tf_rflags & PSL_T;
+#endif
 #endif
 #ifdef DIAGNOSTIC
 	if (ISPL(td->td_frame->tf_cs) != SEL_UPL) {
@@ -1730,5 +1732,10 @@ sva_syscall(struct thread *td, int traced)
 	     syscallname(td->td_proc, sa.code)));
 
 	syscallret(td, error, &sa);
+
+#if 1
+  /* SVA: The SVA assembly code does not run the AST */
+  ast(&localframe);
+#endif
 }
 #endif
