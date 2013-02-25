@@ -209,8 +209,11 @@ ia32_syscall_disable(void *dummy)
  	setidt(IDT_SYSCALL, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
 }
 
+#if 0
+/* For SVA, we don't support 32-bit applications */
 SYSINIT(ia32_syscall, SI_SUB_EXEC, SI_ORDER_ANY, ia32_syscall_enable, NULL);
 SYSUNINIT(ia32_syscall, SI_SUB_EXEC, SI_ORDER_ANY, ia32_syscall_disable, NULL);
+#endif
 
 #ifdef COMPAT_43
 int
