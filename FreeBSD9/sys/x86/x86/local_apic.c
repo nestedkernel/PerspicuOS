@@ -229,7 +229,7 @@ lapic_init(vm_paddr_t addr)
 	setidt(APIC_SPURIOUS_INT, IDTVEC(spuriousint), SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
 #else
-  extern void spurious_handler (unsigned intNum, sva_icontext_t * p);
+  extern void spurious_handler (unsigned intNum);
 	sva_register_interrupt(APIC_SPURIOUS_INT, spurious_handler);
 #endif
 
@@ -239,7 +239,7 @@ lapic_init(vm_paddr_t addr)
 	/* Set BSP's per-CPU local APIC ID. */
 	PCPU_SET(apic_id, lapic_id());
 
-#if 1
+#if 0
 	/* Local APIC timer interrupt. */
 	setidt(APIC_TIMER_INT, IDTVEC(timerint), SDT_APIC, SEL_KPL, GSEL_APIC);
 #else
@@ -797,7 +797,7 @@ lapic_handle_intr(int vector, struct trapframe *frame)
 	intr_execute_handlers(isrc, frame);
 }
 
-#if 1
+#if 0
 void
 lapic_handle_timer(struct trapframe *frame)
 #else
@@ -808,8 +808,7 @@ lapic_handle_timer(int type)
 	struct lapic *la;
 	struct trapframe *oldframe;
 	struct thread *td;
-#if 0
-  struct trapframe entryframe;
+#if 1
   struct trapframe newframe;
   struct trapframe * frame = &newframe;
 
@@ -835,7 +834,7 @@ lapic_handle_timer(int type)
 	 * and unlike other schedulers it actually schedules threads to
 	 * those CPUs.
 	 */
-#if 1
+#if 0
 	if (CPU_ISSET(PCPU_GET(cpuid), &hlt_cpus_mask))
 		return;
 #else
@@ -845,7 +844,9 @@ lapic_handle_timer(int type)
 		 */
     if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
       ast (frame);
+#if 0
 		sva_icontext (frame);
+#endif
 		return;
 	}
 #endif
@@ -865,45 +866,15 @@ lapic_handle_timer(int type)
 		td->td_intr_nesting_level--;
 	}
 	critical_exit();
-#if 0
+#if 1
   if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
     ast (frame);
 
 	/*
 	 * Convert trap frame changes back into the SVA interrupt context.
 	 */
-  sva_icontext (frame);
-
 #if 0
-  /*
-   * Convert the SVA interrupt context back into a trap frame and do a
-   * comparison.
-   */
-	sva_trapframe (&entryframe);
-  entryframe.tf_flags = frame->tf_flags;
-  entryframe.tf_addr = frame->tf_addr;
-  if (memcmp (&entryframe, frame, sizeof (struct trapframe)) != 0) {
-    printf ("rip  : %lx %lx\n", entryframe.tf_rip, frame->tf_rip);
-    printf ("rsp  : %lx %lx\n", entryframe.tf_rsp, frame->tf_rsp);
-    printf ("rbp  : %lx %lx\n", entryframe.tf_rbp, frame->tf_rbp);
-    printf ("flags: %lx %lx\n", entryframe.tf_flags, frame->tf_flags);
-    printf ("rax  : %lx %lx\n", entryframe.tf_rax, frame->tf_rax);
-    printf ("rbx  : %lx %lx\n", entryframe.tf_rbx, frame->tf_rbx);
-    printf ("rcx  : %lx %lx\n", entryframe.tf_rcx, frame->tf_rcx);
-    printf ("rdx  : %lx %lx\n", entryframe.tf_rdx, frame->tf_rdx);
-    printf ("rsi  : %lx %lx\n", entryframe.tf_rsi, frame->tf_rsi);
-    printf ("rdi  : %lx %lx\n", entryframe.tf_rdi, frame->tf_rdi);
-    printf ("r8   : %lx %lx\n", entryframe.tf_r8 , frame->tf_r8 );
-    printf ("r9   : %lx %lx\n", entryframe.tf_r9 , frame->tf_r9 );
-    printf ("r10  : %lx %lx\n", entryframe.tf_r10, frame->tf_r10);
-    printf ("r11  : %lx %lx\n", entryframe.tf_r11, frame->tf_r11);
-    printf ("r13  : %lx %lx\n", entryframe.tf_r13, frame->tf_r13);
-    printf ("r14  : %lx %lx\n", entryframe.tf_r14, frame->tf_r14);
-    printf ("r15  : %lx %lx\n", entryframe.tf_r15, frame->tf_r15);
-    printf ("trapno : %lx %lx\n", entryframe.tf_trapno, frame->tf_trapno);
-    printf ("addr : %lx %lx\n", entryframe.tf_addr, frame->tf_addr);
-    panic ("SVA: Trap frame changed during conversion!\n");
-  }
+  sva_icontext (frame);
 #endif
 #endif
 }
@@ -1114,8 +1085,12 @@ apic_enable_vector(u_int apic_id, u_int vector)
 	KASSERT(vector != IDT_DTRACE_RET,
 	    ("Attempt to overwrite DTrace entry"));
 #endif
+#if 1
 	setidt(vector, ioint_handlers[vector / 32], SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
+#else
+  /* SVA: Disable for now */
+#endif
 }
 
 void
