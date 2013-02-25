@@ -53,8 +53,8 @@ trap##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $USERCS, 24(%rsp) ; \
-  jz 1f ; \
+  cmpq $0x43, 24(%rsp) ; \
+  jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
@@ -81,8 +81,8 @@ trap##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $USERCS, 24(%rsp) ; \
-  jz 1f ; \
+  cmpq $0x43, 24(%rsp) ; \
+  jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
@@ -115,8 +115,8 @@ interrupt##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  testw $USERCS, 24(%rsp) ; \
-  jz 1f ; \
+  cmpq $0x43, 24(%rsp) ; \
+  jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
   swapgs ; \
