@@ -216,7 +216,11 @@ int	lapic_ipi_wait(int delay);
 void	lapic_handle_cmc(void);
 void	lapic_handle_error(void);
 void	lapic_handle_intr(int vector, struct trapframe *frame);
+#if 0
 void	lapic_handle_timer(struct trapframe *frame);
+#else
+void	lapic_handle_timer(int type);
+#endif
 void	lapic_reenable_pmc(void);
 void	lapic_set_logical_id(u_int apic_id, u_int cluster, u_int cluster_id);
 int	lapic_set_lvt_mask(u_int apic_id, u_int lvt, u_char masked);

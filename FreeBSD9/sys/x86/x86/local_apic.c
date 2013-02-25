@@ -133,6 +133,7 @@ static struct lvt lvts[LVT_MAX + 1] = {
 	{ 1, 1, 1, 1, APIC_LVT_DM_FIXED, APIC_CMC_INT },	/* CMCI */
 };
 
+#if 0
 static inthand_t *ioint_handlers[] = {
 	NULL,			/* 0 - 31 */
 	IDTVEC(apic_isr1),	/* 32 - 63 */
@@ -143,6 +144,26 @@ static inthand_t *ioint_handlers[] = {
 	IDTVEC(apic_isr6),	/* 192 - 223 */
 	IDTVEC(apic_isr7),	/* 224 - 255 */
 };
+#else
+void apic_isr_sva1 (unsigned int vector);
+void apic_isr_sva2 (unsigned int vector);
+void apic_isr_sva3 (unsigned int vector);
+void apic_isr_sva4 (unsigned int vector);
+void apic_isr_sva5 (unsigned int vector);
+void apic_isr_sva6 (unsigned int vector);
+void apic_isr_sva7 (unsigned int vector);
+static inthand_t *ioint_handlers[] = {
+	NULL,			/* 0 - 31 */
+	apic_isr_sva1,	/* 32 - 63 */
+	apic_isr_sva2,	/* 64 - 95 */
+	apic_isr_sva3,	/* 96 - 127 */
+	apic_isr_sva4,	/* 128 - 159 */
+	apic_isr_sva5,	/* 160 - 191 */
+	apic_isr_sva6,	/* 192 - 223 */
+	apic_isr_sva7,	/* 224 - 255 */
+};
+
+#endif
 
 
 static u_int32_t lapic_timer_divisors[] = {
@@ -797,6 +818,85 @@ lapic_handle_intr(int vector, struct trapframe *frame)
 	intr_execute_handlers(isrc, frame);
 }
 
+#if 1
+/* SVA: Create C versions of the apic_isr functions */
+void
+lapic_handle_intr_sva(int vector)
+{
+	struct intsrc *isrc;
+  struct trapframe frame;
+
+	extern void sva_trapframe (struct trapframe * tf);
+  sva_trapframe (&frame);
+	isrc = intr_lookup_source(apic_idt_to_irq(PCPU_GET(apic_id),
+	    vector));
+	intr_execute_handlers(isrc, &frame);
+}
+
+void
+apic_isr_sva1 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr1));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva2 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr2));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva3 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr3));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva4 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr4));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva5 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr5));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva6 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr6));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+
+void
+apic_isr_sva7 (unsigned int vector) {
+  unsigned int offset;
+  __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr7));
+  if (offset) {
+    lapic_handle_intr_sva (offset+32);
+  }
+}
+#endif
+
 #if 0
 void
 lapic_handle_timer(struct trapframe *frame)
@@ -1085,11 +1185,13 @@ apic_enable_vector(u_int apic_id, u_int vector)
 	KASSERT(vector != IDT_DTRACE_RET,
 	    ("Attempt to overwrite DTrace entry"));
 #endif
-#if 1
+#if 0
+  printf ("SVA: Register %d\n", vector);
+  __asm__ __volatile__ ("xchg %bx, %bx\n");
 	setidt(vector, ioint_handlers[vector / 32], SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
 #else
-  /* SVA: Disable for now */
+	sva_register_interrupt(vector, ioint_handlers[vector / 32]);
 #endif
 }
 
