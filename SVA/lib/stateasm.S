@@ -52,12 +52,6 @@
  *
  */
 save_integer:
-  /*
-   * Save the processor state (rflags) register so that we can figure out
-   * whether to 
-   */
-  pushfq
-
 #if 0
   /*
    * Verify that the buffer is writable (i.e. fault here before doing anything
@@ -108,6 +102,7 @@ save_integer:
 #endif
 
   /* Save the rflags register */
+  pushfq
   popq       IC_RFLAGS(%rdi)
 
   /* Save the stack pointer */
@@ -136,10 +131,8 @@ save_integer:
 
   /*
    * Return to the caller
-   *
-   * TODO: Need to do a CFI label check!
    */
-  ret
+  RETQ
 
 /*
  * Function: load_integer
