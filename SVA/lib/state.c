@@ -708,6 +708,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   uintptr_t rsp, rbp;
 
   /*
+   * If there is no place for new state, flag an error.
+   */
+  if (!newThread) panic ("SVA: No New Thread!\n");
+
+  /*
    * Determine whether the integer state is valid.
    */
 #if SVA_CHECK_INTEGER
@@ -748,6 +753,8 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Re-enable interrupts.
      */
+    if (old->hackRIP != __builtin_return_address(0))
+      bochsBreak();
     sva_exit_critical (rflags);
     return 1;
   }
@@ -767,11 +774,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * Inform the caller of the location of the last state saved.
    */
   *statep = (uintptr_t) oldThread;
-
-  /*
-   * If there is no place for new state, flag an error.
-   */
-  if (!newThread) panic ("SVA: No New Thread!\n");
 
   /*
    * Switch the CPU over to using the new set of interrupt contexts.  However,
@@ -1387,8 +1389,8 @@ sva_init_stack (unsigned char * start_stackp,
   /*
    * Allocate a new SVA thread.
    */
-  extern uintptr_t sva_mk_thread (void);
-  struct SVAThread * newThread = (struct SVAThread *) sva_mk_thread ();
+  extern struct SVAThread * findNextFreeThread (void);
+  struct SVAThread * newThread = findNextFreeThread();
 
   /*
    * Verify that the memory has the proper access.
@@ -1422,6 +1424,9 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->valid = 1;
   integerp->rflags = 0x202;
   integerp->ist3 = integerp->kstackp;
+#if 1
+  integerp->kstackp = stackp;
+#endif
 
   /*
    * Initialize the interrupt context of the new thread.
