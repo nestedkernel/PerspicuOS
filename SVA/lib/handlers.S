@@ -548,7 +548,8 @@ SVAsyscall:
    * Switch to the kernel stack.  Since we always come from user space, 
    * switch to the kernel stack pointer specified by the kernel.
    */
-  movq CPU_TSSP(%rbp), %rsp
+  movq CPU_TSSP(%rbp), %rbp
+  movq 4(%rbp), %rsp
 
   /*
    * Call the system software system call handler.
