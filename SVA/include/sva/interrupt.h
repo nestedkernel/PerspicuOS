@@ -31,18 +31,6 @@ extern void * sva_getCPUState (tss_t * tssp);
 void sva_icontext_setretval (unsigned long, unsigned long, unsigned char error);
 void sva_icontext_restart (unsigned long, unsigned long);
 
-/*
- * Function: get_uicontext()
- *
- * Description:
- *  This function finds the user-space interrupt context for the currently
- *  running processor.
- */
-static inline sva_icontext_t *
-get_uicontext(void) {
-  return &(getCPUState()->interruptContexts[maxIC - 1]);
-}
-
 /* Types for handlers */
 typedef void (*genfault_handler_t)(sva_icontext_t * icontext);
 typedef void (*memfault_handler_t)(sva_icontext_t * icontext, void * mp);
