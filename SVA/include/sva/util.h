@@ -83,6 +83,12 @@ sva_exit_critical (unsigned long rflags) {
   return;
 }
 
+static inline void
+bochsBreak (void) {
+  __asm__ __volatile__ ("xchg %bx, %bx\n");
+  return;
+}
+
 #ifdef __cplusplus
 }
 #endif
