@@ -328,7 +328,7 @@ Trap:
    *       also need to change.
    */
   movq CPU_TSSP(%rbp), %rbp
-  cmpw $0x43, 0xa0(%rsp)
+  cmpq $0x43, 0xa0(%rsp)
   cmoveq 4(%rbp), %rsp
   cmovneq IC_RSP(%rsp), %rsp
 
