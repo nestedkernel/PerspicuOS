@@ -1900,12 +1900,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_frame = &proc0_tf;
 
 #if 1
-  extern uintptr_t sva_get_thread(void);
-#if 0
-  thread0.svaID = sva_get_thread();
-#else
   thread0.svaID = 0;
-#endif
 #endif
         env = getenv("kernelname");
 	if (env != NULL)
