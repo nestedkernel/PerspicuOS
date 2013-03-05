@@ -322,6 +322,7 @@ struct thread {
   void (*callout)(void *, struct trapframe *); /* Thread startup function */
   void * callarg; /* Thread startup argument */
   sva_fp_state_t svaFP; /* SVA floating point state */
+  void * svaRSP; /* Debugging stack pointer issues */
 #endif
 };
 
