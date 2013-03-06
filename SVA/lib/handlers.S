@@ -441,11 +441,6 @@ SVAsyscall:
   swapgs
 
   /*
-   * Turn off the upper bit in the system call number (stored in %rax).
-   */
-  andl $0x7fffffff, %eax
-
-  /*
    * Save the stack pointer (%rsp) for the application.
    */
   pushq %rsp
