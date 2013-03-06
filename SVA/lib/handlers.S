@@ -22,7 +22,7 @@
 #include <sva/cfi.h>
 
 /* FreeBSD segment selector for kernel code segment */
-#define USERCS 0x03
+#define USERCS 0x43
 
 /* Offsets for various fields in the CPU State Structure */
 #define CPU_TSSP  0x08
@@ -53,7 +53,7 @@ trap##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  cmpq $0x43, 24(%rsp) ; \
+  cmpq $USERCS, 24(%rsp) ; \
   jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -81,7 +81,7 @@ trap##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  cmpq $0x43, 24(%rsp) ; \
+  cmpq $USERCS, 24(%rsp) ; \
   jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -115,7 +115,7 @@ interrupt##x: \
   movq $x, 0(%rsp) ; \
 \
   /* Determine whether we interrupted user or supervisor mode execution. */ \
-  cmpq $0x43, 24(%rsp) ; \
+  cmpq $USERCS, 24(%rsp) ; \
   jne 1f ; \
  \
   /* We came from user mode.  First switch to the kernel %GS register. */ \
@@ -328,7 +328,7 @@ Trap:
    *       also need to change.
    */
   movq CPU_TSSP(%rbp), %rbp
-  cmpq $0x43, 0xa0(%rsp)
+  cmpq $USERCS, 0xa0(%rsp)
   cmoveq 4(%rbp), %rsp
   cmovneq IC_RSP(%rsp), %rsp
 
@@ -400,7 +400,7 @@ Trap:
   addq $0x98, %rsp
 
   /* Determine whether we interrupted user or supervisor mode execution. */
-  cmpq $0x43, 8(%rsp)
+  cmpq $USERCS, 8(%rsp)
   jne 1f
 
   /* We came from user mode.  First switch to the kernel %GS register. */
