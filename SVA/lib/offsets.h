@@ -53,3 +53,5 @@
 
 #define IS_HACKRIP 0xc8
 
+/* Offsets into the Task State Segment */
+#define TSS_RSP0 4
