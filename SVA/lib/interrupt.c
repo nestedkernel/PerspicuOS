@@ -67,6 +67,12 @@ findNextFreeThread (void) {
        * Do some basic initialization of the thread.
        */
       Threads[index].integerState.valid = 0;
+
+      /*
+       * Use the next-to-last interrupt context in the list as the first
+       * interrupt context.  This may be slightly wasteful, but it's a little
+       * easier to make it work correctly right now.
+       */
       Threads[index].integerState.ist3 = ((uintptr_t) ((Threads[index].interruptContexts + maxIC))) - 0x10;
       Threads[index].integerState.kstackp = Threads[index].integerState.ist3; 
       return &(Threads[index]);
