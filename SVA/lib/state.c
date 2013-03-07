@@ -753,8 +753,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Re-enable interrupts.
      */
-    if (old->hackRIP != __builtin_return_address(0))
-      bochsBreak();
     sva_exit_critical (rflags);
     return 1;
   }
