@@ -24,13 +24,6 @@
 /* FreeBSD segment selector for kernel code segment */
 #define USERCS 0x43
 
-/* Offsets for various fields in the CPU State Structure */
-#define CPU_TSSP  0x08
-#define CPU_NEWIC 0x10
-
-/* Offsets for the TSS */
-#define TSS_IST3 52
-
 /*
  * Macro: TRAP
  *
@@ -453,18 +446,18 @@ SVAsyscall:
   pushq %rsi
 
   /*
-   * Get the location of the interrupt context within the current processor's
-   * CPUState and switch over to that stack.
+   * Save the current stack pointer into a different register.  We'll use it
+   * to copy values from the user-space stack into the Interrupt Context.
    */
-  movq %gs:0x260, %rdi
-  movq %gs:0x260, %rbp
-  addq $0x1a20, %rbp
   movq %rsp, %rsi
-  movq %rbp, %rsp
 
   /*
-   * The stack pointer is now pointing into the interrupt context.
+   * Get the location of the Interrupt Context within the current thread and
+   * make the stack pointer point to it.
    */
+  movq %gs:0x260, %rbp
+  movq CPU_THREAD(%rbp), %rsp
+  addq $0x1a00, %rsp
 
   /* Push two dummy values and a dummy stack segment */
   pushq $0
@@ -531,6 +524,7 @@ SVAsyscall:
    * or interrupt on this processor saves state into the next interrupt
    * context.
    */
+#if 1
   movq CPU_TSSP(%rbp), %rbx
   movq %rsp, TSS_IST3(%rbx)
 
@@ -538,13 +532,16 @@ SVAsyscall:
    * Adjust it to point to the first byte of the current interrupt context.
    */
   subq $0x10, TSS_IST3(%rbx)
+#else
+  movq CPU_TSSP(%rbp), %rbx
+  subq $IC_SIZE, TSS_IST3(%rbx)
+#endif
 
   /*
    * Switch to the kernel stack.  Since we always come from user space, 
    * switch to the kernel stack pointer specified by the kernel.
    */
-  movq CPU_TSSP(%rbp), %rbp
-  movq 4(%rbp), %rsp
+  movq TSS_RSP0(%rbx), %rsp
 
   /*
    * Call the system software system call handler.
