@@ -251,6 +251,20 @@ llva_get_eip (void * icontext)
 }
 #endif
 
+static void
+print_icontext (char * s, sva_icontext_t * p) {
+  printf ("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
+  printf ("cs: 0x%lx\n", (p->cs & 0xffff));
+  printf ("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
+  printf ("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
+  printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
+  printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
+  printf ("SVA: icontext  code  : 0x%lx\n", p->code);
+  printf ("es: 0x%x   fs: 0x%x    ds: 0x%x   gs: 0x%x \n", p->es, p->fs, p->ds, p->gs);
+  printf ("----------------------------------------------------------------\n");
+  return;
+}
+
 int
 sva_print_icontext (char * s) {
   struct CPUState * cpup = getCPUState();
@@ -258,16 +272,23 @@ sva_print_icontext (char * s) {
   printf ("SVA: %s: (%p): %p: %p\n\n", s, cpup,
                                        cpup->newCurrentIC,
                                        cpup->currentThread->interruptContexts + maxIC);
-  printf("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
-  printf ("cs: 0x%lx\n", (p->cs & 0xffff));
-  printf("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
-  printf("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
-  printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
-  printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
-  printf ("SVA: icontext  code  : 0x%lx\n", p->code);
-  printf("es: 0x%x   fs: 0x%x    ds: 0x%x   gs: 0x%x \n", p->es, p->fs, p->ds, p->gs);
-  printf ("----------------------------------------------------------------\n");
+  print_icontext (s, p);
   return 0;
+}
+
+void
+sva_print_integer (uintptr_t integer) {
+  struct SVAThread * thread = (struct SVAThread *)(integer);
+  sva_integer_state_t * intp =  thread ? &(thread->integerState) : 0;
+  if (!intp) return;
+  printf ("SVA: integer: int3: %lx\tkstackp: %lx\n", intp->ist3, intp->kstackp);
+  uintptr_t start, field;
+  start = (uintptr_t) (thread);
+  field = (uintptr_t) &(thread->interruptContexts[maxIC]);
+  printf ("SVA: integer: %lx\n", field - start);
+  printf ("SVA: integer: sizeof Thread: %lx\n", sizeof (struct SVAThread));
+  printf ("SVA: integer: sizeof IC: %lx\n", sizeof (struct sva_icontext));
+  return;
 }
 
 void
