@@ -456,8 +456,9 @@ SVAsyscall:
    * make the stack pointer point to it.
    */
   movq %gs:0x260, %rbp
-  movq CPU_THREAD(%rbp), %rsp
-  addq $0x1a00, %rsp
+  movq CPU_TSSP(%rbp), %rbp
+  movq TSS_IST3(%rbp), %rsp
+  addq $0x10, %rsp
 
   /* Push two dummy values and a dummy stack segment */
   pushq $0
