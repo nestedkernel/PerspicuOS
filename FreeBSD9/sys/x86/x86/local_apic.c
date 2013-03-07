@@ -826,6 +826,9 @@ lapic_handle_intr_sva(int vector)
 	struct intsrc *isrc;
   struct trapframe frame;
 
+  /* Enable interrupts */
+  sva_load_lif (1);
+
 	extern void sva_trapframe (struct trapframe * tf);
   sva_trapframe (&frame);
 	isrc = intr_lookup_source(apic_idt_to_irq(PCPU_GET(apic_id),
