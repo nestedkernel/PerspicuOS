@@ -661,15 +661,6 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 	struct trapframe localframe;
 	struct trapframe * frame = &localframe;
 
-#if 0
-  uintptr_t rsp;
-  __asm__ __volatile__ ("movq %%rsp, %0\n" : "=r" (rsp));
-  if ((rsp < td->td_kstack) ||
-      (rsp > td->td_kstack + (td->td_kstack_pages * PAGE_SIZE))) {
-    panic ("SVA: trap %d: rsp not in stack: %lx %lx %lx\n", trapno, rsp, td->td_kstack, td->td_kstack_pages);
-  }
-#endif
-
   /*
    * Enable interrupts.
    */
@@ -1690,17 +1681,6 @@ sva_syscall(struct thread *td, int traced)
 	ksiginfo_t ksi;
 
 #if 1
-#if 0
-  uintptr_t rsp;
-  __asm__ __volatile__ ("movq %%rsp, %0\n" : "=r" (rsp));
-  if (td->td_kstack) {
-    if ((rsp < td->td_kstack) ||
-        (rsp > td->td_kstack + (td->td_kstack_pages * PAGE_SIZE))) {
-      panic ("SVA: syscall: rsp not in stack: %lx %lx %lx\n", rsp, td->td_kstack, td->td_kstack_pages);
-    }
-  }
-#endif
-
   /*
    * Enable interrupts.
    */

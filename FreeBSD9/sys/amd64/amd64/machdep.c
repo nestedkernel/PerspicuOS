@@ -2628,22 +2628,7 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     sva_save_fp (&(old->svaFP));
     sva_load_fp (&(new->svaFP));
 #endif
-    __asm__ __volatile__ ("movq %%rsp, %0\n" : "=m" (old->svaRSP));
     didSwap = sva_swap_integer (new->svaID, &(old->svaID));
-    __asm__ __volatile__ ("movq %%rsp, %0\n" : "=r" (rsp));
-
-#if 0
-    if ((old->svaRSP) && (rsp != old->svaRSP)) {
-      panic ("SVA: Bad RSP: %lx %lx\n", rsp, old->svaRSP);
-    }
-
-    if (old->svaRSP) {
-      if ((rsp < old->td_kstack) ||
-         (rsp > old->td_kstack + (old->td_kstack_pages * PAGE_SIZE))) {
-        panic ("SVA: rsp not in stack: %lx %lx %lx\n", rsp, old->td_kstack, old->td_kstack_pages);
-      }
-    }
-#endif
   } else {
 #if 0
     /* Do an old style context switch */
