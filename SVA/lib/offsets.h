@@ -53,5 +53,11 @@
 
 #define IS_HACKRIP 0xc8
 
+/* Offsets for various fields in the CPU State Structure */
+#define CPU_TSSP   0x08
+#define CPU_NEWIC  0x10
+#define CPU_THREAD 0x00
+
 /* Offsets into the Task State Segment */
 #define TSS_RSP0 4
+#define TSS_IST3 52
