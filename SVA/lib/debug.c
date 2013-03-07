@@ -271,7 +271,7 @@ sva_print_icontext (char * s) {
   sva_icontext_t * p = cpup->newCurrentIC;
   printf ("SVA: %s: (%p): %p: %p\n\n", s, cpup,
                                        cpup->newCurrentIC,
-                                       cpup->currentThread->interruptContexts + maxIC);
+                                       cpup->currentThread->interruptContexts + maxIC - 1);
   print_icontext (s, p);
   return 0;
 }
