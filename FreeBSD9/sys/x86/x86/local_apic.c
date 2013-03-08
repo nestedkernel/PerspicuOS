@@ -834,6 +834,16 @@ lapic_handle_intr_sva(int vector)
 	isrc = intr_lookup_source(apic_idt_to_irq(PCPU_GET(apic_id),
 	    vector));
 	intr_execute_handlers(isrc, &frame);
+#if 1
+  /*
+   * SVA: TODO: Enabling this causes the kernel to freeze on boot.
+   *
+   * Run asynchronous stuff.
+   */
+  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+    ast (&frame);
+  sva_icontext (&frame);
+#endif
 }
 
 void
@@ -947,7 +957,7 @@ lapic_handle_timer(int type)
 		 */
     if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
       ast (frame);
-#if 0
+#if 1
 		sva_icontext (frame);
 #endif
 		return;
@@ -976,7 +986,7 @@ lapic_handle_timer(int type)
 	/*
 	 * Convert trap frame changes back into the SVA interrupt context.
 	 */
-#if 0
+#if 1
   sva_icontext (frame);
 #endif
 #endif
@@ -1189,8 +1199,6 @@ apic_enable_vector(u_int apic_id, u_int vector)
 	    ("Attempt to overwrite DTrace entry"));
 #endif
 #if 0
-  printf ("SVA: Register %d\n", vector);
-  __asm__ __volatile__ ("xchg %bx, %bx\n");
 	setidt(vector, ioint_handlers[vector / 32], SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
 #else
