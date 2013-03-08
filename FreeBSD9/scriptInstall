@@ -1,0 +1,7 @@
+#!/bin/sh -x
+
+mount /dev/md0p2 /mnt
+rm -rf /mnt/boot/svaKernel
+cp -r /boot/svaKernel /mnt/boot
+umount /mnt
+
