@@ -7,26 +7,34 @@
 #
 
 class ChartData
+    attr_reader :xIndices
     def initialize(x_index_name)
         @xIndexName = x_index_name
         @normalize = false
         @data = Hash.new
         @dataSetNames = Hash.new
+        @xIndices = Hash.new
     end
     # Adds a data point to the 2D hash data object. Val can be any object.
     def addDataPoint(xIndex, dataSeries, val)
-        @data[xIndex] = Hash.new if @data[xIndex].nil?
-        @data[xIndex][dataSeries] = val
+        #@data[xIndex] = Hash.new if @data[xIndex].nil?
+        #@data[xIndex][dataSeries] = val
+        #@dataSetNames[dataSeries] = dataSeries
+        @data[dataSeries] = Hash.new if @data[dataSeries].nil?
+        @data[dataSeries][xIndex] = val
         @dataSetNames[dataSeries] = dataSeries
-    end
-    def x_indices()
+        @xIndices[xIndex] = xIndex
     end
     def getDataSet(dsName) 
+        @data[dsName]
     end
     def getDataAtXVal(xval)
         ret = []
         ret << xval
-        @data[xval].sort.each {|key,val| ret << val }
+        @data.sort.each{|ds,vals|
+            ret << vals[xval]
+        }
+        #@data[xval].sort.each {|key,val| ret << val }
         ret
     end
     def dataToFileWithIndices (file)
@@ -45,22 +53,30 @@ class ChartData
     def to_s
         ret = ""
         # print the first row as indices and first col as data series
-        ret << @xIndexName 
-        @dataSetNames.sort.each {|key,val|
-            ret << " #{key}"
-        }
+        ret << @xIndexName << " " << @xIndices.keys.sort.join(' ')
         ret << "\n"
-        @data.sort.each {|x_index,ds_hash|
-            ret <<  x_index.to_s 
-            ds_hash.sort.each {|k,v|
+        @data.each {|ds,dataVector|
+            ret << ds
+            dataVector.sort.each {|k,v|
                 if(@normalize)
-                    ret << " " << (v/@data[x_index][@normalizeDS]).to_s
+                    ret << " " << (v/@data[@normalizeDS][k]).to_s
                 else
                     ret << " " << v.to_s 
                 end
             }
             ret << "\n"
         }
+        #@data.sort.each {|x_index,ds_hash|
+            #ret <<  x_index.to_s 
+            #ds_hash.sort.each {|k,v|
+                #if(@normalize)
+                    #ret << " " << (v/@data[x_index][@normalizeDS]).to_s
+                #else
+                    #ret << " " << v.to_s 
+                #end
+            #}
+            #ret << "\n"
+        #}
         ret
     end
 end

@@ -163,22 +163,30 @@ bwChartData.dataToFileWithIndices(chartDataPath)
 r=Rserve::Connection.new
 pwd = FileUtils.pwd()
 r.void_eval <<-EOF
-    # Read values from tab-delimited autos.dat 
-    data <- read.table("#{pwd}/#{chartDataPath}", header=T)
+    # Read values from tab-delimited 
+    data <- read.table("#{pwd}/#{chartDataPath}", header=T, row.names=1)
 
     # setup png output
     png("#{pwd}/#{chartFigurePath}")
 
     # plot the thing
-    barplot(t(as.matrix(data[2:#{dataSeries.size+1}])), ylab="Bandwidth (KB)", xlab="File Sizes
-        (KB)", beside=TRUE, legend=names(data[2:#{dataSeries.size+1}]), 
-        xpd=FALSE, ylim=c(0,1.75), names.arg=data[,1],space=c(0,2),width=c(.75),las=2)
+    barplot(
+            as.matrix(data),
+            ylab="Bandwidth (KB)", 
+            xlab="File Sizes (KB)", 
+            beside=TRUE, 
+            xpd=FALSE, 
+            ylim=c(0,1.75), 
+            space=c(0,2),
+            width=c(.75),
+            las=2,
+            legend = rownames(data)
+        )
 
     # output png
     dev.off()
 EOF
 
-#system("R -f apache_bench_plot_bw.R")
 if(serverCopy)
     FileUtils.cp(chartDataPath,"/srv/http/projects/sva/eval/",:verbose => true)
     FileUtils.cp(chartFigurePath,"/srv/http/projects/sva/eval/",:verbose => true)
