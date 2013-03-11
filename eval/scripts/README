@@ -1,0 +1,18 @@
+#===============================================================================
+# README describing installation an use of charting scripts
+# 
+# Author:   Nathan Dautenhahn
+# Date:     Mon 11 Mar 2013 03:05:17 PM CDT
+#===============================================================================
+
+<=== Software Building and Usage Description ===> 
+
+    The scripts here are written in Ruby. In some instances they require extra
+    dependencies. They use the R language for plotting. The required
+    dependencies include:
+        
+        - rubygems
+        - R language and interpreter
+        - rserve: this is an inteface from ruby to R. It includes both a server
+          daemon that runs on the machine with R and also requires a rubygem to
+          be installed to interface. 
