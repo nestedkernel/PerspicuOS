@@ -17,9 +17,6 @@ class ChartData
     end
     # Adds a data point to the 2D hash data object. Val can be any object.
     def addDataPoint(xIndex, dataSeries, val)
-        #@data[xIndex] = Hash.new if @data[xIndex].nil?
-        #@data[xIndex][dataSeries] = val
-        #@dataSetNames[dataSeries] = dataSeries
         @data[dataSeries] = Hash.new if @data[dataSeries].nil?
         @data[dataSeries][xIndex] = val
         @dataSetNames[dataSeries] = dataSeries
@@ -34,7 +31,6 @@ class ChartData
         @data.sort.each{|ds,vals|
             ret << vals[xval]
         }
-        #@data[xval].sort.each {|key,val| ret << val }
         ret
     end
     def dataToFileWithIndices (file)
@@ -66,17 +62,6 @@ class ChartData
             }
             ret << "\n"
         }
-        #@data.sort.each {|x_index,ds_hash|
-            #ret <<  x_index.to_s 
-            #ds_hash.sort.each {|k,v|
-                #if(@normalize)
-                    #ret << " " << (v/@data[x_index][@normalizeDS]).to_s
-                #else
-                    #ret << " " << v.to_s 
-                #end
-            #}
-            #ret << "\n"
-        #}
         ret
     end
 end
