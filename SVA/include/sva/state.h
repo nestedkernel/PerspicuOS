@@ -297,6 +297,18 @@ sva_was_privileged (void) {
 }
 
 /*
+ * Intrinsic: sva_icontext_getpc()
+ *
+ * Description:
+ *  Get the native code program counter value out of the interrupt context.
+ */
+static uintptr_t
+sva_icontext_getpc (void) {
+  struct CPUState * cpuState = getCPUState();
+  return cpuState->newCurrentIC->rip;
+}
+
+/*
  * FIXME: This is a hack because we don't have invokememcpy() implemented yet.
  */
 static inline void
