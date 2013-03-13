@@ -18,9 +18,6 @@
 
 #include <sys/types.h>
 
-/* FreeBSD segment selector for kernel code segment */
-#define KERNELCS 0x03
-
 #include "sva/x86.h"
 #if 0
 #include "sva/util.h"
@@ -288,12 +285,15 @@ getCPUState(void) {
  */
 static inline unsigned char
 sva_was_privileged (void) {
-  /*
-   * Get the current processor's SVA state.
-   */
-  struct CPUState * cpuState = getCPUState();
+  /* Constant mask for user-space code segments */
+  const uintptr_t userCodeSegmentMask = 0x03;
 
-  return (((cpuState->newCurrentIC->cs) & KERNELCS) == KERNELCS);
+  /*
+   * Lookup the most recent interrupt context for this processor and see
+   * if it's code segment has the user-mode segment bits turned on.  Apparently
+   * all FreeBSD user-space code segments have 3 as the last digit.
+   */
+  return (!((getCPUState()->newCurrentIC->cs) & userCodeSegmentMask));
 }
 
 /*
