@@ -229,6 +229,7 @@ sva_register_general_exception (unsigned char number,
   /*
    * First, ensure that the exception number is within range.
    */
+#if 0
   if (number > 31) {
     __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
     return 1;
@@ -249,6 +250,7 @@ sva_register_general_exception (unsigned char number,
     default:
       break;
   }
+#endif
 
   /*
    * Put the handler into our dispatch table.
@@ -269,6 +271,7 @@ sva_register_memory_exception (unsigned char number, memfault_handler_t handler)
   /*
    * Ensure that this is not one of the special handlers.
    */
+#if 0
   switch (number) {
     case 14:
     case 17:
@@ -282,6 +285,7 @@ sva_register_memory_exception (unsigned char number, memfault_handler_t handler)
       __asm__ __volatile__ ("int %0\n" :: "i" (sva_exception_exception));
       return 1;
   }
+#endif
 
   return 0;
 }
@@ -297,10 +301,12 @@ sva_register_interrupt (unsigned char number, interrupt_handler_t interrupt) {
   /*
    * Ensure that the number is within range.
    */
+#if 0
   if (number < 32) {
     __asm__ __volatile__ ("int %0\n" :: "i" (sva_interrupt_exception));
     return 1;
   }
+#endif
 
   /*
    * Put the handler into the system call table.
