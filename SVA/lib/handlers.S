@@ -270,6 +270,11 @@ Trap:
   RETTARGET
 
   /*
+   * Disable interrupts.
+   */
+  cli
+
+  /*
    * Switch the stack pointer back to the interrupt context.
    */
   movq %gs:0x260, %rbp
@@ -487,6 +492,11 @@ SVAsyscall:
   callq sva_syscall
 sc_ret:
   RETTARGET
+
+  /*
+   * Disable interrupts.
+   */
+  cli
 
   /*
    * Switch the stack pointer back to the interrupt context.
