@@ -216,7 +216,7 @@ trap(struct trapframe *frame)
 #endif
 
 #if 1
-  if (type != T_BPTFLT)
+  if ((type != T_BPTFLT) && (type != T_NMI))
     panic ("SVA: trap: %lx: %d\n", frame->tf_rip, type);
 #endif
 	if (type == T_RESERVED) {
@@ -664,7 +664,7 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
   /*
    * Enable interrupts.
    */
-  sva_load_lif (1);
+  enable_intr();
 
 	/*
 	 * Convert the SVA interrupt context to a FreeBSD trapframe.
@@ -1205,7 +1205,7 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 	ksi.ksi_code = ucode;
 	ksi.ksi_trapno = type;
 	ksi.ksi_addr = (void *)addr;
-#if 0
+#if 1
   /* SVA: Disable for now */
 	trapsignal(td, &ksi);
 #endif
@@ -1217,11 +1217,12 @@ user:
 	    ("Return from trap with kernel FPU ctx leaked"));
 userout:
 out:
-#if 0
+#if 1
   /*
-   * Convert trap frame changes back into the SVA interrupt context.
+   * Run asynchronous stuff.
    */
-  sva_icontext (frame);
+  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+    ast (frame);
 #endif
 	return;
 }
@@ -1350,13 +1351,6 @@ trap_pfault_sva (register_t eva, unsigned long code, int usermode, struct trapfr
 	vm_prot_t ftype;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-
-#if 0
-  if (usermode)
-    __asm__ __volatile__ ("xchg %bx, %bx\n");
-  else
-    printf ("trap_pfault_sva: %lx %lx %d %p\n", eva, code, usermode, frame);
-#endif
 
 	va = trunc_page(eva);
 	if (va >= VM_MIN_KERNEL_ADDRESS) {
@@ -1684,7 +1678,7 @@ sva_syscall(struct thread *td, int traced)
   /*
    * Enable interrupts.
    */
-  sva_load_lif (1);
+  enable_intr();
 
   /*
    * SVA will not pass the thread pointer nor will it indicate whether tracing
@@ -1739,7 +1733,8 @@ sva_syscall(struct thread *td, int traced)
 
 #if 1
   /* SVA: The SVA assembly code does not run the AST */
-  ast(&localframe);
+  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+    ast (&localframe);
 #endif
 }
 #endif
