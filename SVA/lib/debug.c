@@ -301,6 +301,18 @@ sva_print_ist3 (unsigned long id) {
   return;
 }
 
+void
+sva_print_inttable (void) {
+  extern void default_interrupt (unsigned int number, void * icontext);
+  extern void * interrupt_table[256];
+  unsigned index = 0;
+  for (unsigned index = 0; index < 256; ++index) {
+    if (interrupt_table[index] != default_interrupt)
+      printf ("SVA: %d: %lx\n", index, interrupt_table[index]);
+  }
+  return;
+}
+
 #if 0
 void
 llva_psysnum (int a, int arg1, int arg2, int arg3, int arg4, int arg5, int arg6, void * icontext)
