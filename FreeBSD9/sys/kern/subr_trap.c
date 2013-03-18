@@ -247,11 +247,8 @@ ast(struct trapframe *framep)
 	    !SIGISEMPTY(p->p_siglist)) {
 		PROC_LOCK(p);
 		mtx_lock(&p->p_sigacts->ps_mtx);
-#if 0
-    /* SVA: Disabled until signal dispatch is fixed */
 		while ((sig = cursig(td, SIG_STOP_ALLOWED)) != 0)
 			postsig(sig);
-#endif
 		mtx_unlock(&p->p_sigacts->ps_mtx);
 		PROC_UNLOCK(p);
 	}
