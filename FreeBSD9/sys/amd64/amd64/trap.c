@@ -1221,8 +1221,9 @@ out:
   /*
    * Run asynchronous stuff.
    */
-  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
-    ast (frame);
+  if (!(sva_was_privileged()))
+    if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+      ast (frame);
 #endif
 	return;
 }
