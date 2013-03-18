@@ -134,6 +134,8 @@ userret(struct thread *td, struct trapframe *frame)
    * SVA: We don't do time profiling, and that is the only use of the frame
    * in this function
    */
+	if (p->p_flag & P_PROFIL)
+    panic ("SVA: userret: SVA does not support profiling!\n");
 #endif
 	/*
 	 * Let the scheduler adjust our priority etc.
@@ -165,6 +167,14 @@ ast(struct trapframe *framep)
 	struct proc *p;
 	int flags;
 	int sig;
+
+#if 1
+  /*
+   * SVA: Re-enable interrupts since the assembly dispatch code does not do
+   * this anymore for us.
+   */
+  enable_intr();
+#endif
 
 	td = curthread;
 	p = td->td_proc;
@@ -237,8 +247,10 @@ ast(struct trapframe *framep)
 	    !SIGISEMPTY(p->p_siglist)) {
 		PROC_LOCK(p);
 		mtx_lock(&p->p_sigacts->ps_mtx);
+#if 0
 		while ((sig = cursig(td, SIG_STOP_ALLOWED)) != 0)
 			postsig(sig);
+#endif
 		mtx_unlock(&p->p_sigacts->ps_mtx);
 		PROC_UNLOCK(p);
 	}
