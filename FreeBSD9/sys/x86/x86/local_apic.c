@@ -271,7 +271,7 @@ lapic_init(vm_paddr_t addr)
 #if 0
 	setidt(APIC_ERROR_INT, IDTVEC(errorint), SDT_APIC, SEL_KPL, GSEL_APIC);
 #else
-	sva_register_interrupt(APIC_TIMER_INT, lapic_handle_error);
+	sva_register_interrupt(APIC_ERROR_INT, lapic_handle_error);
 #endif
 
 	/* XXX: Thermal interrupt */
@@ -280,7 +280,7 @@ lapic_init(vm_paddr_t addr)
 #if 0
 	setidt(APIC_CMC_INT, IDTVEC(cmcint), SDT_APICT, SEL_KPL, GSEL_APIC);
 #else
-	sva_register_interrupt(APIC_TIMER_INT, lapic_handle_cmc);
+	sva_register_interrupt(APIC_CMC_INT, lapic_handle_cmc);
 #endif
 
 	if ((resource_int_value("apic", 0, "clock", &i) != 0 || i != 0)) {
@@ -826,23 +826,20 @@ lapic_handle_intr_sva(int vector)
 	struct intsrc *isrc;
   struct trapframe frame;
 
-  /* Enable interrupts */
-  sva_load_lif (1);
-
 	extern void sva_trapframe (struct trapframe * tf);
   sva_trapframe (&frame);
 	isrc = intr_lookup_source(apic_idt_to_irq(PCPU_GET(apic_id),
 	    vector));
 	intr_execute_handlers(isrc, &frame);
-#if 1
+#if 0
   /*
    * SVA: TODO: Enabling this causes the kernel to freeze on boot.
    *
    * Run asynchronous stuff.
    */
-  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
-    ast (&frame);
-  sva_icontext (&frame);
+  if (!(sva_was_privileged()))
+    if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+      ast (&frame);
 #endif
 }
 
@@ -957,9 +954,6 @@ lapic_handle_timer(int type)
 		 */
     if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
       ast (frame);
-#if 1
-		sva_icontext (frame);
-#endif
 		return;
 	}
 #endif
@@ -980,15 +974,9 @@ lapic_handle_timer(int type)
 	}
 	critical_exit();
 #if 1
-  if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
-    ast (frame);
-
-	/*
-	 * Convert trap frame changes back into the SVA interrupt context.
-	 */
-#if 1
-  sva_icontext (frame);
-#endif
+  if (!(sva_was_privileged()))
+    if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
+      ast (frame);
 #endif
 }
 
