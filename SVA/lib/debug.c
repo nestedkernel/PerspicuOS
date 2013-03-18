@@ -155,6 +155,7 @@ sva_syscall_trapframe (struct trapframe * tf) {
   return;
 }
 
+#if 0
 /*
  * Function: sva_icontext()
  *
@@ -208,6 +209,7 @@ sva_icontext (struct trapframe * tf) {
 
   return;
 }
+#endif
 
 #if 0
 /*
