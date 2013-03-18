@@ -1205,10 +1205,7 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
 	ksi.ksi_code = ucode;
 	ksi.ksi_trapno = type;
 	ksi.ksi_addr = (void *)addr;
-#if 1
-  /* SVA: Disable for now */
 	trapsignal(td, &ksi);
-#endif
 
 user:
 	userret(td, frame);
