@@ -831,9 +831,9 @@ lapic_handle_intr_sva(int vector)
 	isrc = intr_lookup_source(apic_idt_to_irq(PCPU_GET(apic_id),
 	    vector));
 	intr_execute_handlers(isrc, &frame);
-#if 0
+#if 1
   /*
-   * SVA: TODO: Enabling this causes the kernel to freeze on boot.
+   * SVA: TODO: Enabling this causes a stack fault with interrupts disabled.
    *
    * Run asynchronous stuff.
    */
@@ -848,7 +848,7 @@ apic_isr_sva1 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr1));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*1));
   }
 }
 
@@ -857,7 +857,7 @@ apic_isr_sva2 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr2));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*2));
   }
 }
 
@@ -866,7 +866,7 @@ apic_isr_sva3 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr3));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*3));
   }
 }
 
@@ -875,7 +875,7 @@ apic_isr_sva4 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr4));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*4));
   }
 }
 
@@ -884,7 +884,7 @@ apic_isr_sva5 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr5));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*5));
   }
 }
 
@@ -893,7 +893,7 @@ apic_isr_sva6 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr6));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*6));
   }
 }
 
@@ -902,7 +902,7 @@ apic_isr_sva7 (unsigned int vector) {
   unsigned int offset;
   __asm__ __volatile__ ("bsrl %1, %0\n" : "=r" (offset) : "m" (lapic->isr7));
   if (offset) {
-    lapic_handle_intr_sva (offset+32);
+    lapic_handle_intr_sva (offset+(32*7));
   }
 }
 #endif
