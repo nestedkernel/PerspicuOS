@@ -246,7 +246,6 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
   /*
    * Place the arguments into the proper registers.
    */
-  printf ("SVA: %lx %lx %lx %lx\n", p1, p2, p3, p4);
   ep->rdi = p1;
   ep->rsi = p2;
   ep->rdx = p3;
@@ -256,12 +255,14 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
    * Push a return program counter value on to the stack.  It should cause a
    * fault if the function returns.
    */
+#if 0
   *(--(ep->rsp)) = 0x0000beefu;
+#endif
 
   /*
    * Set the return function to be the specificed function.
    */
-  ep->rip = (unsigned int)newf;
+  ep->rip = (uintptr_t) newf;
 
   /*
    * Re-enable interrupts.
