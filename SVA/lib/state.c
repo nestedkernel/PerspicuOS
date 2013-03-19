@@ -849,77 +849,56 @@ sva_ialloca (void * icontext, unsigned int size)
    */
   return (p->rsp -= ((size / 4) + 1));
 }
+#endif
 
 /*
  * Intrinsic: sva_load_icontext()
  *
  * Description:
  *  This intrinsic takes state saved by the Execution Engine during an
- *  interrupt and loads it into the specified interrupt context buffer.
+ *  interrupt and loads it into the latest interrupt context.
  */
 void
-sva_load_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
-{
+sva_load_icontext (void) {
   /* Old interrupt flags */
-  unsigned int eflags;
+  uintptr_t rflags;
 
   /*
    * Disable interrupts.
    */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  do
-  {
-#ifdef SC_INTRINCHECKS
-    extern MetaPoolTy IntegerStatePool;
-    struct node {
-      void* left;
-      void* right;
-      char* key;
-      char* end;
-      void* tag;
-    };
-    struct node * np;
-    unsigned long start;
-
-    /*
-     * Verify that the memory was part of a previous integer state.
-     */
-    np = getBounds (&IntegerStatePool, statep);
-    start = np->key;
-    pchk_drop_obj (&IntegerStatePool, statep);
-    if (start != statep)
-      poolcheckfail ("Integer Check Failure", (unsigned)statep, (void*)__builtin_return_address(0));
-#endif
-
-    sva_check_memory_read (statep, sizeof (sva_icontext_t));
-    sva_check_memory_write (icontextp, sizeof (sva_icontext_t));
-
-    /*
-     * Verify that this interrupt context has a stack pointer.
-     */
-    if (sva_is_privileged () && sva_was_privileged(icontextp))
-    {
-      __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-      continue;
-    }
-    break;
-  } while (1);
+  rflags = sva_enter_critical();
 
   /*
-   * Currently, the interrupt context and integer state are one to one
-   * identical.  This means that they can just be copied over.
+   * Get the most recent interrupt context and the current CPUState and
+   * thread.
    */
-  __builtin_memcpy (icontextp, statep, sizeof (sva_icontext_t));
+  struct CPUState * cpup = getCPUState();
+  struct SVAThread * threadp = cpup->currentThread;
+  sva_icontext_t * icontextp = cpup->newCurrentIC;
+
+  /*
+   * Verify that the interrupt context represents user-space state.
+   */
+  if (sva_was_privileged ())
+    return;
+
+  /*
+   * Verify that we have a free interrupt context to use.
+   */
+  if (threadp->savedICIndex < 1)
+    return;
+
+  /*
+   * Load the interrupt context.
+   */
+  *icontextp = threadp->savedInterruptContexts[--(threadp->savedICIndex)];
 
   /*
    * Re-enable interrupts.
    */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+  sva_exit_critical (rflags);
   return;
 }
-#endif
 
 /*
  * Intrinsic: sva_save_icontext()
