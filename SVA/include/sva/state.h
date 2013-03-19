@@ -640,50 +640,6 @@ sva_ialloca (void * icontext, unsigned int size)
 }
 
 /*
- * Intrinsic: sva_load_icontext()
- *
- * Description:
- *  This intrinsic takes state saved by the Execution Engine during an
- *  interrupt and loads it into the specified interrupt context buffer.
- */
-extern inline void
-sva_load_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
-{
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  sva_check_memory_read (statep, sizeof (sva_icontext_t));
-  sva_check_memory_write (icontextp, sizeof (sva_icontext_t));
-
-  /*
-   * Verify that this interrupt context has a stack pointer.
-   */
-  if (sva_is_privileged () && sva_was_privileged(icontextp))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-  }
-
-  /*
-   * Currently, the interrupt context and integer state are one to one
-   * identical.  This means that they can just be copied over.
-   */
-  __builtin_memcpy (icontextp, statep, sizeof (sva_icontext_t));
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-
-  return;
-}
-
-/*
  * Intrinsic: sva_load_fp()
  *
  * Description:
