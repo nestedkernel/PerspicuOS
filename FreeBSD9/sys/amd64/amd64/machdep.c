@@ -321,9 +321,6 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	int sig;
 	int oonstack;
 
-#if 1
-  panic ("SVA: sendsig\n");
-#endif
 	td = curthread;
 	pcb = td->td_pcb;
 	p = td->td_proc;
@@ -390,6 +387,13 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	mtx_unlock(&psp->ps_mtx);
 	PROC_UNLOCK(p);
 
+#if 1
+  /*
+   * Save the interrupt context.
+   */
+  sva_save_icontext ();
+#endif
+
 	/*
 	 * Copy the sigframe out to the user's stack.
 	 */
@@ -401,6 +405,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 		sigexit(td, SIGILL);
 	}
 
+#if 0
 	regs->tf_rsp = (long)sfp;
 	regs->tf_rip = p->p_sysent->sv_sigcode_base;
 	regs->tf_rflags &= ~(PSL_T | PSL_D);
@@ -411,6 +416,14 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	regs->tf_gs = _ugssel;
 	regs->tf_flags = TF_HASSEGS;
 	set_pcb_flags(pcb, PCB_FULL_IRET);
+#else
+  /* SVA: Push the signal handler function on to the user-space stack */
+  sva_ipush_function5 (p->p_sysent->sv_sigcode_base,
+                       sig, regs->tf_rsi,
+                       (register_t)&sfp->sf_uc,
+                       regs->tf_rcx,
+                       catcher);
+#endif
 	PROC_LOCK(p);
 	mtx_lock(&psp->ps_mtx);
 }
@@ -445,13 +458,16 @@ sys_sigreturn(td, uap)
 	pcb = td->td_pcb;
 	p = td->td_proc;
 
+#if 0
 	error = copyin(uap->sigcntxp, &uc, sizeof(uc));
 	if (error != 0) {
 		uprintf("pid %d (%s): sigreturn copyin failed\n",
 		    p->p_pid, td->td_name);
 		return (error);
 	}
+#endif
 	ucp = &uc;
+#if 0
 	if ((ucp->uc_mcontext.mc_flags & ~_MC_FLAG_MASK) != 0) {
 		uprintf("pid %d (%s): sigreturn mc_flags %x\n", p->p_pid,
 		    td->td_name, ucp->uc_mcontext.mc_flags);
@@ -512,9 +528,17 @@ sys_sigreturn(td, uap)
 	else
 		td->td_sigstk.ss_flags &= ~SS_ONSTACK;
 #endif
+#endif
+
+#if 1
+  /* Load the old interrupted state back on into the interrupt context. */
+  sva_load_icontext ();
+#endif
 
 	kern_sigprocmask(td, SIG_SETMASK, &ucp->uc_sigmask, NULL, 0);
+#if 0
 	set_pcb_flags(pcb, PCB_FULL_IRET);
+#endif
 	return (EJUSTRETURN);
 }
 

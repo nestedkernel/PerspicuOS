@@ -39,7 +39,15 @@
  *
  */
 NON_GPROF_ENTRY(sigcode)
+#if 0
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
+#else
+  /*
+   * SVA: The pointer to the actual signal handler is the fifth argument.
+   * All the other arguments remain unchanged.
+   */
+  callq *%r8               /* Call signal handler */
+#endif
 	lea	SIGF_UC(%rsp),%rdi	/* get ucontext_t */
 	pushq	$0			/* junk to fake return addr. */
 	movq	$SYS_sigreturn,%rax
