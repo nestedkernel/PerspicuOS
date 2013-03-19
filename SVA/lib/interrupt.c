@@ -67,6 +67,7 @@ findNextFreeThread (void) {
        * Do some basic initialization of the thread.
        */
       Threads[index].integerState.valid = 0;
+      Threads[index].savedICIndex = 0;
 
       /*
        * Use the next-to-last interrupt context in the list as the first

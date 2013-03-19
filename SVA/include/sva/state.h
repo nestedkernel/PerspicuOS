@@ -215,8 +215,14 @@ struct SVAThread {
   /* Interrupt contexts for this thread */
   sva_icontext_t interruptContexts[maxIC + 1];
 
+  /* Interrupt contexts used for signal handler dispatch */
+  sva_icontext_t savedInterruptContexts[maxIC + 1];
+
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;
+
+  /* Index of currently available saved Interrupt Context */
+  unsigned char savedICIndex;
 
   /* Flag whether the thread is in use */
   unsigned char used;
@@ -667,50 +673,6 @@ sva_load_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
    * identical.  This means that they can just be copied over.
    */
   __builtin_memcpy (icontextp, statep, sizeof (sva_icontext_t));
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-
-  return;
-}
-
-/*
- * Intrinsic: sva_save_icontext()
- *
- * Description:
- *  This intrinsic takes state saved by the Execution Engine during an
- *  interrupt and saves it as an integer state structure.
- */
-extern inline void
-sva_save_icontext (sva_icontext_t * icontextp, sva_integer_state_t * statep)
-{
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  sva_check_memory_read  (icontextp, sizeof (sva_icontext_t));
-  sva_check_memory_write (statep,    sizeof (sva_icontext_t));
-
-  /*
-   * Verify that this interrupt context has a stack pointer.
-   */
-  if (sva_is_privileged () && sva_was_privileged(icontextp))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-  }
-
-  /*
-   * Currently, the interrupt context and integer state are one to one
-   * identical.  This means that they can just be copied over.
-   */
-  __builtin_memcpy (statep, icontextp, sizeof (sva_icontext_t));
 
   /*
    * Re-enable interrupts.
