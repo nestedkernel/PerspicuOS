@@ -199,7 +199,7 @@ sva_ipop_function0 (void * exceptp)
 #endif
 
 /*
- * Intrinsic: sva_ipush_function4 ()
+ * Intrinsic: sva_ipush_function5 ()
  *
  * Description:
  *  This intrinsic modifies the most recent interrupt context so that the
@@ -207,8 +207,8 @@ sva_ipop_function0 (void * exceptp)
  *  reloaded on to the processor.
  *
  * Inputs:
- *  newf     - The function to call.
- *  p[1|2|3] - The parameters to pass to the function.
+ *  newf         - The function to call.
+ *  p[1|2|3|4|5] - The parameters to pass to the function.
  *
  * TODO:
  *  o This intrinsic should check whether newf is a valid function for the
@@ -219,11 +219,12 @@ sva_ipop_function0 (void * exceptp)
  *    This should be addressed at some point.
  */
 void
-sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
+sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
                      uintptr_t p1,
                      uintptr_t p2,
                      uintptr_t p3,
-                     uintptr_t p4) {
+                     uintptr_t p4,
+                     uintptr_t p5) {
   /* Old interrupt flags */
   uintptr_t rflags;
 
@@ -250,14 +251,13 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
   ep->rsi = p2;
   ep->rdx = p3;
   ep->rcx = p4;
+  ep->r8  = p5;
 
   /*
    * Push a return program counter value on to the stack.  It should cause a
    * fault if the function returns.
    */
-#if 0
-  *(--(ep->rsp)) = 0x0000beefu;
-#endif
+  *(--(ep->rsp)) = 0x0fec;
 
   /*
    * Set the return function to be the specificed function.
@@ -288,7 +288,7 @@ sva_ipush_function4 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
  */
 void
 sva_ipush_function0 (void (*newf)(void)) {
-  sva_ipush_function4 (newf, 0, 0, 0, 0);
+  sva_ipush_function5 (newf, 0, 0, 0, 0, 0);
   return;
 }
 
@@ -314,7 +314,7 @@ sva_ipush_function0 (void (*newf)(void)) {
  */
 void
 sva_ipush_function1 (void (*newf)(int), uintptr_t param) {
-  sva_ipush_function4 (newf, param, 0, 0, 0);
+  sva_ipush_function5 (newf, param, 0, 0, 0, 0);
   return;
 }
 
