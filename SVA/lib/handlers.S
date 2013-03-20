@@ -292,24 +292,12 @@ Trap:
   /*
    * Copy the registers from the interrupt context back on to the processor.
    */
-#if 0
-  movw IC_FS(%rsp), %fs
-  movw IC_ES(%rsp), %es
-  movw IC_DS(%rsp), %ax
-  movw %ax, %ds
-#else
   movw IC_FS(%rsp), %ax
   movw IC_ES(%rsp), %bx
   movw IC_DS(%rsp), %cx
-#if 0
-  andl $0xffff, %eax
-  andl $0xffff, %ebx
-  andl $0xffff, %ecx
-#endif
   movw %ax, %fs
   movw %bx, %es
   movw %cx, %ds
-#endif
 
   movq IC_RDI(%rsp), %rdi
   movq IC_RSI(%rsp), %rsi
