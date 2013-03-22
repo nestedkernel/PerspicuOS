@@ -2648,10 +2648,6 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     /*
      * Swap to the new state.
      */
-#if 0
-    sva_save_fp (&(old->svaFP));
-    sva_load_fp (&(new->svaFP));
-#endif
     didSwap = sva_swap_integer (new->svaID, &(old->svaID));
   } else {
 #if 0
