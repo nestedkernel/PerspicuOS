@@ -100,6 +100,12 @@ typedef struct sva_icontext {
   unsigned long start;                // 0xc8
 } sva_icontext_t;
 
+typedef struct
+{
+  unsigned int state[7];
+  unsigned int fp_regs[20];
+} sva_fp_state_t;
+
 /*
  * Structure: sva_integer_state_t
  *
@@ -174,13 +180,10 @@ typedef struct {
 
   /* Current setting of IST3 in the TSS */
   unsigned long ist3;
-} sva_integer_state_t;
 
-typedef struct
-{
-  unsigned int state[7];
-  unsigned int fp_regs[20];
-} sva_fp_state_t;
+  /* Floating point state */
+  sva_fp_state_t fpstate;
+} sva_integer_state_t;
 
 /*
  * Structure: invoke_frame
@@ -637,98 +640,6 @@ sva_ialloca (void * icontext, unsigned int size)
    * Perform the alloca.
    */
   return (p->esp -= ((size / 4) + 1));
-}
-
-/*
- * Intrinsic: sva_load_fp()
- *
- * Description:
- *  This intrinsic loads floating point state back on to the processor.
- */
-extern inline void
-sva_load_fp (void * buffer)
-{
-  const int ts = 0x00000008;
-  unsigned int cr0;
-  sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
- 
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  /*
-   * Save the state of the floating point unit.
-   */
-  __asm__ __volatile__ ("frstor %0" : "=m" (p->state));
-
-  /*
-   * Mark the FPU has having been unused.  The first FP operation will cause
-   * an exception into the Execution Engine.
-   */
-  __asm__ __volatile__ ("movl %%cr0, %0\n"
-                        "orl  %1,    %0\n"
-                        "movl %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
-  sva_fp_used = 0;
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-
-  return;
-}
-
-/*
- * Intrinsic: sva_save_fp()
- *
- * Description:
- *  Save the processor's current floating point state into the specified
- *  buffer.
- *
- * Inputs:
- *  buffer - A pointer to the buffer in which to save the data.
- *  always - Only save state if it was modified since the last load FP state.
- */
-extern inline int
-sva_save_fp (void * buffer, int always)
-{
-  sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
-
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  if (always || sva_fp_used)
-  {
-    __asm__ __volatile__ ("fnsave %0" : "=m" (p->state) :: "memory");
-
-    /*
-     * Re-enable interrupts.
-     */
-    if (eflags & 0x00000200)
-      __asm__ __volatile__ ("sti":::"memory");
-
-    return 1;
-  }
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-
-  return 0;
 }
 
 /*

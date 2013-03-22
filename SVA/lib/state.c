@@ -565,6 +565,100 @@ sva_set_integer_stackp (sva_integer_state_t * intp, sva_sp_t p)
 #endif
 
 /*
+ * Function: load_fp()
+ *
+ * Description:
+ *  This intrinsic loads floating point state back on to the processor.
+ */
+static void
+load_fp (sva_fp_state_t * buffer) {
+  const uintptr_t ts = 0x00000008;
+  uintptr_t cr0;
+  sva_fp_state_t * p = buffer;
+  extern unsigned char sva_fp_used;
+ 
+  /* Old interrupt flags */
+  uintptr_t rflags;
+
+  /*
+   * Disable interrupts.
+   */
+  rflags = sva_enter_critical();
+
+#if LLVA_COUNTERS
+  ++sva_counters.sva_load_fp;
+  if (sva_debug) ++sva_local_counters.sva_load_fp;
+  sc_intrinsics[current_sysnum] |= MASK_LLVA_LOAD_FP;
+#endif
+
+  /*
+   * Save the state of the floating point unit.
+   */
+  __asm__ __volatile__ ("frstor %0" : "=m" (p->state));
+
+  /*
+   * Mark the FPU has having been unused.  The first FP operation will cause
+   * an exception into the Execution Engine.
+   */
+  __asm__ __volatile__ ("movq %%cr0, %0\n"
+                        "orq  %1,    %0\n"
+                        "movq %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
+  sva_fp_used = 0;
+
+  /*
+   * Re-enable interrupts.
+   */
+  sva_exit_critical (rflags);
+  return;
+}
+
+/*
+ * Function: save_fp()
+ *
+ * Description:
+ *  Save the processor's current floating point state into the specified
+ *  buffer.
+ *
+ * Inputs:
+ *  buffer - A pointer to the buffer in which to save the data.
+ *  always - Only save state if it was modified since the last load FP state.
+ */
+static int
+save_fp (void * buffer, int always) {
+  sva_fp_state_t * p = buffer;
+  extern unsigned char sva_fp_used;
+
+  /* Old interrupt flags */
+  uintptr_t rflags;
+
+  /*
+   * Disable interrupts.
+   */
+  rflags = sva_enter_critical();
+
+  if (always || sva_fp_used) {
+#if LLVA_COUNTERS
+    ++sva_counters.sva_save_fp;
+    if (sva_debug) ++sva_local_counters.sva_save_fp;
+    sc_intrinsics[current_sysnum] |= MASK_LLVA_SAVE_FP;
+#endif
+    __asm__ __volatile__ ("fnsave %0" : "=m" (p->state) :: "memory");
+
+    /*
+     * Re-enable interrupts.
+     */
+    sva_exit_critical (rflags);
+    return 1;
+  }
+
+  /*
+   * Re-enable interrupts.
+   */
+  sva_exit_critical (rflags);
+  return 0;
+}
+
+/*
  * Function: checkIntegerForLoad ()
  *
  * Description:
@@ -731,6 +825,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   old->currentIC = cpup->newCurrentIC;
 
   /*
+   * Save the floating point state.
+   */
+  save_fp (&(old->fpstate), 1);
+
+  /*
    * Save the current integer state.  Note that returning from sva_integer()
    * with a non-zero value means that we've just woken up from a context
    * switch.
@@ -801,6 +900,11 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * Invalidate the state that we're about to load.
      */
     new->valid = 0;
+
+    /*
+     * Load the floating point state.
+     */
+    load_fp (&(new->fpstate));
 
     /*
      * Load the rest of the integer state.
@@ -957,100 +1061,6 @@ sva_save_icontext (void) {
    */
   sva_exit_critical (rflags);
   return savedICIndex;
-}
-
-/*
- * Intrinsic: sva_load_fp()
- *
- * Description:
- *  This intrinsic loads floating point state back on to the processor.
- */
-void
-sva_load_fp (void * buffer) {
-  const uintptr_t ts = 0x00000008;
-  uintptr_t cr0;
-  sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
- 
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
-
-#if LLVA_COUNTERS
-  ++sva_counters.sva_load_fp;
-  if (sva_debug) ++sva_local_counters.sva_load_fp;
-  sc_intrinsics[current_sysnum] |= MASK_LLVA_LOAD_FP;
-#endif
-
-  /*
-   * Save the state of the floating point unit.
-   */
-  __asm__ __volatile__ ("frstor %0" : "=m" (p->state));
-
-  /*
-   * Mark the FPU has having been unused.  The first FP operation will cause
-   * an exception into the Execution Engine.
-   */
-  __asm__ __volatile__ ("movq %%cr0, %0\n"
-                        "orq  %1,    %0\n"
-                        "movq %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
-  sva_fp_used = 0;
-
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
-  return;
-}
-
-/*
- * Intrinsic: sva_save_fp()
- *
- * Description:
- *  Save the processor's current floating point state into the specified
- *  buffer.
- *
- * Inputs:
- *  buffer - A pointer to the buffer in which to save the data.
- *  always - Only save state if it was modified since the last load FP state.
- */
-int
-sva_save_fp (void * buffer, int always) {
-  sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
-
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
-
-  if (always || sva_fp_used) {
-#if LLVA_COUNTERS
-    ++sva_counters.sva_save_fp;
-    if (sva_debug) ++sva_local_counters.sva_save_fp;
-    sc_intrinsics[current_sysnum] |= MASK_LLVA_SAVE_FP;
-#endif
-    __asm__ __volatile__ ("fnsave %0" : "=m" (p->state) :: "memory");
-
-    /*
-     * Re-enable interrupts.
-     */
-    sva_exit_critical (rflags);
-    return 1;
-  }
-
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
-  return 0;
 }
 
 #if 0
