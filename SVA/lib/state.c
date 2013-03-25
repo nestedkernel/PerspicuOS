@@ -1431,6 +1431,9 @@ sva_init_stack (unsigned char * start_stackp,
    */
   icontextp->rax = 0;
 
+  /* Mark the interrupt context as valid */
+  icontextp->valid = 1;
+
   /*
    * Re-enable interrupts.
    */

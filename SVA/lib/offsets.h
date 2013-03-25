@@ -48,6 +48,7 @@
 #define IC_RSP     0xb0
 #define IC_SS      0xb8
 
+#define IC_VALID   0xc0
 /* Size of the interrupt context */
 #define IC_SIZE    0xd0
 

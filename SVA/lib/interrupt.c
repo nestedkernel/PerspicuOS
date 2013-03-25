@@ -40,6 +40,13 @@ default_interrupt (unsigned int number, uintptr_t address) {
   return;
 }
 
+void
+invalidIC (void) {
+  panic ("SVA: Invalid Interrupt Context\n");
+  __asm__ __volatile__ ("hlt\n");
+  return;
+}
+
 /*
  * Structure: CPUState
  *

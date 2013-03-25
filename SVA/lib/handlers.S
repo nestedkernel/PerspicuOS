@@ -216,6 +216,9 @@ Trap:
   /* Push the invoke frame pointer */
   pushq $0
 
+  /* Flag the interrupt context as valid */
+  movq $1, IC_VALID(%rsp)
+
   /*
    * Move the trap number into the %rdi register.
    */
@@ -279,6 +282,13 @@ Trap:
    */
   movq %gs:0x260, %rbp
   movq CPU_NEWIC(%rbp), %rsp
+
+  /*
+   * Verify that the interrupt context is valid (e.g., no sva_ialloca has been
+   * performed without a subsequent sva_ipush_function).
+   */
+  cmpq $1, IC_VALID(%rsp)
+  je invalidIC
 
   /*
    * Pop off the most recent interrupt context.  This requires modifying
@@ -442,6 +452,9 @@ SVAsyscall:
   pushw %fs
 
   pushq $0
+
+  /* Flag the interrupt context as valid */
+  movq $1, IC_VALID(%rsp)
 
   /*
    * Save the address of the current interrupt context into this processor's

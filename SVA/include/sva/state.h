@@ -96,7 +96,8 @@ typedef struct sva_icontext {
   unsigned long * rsp;                // 0xb0
   unsigned long ss;                   // 0xb8
 
-  unsigned long skip;                 // 0xc0
+  /* Flags whether the interrupt context is valid */
+  unsigned long valid;                // 0xc0
   unsigned long start;                // 0xc8
 } sva_icontext_t;
 
