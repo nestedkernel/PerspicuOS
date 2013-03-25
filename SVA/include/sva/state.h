@@ -355,291 +355,30 @@ extern uintptr_t sva_init_stack (unsigned char * sp,
                                  uintptr_t arg2,
                                  uintptr_t arg3);
 extern void sva_reinit_icontext (void *, unsigned char, uintptr_t, uintptr_t);
+
 #if 0
 extern void *       sva_declare_stack (void * p, unsigned size);
 extern void         sva_release_stack (void * p);
+#endif
 
 /*****************************************************************************
  * Individual State Components
  ****************************************************************************/
 
-/*
- * Intrinsic: sva_ipush_function0 ()
- *
- * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
- *
- * Inputs:
- *  icontext - A pointer to the exception handler saved state.
- *  newf     - The function to call.
- *
- * NOTES:
- *  o This intrinsic could conceivably cause a memory fault (either by
- *    accessing a stack page that isn't paged in, or by overwriting the stack).
- *    This should be addressed at some point.
- */
-extern inline void
-sva_ipush_function0 (void * icontext, void (*newf)(void))
-{
-  /* User Context Pointer */
-  sva_icontext_t * ip = icontext;
+extern void sva_ipush_function5 (void (*f)(uintptr_t, uintptr_t, uintptr_t),
+                                 uintptr_t p1,
+                                 uintptr_t p2,
+                                 uintptr_t p3,
+                                 uintptr_t p4,
+                                 uintptr_t p5);
 
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  /*
-   * Check the memory.
-   */
-  sva_check_memory_write (ip,      sizeof (sva_icontext_t));
-  sva_check_memory_write (ip->esp, sizeof (unsigned int) * 1);
-
-  /*
-   * Verify that this interrupt context has a stack pointer.
-   */
 #if 0
-  if (sva_is_privileged () && sva_was_privileged(icontext))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-  }
-#endif
-
-  /*
-   * Push the return PC pointer on to the stack.
-   */
-  *(--(ip->esp)) = ip->eip;
-
-  /*
-   * Set the return function to be the specificed function.
-   */
-  ip->eip = (unsigned int)newf;
-
-  /*
-   * Disable restrictions on system calls since we don't know where this
-   * function pointer came from.
-   */
-#if SVA_SCLIMIT
-  ip->sc_disabled = 0;
-#endif
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-  return;
-}
-
-/*
- * Intrinsic: sva_ipush_function1 ()
- *
- * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
- *
- * Inputs:
- *  icontext - A pointer to the exception handler saved state.
- *  newf     - The function to call.
- *  param    - The parameter to send to the function.
- *
- * TODO:
- *  This currently only takes a function that takes a single integer
- *  argument.  Eventually, this should take any function.
- *
- * NOTES:
- *  o This intrinsic could conceivably cause a memory fault (either by
- *    accessing a stack page that isn't paged in, or by overwriting the stack).
- *    This should be addressed at some point.
- */
-extern inline void
-sva_ipush_function1 (void * icontext, void (*newf)(int), int param)
-{
-  /* User Context Pointer */
-  sva_icontext_t * ep = icontext;
-
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  do
-  {
-    /*
-     * Check the memory.
-     */
-    sva_check_memory_write (ep, sizeof (sva_icontext_t));
-    sva_check_memory_write (ep->esp, sizeof (unsigned int) * 2);
-
-    /*
-     * Verify that this interrupt context has a stack pointer.
-     */
-    if (sva_is_privileged () && sva_was_privileged(icontext))
-    {
-      __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-      continue;
-    }
-    break;
-  } while (1);
-
-  /*
-   * Push the one argument on to the user space stack.
-   */
-  *(--(ep->esp)) = param;
-
-  /*
-   * Push the return PC pointer on to the stack.
-   */
-  *(--(ep->esp)) = ep->eip;
-
-  /*
-   * Set the return function to be the specificed function.
-   */
-  ep->eip = (unsigned int)newf;
-
-  /*
-   * Disable restrictions on system calls since we don't know where this
-   * function pointer came from.
-   */
-#if SVA_SCLIMIT
-  ep->sc_disabled = 0;
-#endif
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-  return;
-}
-
-/*
- * Intrinsic: sva_ipush_function3 ()
- *
- * Description:
- *  This intrinsic modifies the user space process code so that the
- *  specified function was called with the given arguments.
- *
- * Inputs:
- *  icontext - A pointer to the exception handler saved state.
- *  newf     - The function to call.
- *  param    - The parameter to send to the function.
- *
- * TODO:
- *  This currently only takes a function that takes a single integer
- *  argument.  Eventually, this should take any function.
- *
- * NOTES:
- *  o This intrinsic could conceivably cause a memory fault (either by
- *    accessing a stack page that isn't paged in, or by overwriting the stack).
- *    This should be addressed at some point.
- */
-extern inline void
-sva_ipush_function3 (void * icontext, void (*newf)(int, int, int),
-                      int p1, int p2, int p3)
-{
-  /* User Context Pointer */
-  sva_icontext_t * ep = icontext;
-
-  /* Old interrupt flags */
-  unsigned int eflags;
-
-  /*
-   * Disable interrupts.
-   */
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  do
-  {
-    /*
-     * Check the memory.
-     */
-    sva_check_memory_write (ep, sizeof (sva_icontext_t));
-    sva_check_memory_write (ep->esp, sizeof (unsigned int) * 4);
-
-    /*
-     * Verify that this interrupt context has a stack pointer.
-     */
-    if (sva_is_privileged () && sva_was_privileged(icontext))
-    {
-      __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-      continue;
-    }
-    break;
-  } while (1);
-
-  /*
-   * Push the arguments on to the user space stack.
-   */
-  *(--(ep->esp)) = p3;
-  *(--(ep->esp)) = p2;
-  *(--(ep->esp)) = p1;
-
-  /*
-   * Push the return PC pointer on to the stack.
-   */
-  *(--(ep->esp)) = ep->eip;
-
-  /*
-   * Set the return function to be the specificed function.
-   */
-  ep->eip = (unsigned int)newf;
-
-  /*
-   * Disable restrictions on system calls since we don't know where this
-   * function pointer came from.
-   */
-#if SVA_SCLIMIT
-  ep->sc_disabled = 0;
-#endif
-
-  /*
-   * Re-enable interrupts.
-   */
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-  return;
-}
-
 extern inline unsigned char
 sva_is_privileged  (void)
 {
   unsigned int cs;
   __asm__ __volatile__ ("movl %%cs, %0\n" : "=r" (cs));
   return ((cs & 0x10) == 0x10);
-}
-
-/*
- * Intrinsic: sva_ialloca()
- *
- * Description:
- *  Allocate space on the current stack frame for an object of the specified
- *  size.
- */
-extern inline void *
-sva_ialloca (void * icontext, unsigned int size)
-{
-  sva_icontext_t * p = icontext;
-
-  /*
-   * Verify that this interrupt context has a stack pointer.
-   */
-  if (sva_is_privileged () && sva_was_privileged(icontext))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
-  }
-
-  /*
-   * Perform the alloca.
-   */
-  return (p->esp -= ((size / 4) + 1));
 }
 
 /*
