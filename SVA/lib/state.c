@@ -927,33 +927,61 @@ sva_is_privileged  (void)
   __asm__ __volatile__ ("movl %%cs, %0\n" : "=r" (cs));
   return ((cs & 0x10) == 0x10);
 }
+#endif
 
 /*
  * Intrinsic: sva_ialloca()
  *
  * Description:
- *  Allocate space on the current stack frame for an object of the specified
+ *  Allocate an object of the specified size on the current stack belonging to
+ *  the most recent Interrupt Context.
  *  size.
+ *
+ * Inputs:
+ *  size - The number of bytes to allocate on the stack pointed to by the
+ *         Interrupt Context.
  */
 void *
-sva_ialloca (void * icontext, unsigned int size)
-{
-  sva_icontext_t * p = icontext;
+sva_ialloca (unsigned int size) {
+  /* Old interrupt flags */
+  uintptr_t rflags;
+
+  /* Pointer to allocated memory */
+  void * allocap = 0;
 
   /*
-   * Verify that this interrupt context has a stack pointer.
+   * Disable interrupts.
    */
-  while (sva_is_privileged () && sva_was_privileged(icontext))
-  {
-    __asm__ __volatile__ ("int %0\n" :: "i" (sva_state_exception));
+  rflags = sva_enter_critical();
+
+  /*
+   * Get the most recent interrupt context and the current CPUState and
+   * thread.
+   */
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * icontextp = cpup->newCurrentIC;
+
+  /*
+   * Only perform the ialloca() if the Interrupt Context represents user-mode
+   * state.
+   */
+  if (!(sva_was_privileged())) {
+    /*
+     * Mark the interrupt context as invalid.  We don't want it to be placed
+     * back on to the processor until an sva_ipush_function() pushes a new stack
+     * frame on to the stack.
+     */
+    icontextp->valid = 0;
+
+    /*
+     * Perform the alloca.
+     */
+    allocap = (icontextp->rsp -= ((size / sizeof(unsigned long *)) + 1));
   }
 
-  /*
-   * Perform the alloca.
-   */
-  return (p->rsp -= ((size / 4) + 1));
+  sva_exit_critical (rflags);
+  return allocap;
 }
-#endif
 
 /*
  * Intrinsic: sva_load_icontext()
