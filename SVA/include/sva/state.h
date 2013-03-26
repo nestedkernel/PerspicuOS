@@ -333,7 +333,6 @@ sva_icontext_setrip (uintptr_t pc) {
 extern unsigned char * sva_get_integer_stackp  (void * integerp);
 extern void            sva_set_integer_stackp  (sva_integer_state_t * p, sva_sp_t sp);
 
-extern void sva_push_function1 (void * integerp, void (*f)(int), int param);
 extern void sva_push_syscall   (unsigned int sysnum, void * exceptp, void * fn);
 
 extern void sva_load_kstackp (sva_sp_t);
