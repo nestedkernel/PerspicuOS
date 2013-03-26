@@ -1354,20 +1354,23 @@ sva_init_stack (unsigned char * start_stackp,
   integerp->ss  = 0x3b;
   integerp->valid = 1;
   integerp->rflags = 0x202;
+#if 0
   integerp->ist3 = integerp->kstackp;
+#endif
 #if 1
   integerp->kstackp = stackp;
 #endif
 
   /*
-   * Initialize the interrupt context of the new thread.
+   * Initialize the interrupt context of the new thread.  Note that we use
+   * the last IC.
    *
    * FIXME: The check on cpup->newCurrentIC is really a hack.  We should really
    *        fix the code to ensure that newCurrentIC is always set correctly
    *        and that the first interrupt context is at the end of the interrupt
    *        context list.
    */
-  icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
+  icontextp = integerp->currentIC = newThread->interruptContexts + maxIC - 1;
   *icontextp = *(cpup->newCurrentIC);
 
   /*

@@ -85,19 +85,28 @@ findNextFreeThread (void) {
   for (signed int index = 0; index < 4096; ++index) {
     if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
       /*
+       * Remember which thread is the one we've grabbed.
+       */
+      struct SVAThread * newThread = Threads + index;
+
+      /*
        * Do some basic initialization of the thread.
        */
-      Threads[index].integerState.valid = 0;
-      Threads[index].savedICIndex = 0;
+      newThread->integerState.valid = 0;
+      newThread->savedICIndex = 0;
 
       /*
        * Use the next-to-last interrupt context in the list as the first
        * interrupt context.  This may be slightly wasteful, but it's a little
        * easier to make it work correctly right now.
+       *
+       * The processor's IST3 field should be configured so that the next
+       * interrupt context is at maxIC - 2.
        */
-      Threads[index].integerState.ist3 = ((uintptr_t) ((Threads[index].interruptContexts + maxIC))) - 0x10;
-      Threads[index].integerState.kstackp = Threads[index].integerState.ist3; 
-      return &(Threads[index]);
+      sva_icontext_t * icontextp = newThread->interruptContexts + maxIC - 1;
+      newThread->integerState.ist3 = ((uintptr_t) icontextp) - 0x10;
+      newThread->integerState.kstackp = newThread->integerState.ist3; 
+      return newThread;
     }
   }
 
