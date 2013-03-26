@@ -41,7 +41,21 @@ default_interrupt (unsigned int number, uintptr_t address) {
 }
 
 void
-invalidIC (void) {
+invalidIC (unsigned int v) {
+  extern void assertGoodIC (void);
+
+  /*
+   * Check that the interrupt context is okay (other than its valid field not
+   *  being one
+   */
+  assertGoodIC();
+
+  /* Print out the interrupt context */
+  if (v)
+    sva_print_icontext ("invalidIC:trap");
+  else
+    sva_print_icontext ("invalidIC:sys");
+
   panic ("SVA: Invalid Interrupt Context\n");
   __asm__ __volatile__ ("hlt\n");
   return;
