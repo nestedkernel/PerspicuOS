@@ -132,21 +132,22 @@ sva_getCPUState (tss_t * tssp) {
      * Fetch an unused CPUState from the set of those available.
      */
     index = __sync_fetch_and_add (&nextIndex, 1);
+    struct CPUState * cpup = CPUState + index;
 
     /*
      * Initialize the interrupt context link list pointer.
      */
-    CPUState[index].currentThread = st = findNextFreeThread();
+    cpup->currentThread = st = findNextFreeThread();
 
     /*
      * Initialize the interrupt context pointer.
      */
-    CPUState[index].newCurrentIC = 0;
+    cpup->newCurrentIC = 0;
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
      */
-    CPUState[index].tssp = tssp;
+    cpup->tssp = tssp;
 
     /*
      * Setup the Interrupt Stack Table (IST) entry so that the hardware places
@@ -157,7 +158,7 @@ sva_getCPUState (tss_t * tssp) {
     /*
      * Return the CPU State to the caller.
      */
-    return &(CPUState[index]);
+    return cpup;
   }
 
   return 0;
