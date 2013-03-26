@@ -20,6 +20,26 @@
 #include <machine/frame.h>
 
 /*****************************************************************************
+ * Assertion Code
+ ****************************************************************************/
+
+void
+assertGoodIC (void) {
+  /*
+   * Get the CPU State and latest Interrupt Context
+   */
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * p = getCPUState()->newCurrentIC;
+
+  if ((p < cpup->currentThread->interruptContexts) ||
+      (cpup->currentThread->interruptContexts + maxIC < p)) {
+    panic ("SVA: Out of Bounds IC: %p %p %p\n", p, cpup->currentThread->interruptContexts, cpup->currentThread->interruptContexts + maxIC);
+  }
+
+  return;
+}
+
+/*****************************************************************************
  * Cheater's Code
  ****************************************************************************/
 
@@ -256,12 +276,13 @@ llva_get_eip (void * icontext)
 static void
 print_icontext (char * s, sva_icontext_t * p) {
   printf ("rip: 0x%lx   rsp: 0x%lx   rbp: 0x%lx \n", p->rip, p->rsp, p->rbp);
-  printf ("cs: 0x%lx\n", (p->cs & 0xffff));
   printf ("rax: 0x%lx   rbx: 0x%lx   rcx: 0x%lx \n", p->rax, p->rbx, p->rcx);
   printf ("rdx: 0x%lx   rsi: 0x%lx   rdi: 0x%lx \n", p->rdx, p->rsi, p->rdi);
-  printf ("SVA: icontext  cs: 0x%lx\n", (p->cs & 0xffff));
-  printf ("SVA: icontext  rflags: 0x%lx\n", p->rflags);
-  printf ("SVA: icontext  code  : 0x%lx\n", p->code);
+  printf ("SVA: icontext  cs: 0x%lx\n", p->cs);
+  printf ("SVA: icontext  rflags  : 0x%lx\n", p->rflags);
+  printf ("SVA: icontext  code    : 0x%lx\n", p->code);
+  printf ("SVA: icontext  trapno  : 0x%lx\n", p->trapno);
+  printf ("SVA: icontext  invokep : 0x%lx\n", p->invokep);
   printf ("es: 0x%x   fs: 0x%x    ds: 0x%x   gs: 0x%x \n", p->es, p->fs, p->ds, p->gs);
   printf ("----------------------------------------------------------------\n");
   return;
