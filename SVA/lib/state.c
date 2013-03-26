@@ -1368,11 +1368,7 @@ sva_init_stack (unsigned char * start_stackp,
    *        context list.
    */
   icontextp = integerp->currentIC = &(newThread->interruptContexts[maxIC]);
-  if (((uintptr_t)cpup->newCurrentIC) > 0xffffffff00000000u) {
-    *icontextp = *(cpup->newCurrentIC);
-  } else {
-    *icontextp = oldThread->interruptContexts[maxIC];
-  }
+  *icontextp = *(cpup->newCurrentIC);
 
   /*
    * Set the return value to zero.

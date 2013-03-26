@@ -140,9 +140,15 @@ sva_getCPUState (tss_t * tssp) {
     cpup->currentThread = st = findNextFreeThread();
 
     /*
-     * Initialize the interrupt context pointer.
+     * Initialize a dummy interrupt context so that it looks like we
+     * started the processor by taking a trap or system call.  The dummy
+     * Interrupt Context should cause a fault if we ever try to put it back
+     * on to the processor.
      */
-    cpup->newCurrentIC = 0;
+    cpup->newCurrentIC = cpup->currentThread->interruptContexts + (maxIC - 1);
+    cpup->newCurrentIC->rip    = 0xfead;
+    cpup->newCurrentIC->cs     = 0x43;
+    cpup->newCurrentIC->valid  = 1;
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
