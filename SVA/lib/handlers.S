@@ -288,6 +288,7 @@ Trap:
    * Verify that the interrupt context is valid (e.g., no sva_ialloca has been
    * performed without a subsequent sva_ipush_function).
    */
+  movq $1, %rdi
   cmpq $1, IC_VALID(%rsp)
   jne invalidIC
 #endif
@@ -372,6 +373,9 @@ Trap:
  *    assumption that we need to use swapgs to configure the %GS register.
  */
 SVAsyscall:
+  /* ENSURE that interrupts are disabled */
+  cli
+
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
 
@@ -512,6 +516,7 @@ sc_ret:
    * Verify that the interrupt context is valid (e.g., no sva_ialloca has been
    * performed without a subsequent sva_ipush_function).
    */
+  movq $0, %rdi
   cmpq $1, IC_VALID(%rsp)
   jne invalidIC
 #endif
