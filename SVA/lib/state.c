@@ -265,6 +265,12 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
   ep->rip = (uintptr_t) newf;
 
   /*
+   * Mark the interrupt context as valid; if an sva_ialloca previously
+   * invalidated it, an sva_ipush_function() makes it valid again.
+   */
+  ep->valid = 1;
+
+  /*
    * Re-enable interrupts.
    */
   sva_exit_critical (rflags);
