@@ -99,7 +99,7 @@ typedef struct sva_icontext {
   /* Flags whether the interrupt context is valid */
   unsigned long valid;                // 0xc0
   unsigned long start;                // 0xc8
-} sva_icontext_t;
+} __attribute__ ((aligned (16))) sva_icontext_t;
 
 typedef struct
 {
@@ -177,13 +177,13 @@ typedef struct {
   unsigned long cr3;                  // 0xd8
 
   /* Current interrupt context location */
-  sva_icontext_t * currentIC;
+  sva_icontext_t * currentIC;         // 0xe0
 
   /* Current setting of IST3 in the TSS */
-  unsigned long ist3;
+  unsigned long ist3;                // 0xe8
 
   /* Floating point state */
-  sva_fp_state_t fpstate;
+  sva_fp_state_t fpstate;            // 0xf0
 } sva_integer_state_t;
 
 /*
@@ -230,7 +230,7 @@ struct SVAThread {
 
   /* Flag whether the thread is in use */
   unsigned char used;
-};
+} __attribute__ ((aligned (16)));
 
 /*
  * Structure: CPUState
