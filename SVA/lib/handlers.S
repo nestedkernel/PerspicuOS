@@ -283,7 +283,6 @@ Trap:
   movq %gs:0x260, %rbp
   movq CPU_NEWIC(%rbp), %rsp
 
-#if 1
   /*
    * Verify that the interrupt context is valid (e.g., no sva_ialloca has been
    * performed without a subsequent sva_ipush_function).
@@ -291,7 +290,6 @@ Trap:
   movq $1, %rdi
   cmpq $1, IC_VALID(%rsp)
   jne invalidIC
-#endif
 
   /*
    * Pop off the most recent interrupt context.  This requires modifying
@@ -511,7 +509,6 @@ sc_ret:
   movq %gs:0x260, %rbp
   movq CPU_NEWIC(%rbp), %rsp
 
-#if 1
   /*
    * Verify that the interrupt context is valid (e.g., no sva_ialloca has been
    * performed without a subsequent sva_ipush_function).
@@ -519,7 +516,6 @@ sc_ret:
   movq $0, %rdi
   cmpq $1, IC_VALID(%rsp)
   jne invalidIC
-#endif
 
   /*
    * Pop off the most recent interrupt context.  This requires modifying
