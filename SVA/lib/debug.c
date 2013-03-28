@@ -36,6 +36,28 @@ assertGoodIC (void) {
     panic ("SVA: Out of Bounds IC: %p %p %p\n", p, cpup->currentThread->interruptContexts, cpup->currentThread->interruptContexts + maxIC);
   }
 
+  /*
+   * Loop through and see if the interrupt context is one of the entries in the
+   * set of ICs for this thread.
+   */
+  sva_icontext_t * ip;
+  unsigned char found = 0;
+  for (ip = cpup->currentThread->interruptContexts; ip < cpup->currentThread->interruptContexts + maxIC; ++ip) {
+    if (ip == p) {
+      found = 1;
+      break;
+    }
+  }
+
+  if (!found) {
+    sva_print_icontext ("assertGoodIC");
+    panic ("SVA: assertGoodIC: Misaligned IC!\n");
+  }
+
+  if (p->valid != 1) {
+    sva_print_icontext ("assertGoodIC");
+    panic ("SVA: assertGoodIC: Bad IC\n");
+  }
   return;
 }
 
