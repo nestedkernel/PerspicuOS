@@ -110,6 +110,7 @@ findNextFreeThread (void) {
     }
   }
 
+  panic ("SVA: findNextFreeThread: Exhausted SVA Threads!\n");
   return 0;
 }
 
