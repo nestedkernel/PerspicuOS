@@ -2589,9 +2589,6 @@ sched_throw(struct thread *td)
 	struct thread *newtd;
 	struct tdq *tdq;
 
-#if 1
-  panic ("SVA: sched_throw: ULE\n");
-#endif
 	tdq = TDQ_SELF();
 	if (td == NULL) {
 		/* Correct spinlock nesting and acquire the correct lock. */
@@ -2607,7 +2604,11 @@ sched_throw(struct thread *td)
 	TDQ_LOCKPTR(tdq)->mtx_lock = (uintptr_t)newtd;
 	PCPU_SET(switchtime, cpu_ticks());
 	PCPU_SET(switchticks, ticks);
+#if 0
 	cpu_throw(td, newtd);		/* doesn't return */
+#else
+	cpu_switch_sva(td, newtd, td->td_lock);		/* doesn't return */
+#endif
 }
 
 /*
