@@ -3,15 +3,25 @@ SVA2 Master Plan
 
 o SVA-OS
   o MMU
-  o Context Switching
-  o Interrupt Context
-    o System Calls
-    o Interrupts
-    o Process creation/destruction
+  o Invoke instructions (1 week)
+  o Signal handler dispatch
+  o Thread local storage
+  x Context Switching
+  x Interrupt Context
+    x System Calls
+    x Interrupts
+    x Process creation/destruction
   o I/O
+  o IPI Interrupts (2 weeks)
+
+o Kernel
+  x Enable ULE
+  o Enable SMP
 
 o Compiler Instrumentation
-  o Control-Flow Integrity
-  o MachineFunctionPass for Load/Store Instrumentation
+  x Control-Flow Integrity
+  o MachineFunctionPass for Load/Store Instrumentation (3 weeks)
 
-o Applications using Secure Memory
+o Experiments (1 week)
+
+o Applications using Secure Memory (3 weeks)
