@@ -1,2 +1,5 @@
-sigtest: sigtest.o
-	$(CC) -o sigtest sigest.c
+sigtest: sigtest.c
+	gcc -g -static -o $@ $<
+
+clean:
+	rm -f sigtest

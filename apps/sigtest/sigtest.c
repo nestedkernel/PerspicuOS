@@ -2,10 +2,12 @@
 #include <stdlib.h>
 
 #include <signal.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 void
 sighandler (int signal) {
-  printf ("3: Caught signal %d\n", signal);
+  printf ("3: Caught signal %d: %lx\n", signal, __builtin_return_address(0));
   fflush (stdout);
   return;
 }
