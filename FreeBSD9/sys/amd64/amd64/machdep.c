@@ -337,6 +337,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	sf.sf_uc.uc_stack = td->td_sigstk;
 	sf.sf_uc.uc_stack.ss_flags = (td->td_pflags & TDP_ALTSTACK)
 	    ? ((oonstack) ? SS_ONSTACK : 0) : SS_DISABLE;
+#if 0
 	sf.sf_uc.uc_mcontext.mc_onstack = (oonstack) ? 1 : 0;
 	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(*regs));
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext); /* magic */
@@ -347,10 +348,14 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	bzero(sf.sf_uc.uc_mcontext.mc_spare,
 	    sizeof(sf.sf_uc.uc_mcontext.mc_spare));
 	bzero(sf.sf_uc.__spare__, sizeof(sf.sf_uc.__spare__));
+#endif
 
 	/* Allocate space for the signal handler context. */
 	if ((td->td_pflags & TDP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
+#if 1
+    panic ("SVA: signal altstacks not supported!\n");
+#endif
 		sp = td->td_sigstk.ss_sp +
 		    td->td_sigstk.ss_size - sizeof(struct sigframe);
 #if defined(COMPAT_43)
@@ -366,22 +371,30 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 		sig = p->p_sysent->sv_sigtbl[_SIG_IDX(sig)];
 
 	/* Build the argument list for the signal handler. */
+#if 0
 	regs->tf_rdi = sig;			/* arg 1 in %rdi */
 	regs->tf_rdx = (register_t)&sfp->sf_uc;	/* arg 3 in %rdx */
+#endif
 	bzero(&sf.sf_si, sizeof(sf.sf_si));
 	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
+#if 0
 		/* Signal handler installed with SA_SIGINFO. */
 		regs->tf_rsi = (register_t)&sfp->sf_si;	/* arg 2 in %rsi */
+#endif
 		sf.sf_ahu.sf_action = (__siginfohandler_t *)catcher;
 
 		/* Fill in POSIX parts */
 		sf.sf_si = ksi->ksi_info;
 		sf.sf_si.si_signo = sig; /* maybe a translated signal */
+#if 0
 		regs->tf_rcx = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
+#endif
 	} else {
 		/* Old FreeBSD-style arguments. */
+#if 0
 		regs->tf_rsi = ksi->ksi_code;	/* arg 2 in %rsi */
 		regs->tf_rcx = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
+#endif
 		sf.sf_ahu.sf_handler = catcher;
 	}
 	mtx_unlock(&psp->ps_mtx);
@@ -392,8 +405,31 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
    * Save the interrupt context.
    */
   sva_save_icontext ();
+
+  /* Determine the arguments for the signal handler */
+  uintptr_t arg2;
+  uintptr_t arg4;
+	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
+		arg2 = (uintptr_t)&sfp->sf_si;
+		arg4 = (uintptr_t)ksi->ksi_addr;
+    panic ("SVA: sigaction not handled at present!\n");
+  } else {
+		arg2 = ksi->ksi_code;	/* arg 2 in %rsi */
+		arg4 = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
+  }
+
+  /*
+   * Push the signal handler function on to the user-space stack
+   */
+  sva_ipush_function5 (p->p_sysent->sv_sigcode_base,
+                       sig,
+                       arg2,
+                       (register_t)&sfp->sf_uc,
+                       arg4,
+                       catcher);
 #endif
 
+#if 0
 	/*
 	 * Copy the sigframe out to the user's stack.
 	 */
@@ -404,6 +440,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 		PROC_LOCK(p);
 		sigexit(td, SIGILL);
 	}
+#endif
 
 #if 0
 	regs->tf_rsp = (long)sfp;
@@ -416,13 +453,6 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	regs->tf_gs = _ugssel;
 	regs->tf_flags = TF_HASSEGS;
 	set_pcb_flags(pcb, PCB_FULL_IRET);
-#else
-  /* SVA: Push the signal handler function on to the user-space stack */
-  sva_ipush_function5 (p->p_sysent->sv_sigcode_base,
-                       sig, regs->tf_rsi,
-                       (register_t)&sfp->sf_uc,
-                       regs->tf_rcx,
-                       catcher);
 #endif
 	PROC_LOCK(p);
 	mtx_lock(&psp->ps_mtx);
@@ -455,10 +485,14 @@ sys_sigreturn(td, uap)
 	int cs, error, ret;
 	ksiginfo_t ksi;
 
+  /* SVA: FIXME:
+   * We need to copy in the signal mask (or store it somewhere in kernel
+   * memory).
+   */
+#if 0
 	pcb = td->td_pcb;
 	p = td->td_proc;
 
-#if 0
 	error = copyin(uap->sigcntxp, &uc, sizeof(uc));
 	if (error != 0) {
 		uprintf("pid %d (%s): sigreturn copyin failed\n",
