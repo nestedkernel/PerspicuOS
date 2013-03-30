@@ -1,0 +1,8 @@
+o) sigaction signal handlers do not work yet
+
+o) The signal mask stored for the signal handler does not work yet.
+
+o) I have not verified that all arguments to system call handlers work properly.
+   Only the signal number for traditional signal handlers is verfified to be
+   correct.
+
