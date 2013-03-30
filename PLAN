@@ -3,14 +3,25 @@ SVA2 Master Plan
 
 o SVA-OS
   o MMU
+  o Thread local storage
+  o Process creation and deletion
+    x kernel thread creation
+    x process creation
+    o process deletion
   o Invoke instructions (1 week)
   o Signal handler dispatch
-  o Thread local storage
-  x Context Switching
-  x Interrupt Context
+    x IC loading and saving
+    x sva_ipush
+    o sva_ialloca
+  o Context Switching
+    x Basic context switching
+    o FP optimzation
+    o Adding page table register
+  o Interrupt Context
     x System Calls
     x Interrupts
     x Process creation/destruction
+    o Floating point state
   o I/O
   o IPI Interrupts (2 weeks)
 
@@ -19,7 +30,10 @@ o Kernel
   o Enable SMP
 
 o Compiler Instrumentation
-  x Control-Flow Integrity
+  o Control-Flow Integrity
+    x Basic control-flow integrity
+    o Check that we're jumping to a kernel-level address
+    o Non-writable kernel code memory
   o MachineFunctionPass for Load/Store Instrumentation (3 weeks)
 
 o Experiments (1 week)
