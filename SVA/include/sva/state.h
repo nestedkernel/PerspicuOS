@@ -249,20 +249,6 @@ struct CPUState {
 
   /* New current interrupt Context */
   sva_icontext_t * newCurrentIC;
-
-  void * padding;
-
-  /*
-   * Array of Interrupt Contexts for this CPU:
-   * This field must be placed at a non-0x10 aligned boundary within the
-   * CPUState structure.  This ensures that each interrupt context is not
-   * aligned at a 16-byte boundary, which in tern prevents the x86 from
-   * subtracting 3 64-bit words from the stack pointer on interrupts.
-   *
-   * This is because the x86 will first set the stack pointer to the value
-   * in the IST, then decrement it, and *then* align it if necessary.
-   */
-  sva_icontext_t interruptContexts[maxIC + 1];
 };
 
 /*
