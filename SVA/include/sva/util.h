@@ -83,6 +83,27 @@ sva_exit_critical (unsigned long rflags) {
   return;
 }
 
+/*
+ * Function: isNotWithinSecureMemory()
+ *
+ * Description:
+ *  Determine if the specified pointer is within the secure memory region.
+ *
+ * Return value:
+ *  true - The pointer is *not* within the secure memory region.
+ *  false - The pointer is within the secure memory region.
+ */
+static inline unsigned char
+isNotWithinSecureMemory (void * p) {
+  const uintptr_t secmemstart = 0xffffff0000000000u;
+  const uintptr_t secmemend   = 0xffffff8000000000u;
+  uintptr_t i = (uintptr_t) p;
+  if ((secmemstart <= p) && (p <= secmemend))
+    return 0;
+  else
+    return 1;
+}
+
 static inline void
 bochsBreak (void) {
   __asm__ __volatile__ ("xchg %bx, %bx\n");
