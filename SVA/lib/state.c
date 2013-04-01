@@ -895,10 +895,11 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
   rflags = sva_enter_critical();
 
   /*
-   * Determine whether initp points within the secure memory region.  If it
-   * does, then don't allocate anything.
+   * Get the most recent interrupt context and the current CPUState and
+   * thread.
    */
-  allocaOkay &= isNotWithinSecureMemory (initp);
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * icontextp = cpup->newCurrentIC;
 
   /*
    * If the Interrupt Context was privileged, then don't do an ialloca.
@@ -906,16 +907,15 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
   allocaOkay &= !(sva_was_privileged());
 
   /*
+   * Determine whether initp points within the secure memory region.  If it
+   * does, then don't allocate anything.
+   */
+  allocaOkay &= isNotWithinSecureMemory (initp);
+
+  /*
    * Check if the alignment is within range.
    */
   allocaOkay &= (alignment < 64);
-
-  /*
-   * Get the most recent interrupt context and the current CPUState and
-   * thread.
-   */
-  struct CPUState * cpup = getCPUState();
-  sva_icontext_t * icontextp = cpup->newCurrentIC;
 
   /*
    * Only perform the ialloca() if the Interrupt Context represents user-mode
@@ -942,18 +942,42 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
     allocap = (void *)((uintptr_t)(allocap) & (mask << alignment));
 
     /*
-     * Save the result back into the Interrupt Context.
+     * Verify that the stack pointer in the interrupt context is not within
+     * kernel memory.
      */
-    icontextp->rsp = (unsigned long *) allocap;
+    unsigned char spOkay = 1;
+    if (isNotWithinSecureMemory(icontextp->rsp) &&
+       ((allocap >= 0xffffffff00000000u) ||
+        ((allocap + size) >= 0xffffffff00000000u))) {
+      spOkay = 0;
+    }
 
     /*
-     * Copy data in from the initializer.
-     *
-     * FIXME: This should use an invokememcpy() so that we know whether the
-     *        address is valid.
+     * If the stack pointer is okay, go ahead and complete the operation.
      */
-    if (initp)
-      memcpy (allocap, initp, size);
+    if (spOkay) {
+      /*
+       * Fault in any necessary pages; the stack may be located in traditional
+       * memory.
+       */
+      sva_check_memory_write (allocap, size);
+
+      /*
+       * Save the result back into the Interrupt Context.
+       */
+      icontextp->rsp = (unsigned long *) allocap;
+
+      /*
+       * Copy data in from the initializer.
+       *
+       * FIXME: This should use an invokememcpy() so that we know whether the
+       *        address is valid.
+       */
+      if (initp)
+        memcpy (allocap, initp, size);
+    } else {
+      allocap = 0;
+    }
   }
 
   sva_exit_critical (rflags);
