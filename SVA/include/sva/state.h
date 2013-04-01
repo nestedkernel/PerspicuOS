@@ -298,7 +298,7 @@ sva_was_privileged (void) {
  * Description:
  *  Get the native code program counter value out of the interrupt context.
  */
-static uintptr_t
+static inline uintptr_t
 sva_icontext_getpc (void) {
   struct CPUState * cpuState = getCPUState();
   return cpuState->newCurrentIC->rip;
@@ -357,6 +357,8 @@ extern void sva_ipush_function5 (void (*f)(uintptr_t, uintptr_t, uintptr_t),
                                  uintptr_t p3,
                                  uintptr_t p4,
                                  uintptr_t p5);
+
+extern void * sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp);
 
 #if 0
 extern inline unsigned char
