@@ -143,6 +143,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 
 #include <sva/init.h>
 #include <sva/mmu.h>
+#include <sva/state.h>
 
 /* Sanity check for __curthread() */
 CTASSERT(offsetof(struct pcpu, pc_curthread) == 0);
@@ -406,13 +407,17 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
    */
   sva_save_icontext ();
 
+  /*
+   * Allocate a signal frame on the stack.
+   */
+  sfp = (struct sigframe *) sva_ialloca (sizeof (struct sigframe), 4, &sf);
+
   /* Determine the arguments for the signal handler */
   uintptr_t arg2;
   uintptr_t arg4;
 	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
 		arg2 = (uintptr_t)&sfp->sf_si;
 		arg4 = (uintptr_t)ksi->ksi_addr;
-    panic ("SVA: sigaction not handled at present!\n");
   } else {
 		arg2 = ksi->ksi_code;	/* arg 2 in %rsi */
 		arg4 = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
