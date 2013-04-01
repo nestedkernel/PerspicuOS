@@ -934,14 +934,17 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
      */
     allocap = icontextp->rsp;
     allocap -= size;
-    icontextp->rsp = (unsigned long *) allocap;
 
-#if 0
     /*
      * Align the pointer.
      */
     const uintptr_t mask = 0xffffffffffffffffu;
     allocap = (void *)((uintptr_t)(allocap) & (mask << alignment));
+
+    /*
+     * Save the result back into the Interrupt Context.
+     */
+    icontextp->rsp = (unsigned long *) allocap;
 
     /*
      * Copy data in from the initializer.
@@ -951,11 +954,9 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
      */
     if (initp)
       memcpy (allocap, initp, size);
-#endif
   }
 
   sva_exit_critical (rflags);
-  printf ("SVA: sva_ialloca: allocap=%lx rsp=%lx return=%lx\n", allocap, icontextp->rsp, __builtin_return_address(0));
   return allocap;
 }
 
