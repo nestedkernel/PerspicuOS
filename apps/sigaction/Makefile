@@ -1,5 +1,5 @@
-sigtest: sigtest.c
+sigaction: sigaction.c
 	gcc -g -static -o $@ $<
 
 clean:
-	rm -f *.o sigtest
+	rm -f *.o sigaction
