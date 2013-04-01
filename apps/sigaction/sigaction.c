@@ -18,6 +18,8 @@ sighandler (int signal) {
 void
 sigacthandler (int signal, siginfo_t * sinfo, void * p) {
   ucontext_t * up = p;
+
+  printf ("4: Caught signal %d: pid=%d, sinfo=%lx, p=%lx\n", signal, pid, sinfo, up);
   printf ("4: Caught signal %d: pid=%d, sig pid=%d, flags=%lx\n", signal, pid, sinfo->si_pid, up->uc_flags);
 }
 
@@ -37,7 +39,7 @@ main (int argc, char ** argv) {
   printf ("2: Sending myself the signal\n");
   fflush (stdout);
 
-  kill (getpid(), SIGUSR1);
+  kill (getpid(), SIGUSR2);
   kill (getpid(), SIGUSR2);
 
   printf ("5: Resuming from signal handler\n");
