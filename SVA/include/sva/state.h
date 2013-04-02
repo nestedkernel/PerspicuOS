@@ -31,6 +31,17 @@ typedef unsigned char priv_level_t;
 typedef uintptr_t * sva_sp_t;
 
 /*
+ * Structure: sva_fp_state_t
+ *
+ * Description:
+ *  This structure defines the processor's native floating point state.  This
+ *  structure can store the x86 X87, XMM, and SSE registers.
+ */
+typedef struct {
+  unsigned char words[512];
+} __attribute__ ((aligned (16))) sva_fp_state_t;
+
+/*
  * Structure: icontext_t
  *
  * Description:
@@ -100,12 +111,6 @@ typedef struct sva_icontext {
   unsigned long valid;                // 0xc0
   unsigned long start;                // 0xc8
 } __attribute__ ((aligned (16))) sva_icontext_t;
-
-typedef struct
-{
-  unsigned int state[7];
-  unsigned int fp_regs[20];
-} sva_fp_state_t;
 
 /*
  * Structure: sva_integer_state_t

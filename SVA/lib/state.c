@@ -503,7 +503,6 @@ static void
 load_fp (sva_fp_state_t * buffer) {
   const uintptr_t ts = 0x00000008;
   uintptr_t cr0;
-  sva_fp_state_t * p = buffer;
  
   /* Old interrupt flags */
   uintptr_t rflags;
@@ -522,7 +521,7 @@ load_fp (sva_fp_state_t * buffer) {
   /*
    * Save the state of the floating point unit.
    */
-  __asm__ __volatile__ ("frstor %0" : "=m" (p->state));
+  __asm__ __volatile__ ("frstor %0" : "=m" (buffer->words));
 
   /*
    * Mark the FPU has having been unused.  The first FP operation will cause
@@ -552,10 +551,7 @@ load_fp (sva_fp_state_t * buffer) {
  *  always - Only save state if it was modified since the last load FP state.
  */
 static int
-save_fp (void * buffer, int always) {
-  sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
-
+save_fp (sva_fp_state_t * buffer, int always) {
   /* Old interrupt flags */
   uintptr_t rflags;
 
@@ -564,13 +560,13 @@ save_fp (void * buffer, int always) {
    */
   rflags = sva_enter_critical();
 
-  if (always || sva_fp_used) {
+  if (always || getCPUState()->fp_used) {
 #if LLVA_COUNTERS
     ++sva_counters.sva_save_fp;
     if (sva_debug) ++sva_local_counters.sva_save_fp;
     sc_intrinsics[current_sysnum] |= MASK_LLVA_SAVE_FP;
 #endif
-    __asm__ __volatile__ ("fnsave %0" : "=m" (p->state) :: "memory");
+    __asm__ __volatile__ ("fnsave %0" : "=m" (buffer->words) :: "memory");
 
     /*
      * Re-enable interrupts.
