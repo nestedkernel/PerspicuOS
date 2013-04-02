@@ -39,6 +39,7 @@ typedef uintptr_t * sva_sp_t;
  */
 typedef struct {
   unsigned char words[512];
+  unsigned char present;
 } __attribute__ ((aligned (16))) sva_fp_state_t;
 
 /*

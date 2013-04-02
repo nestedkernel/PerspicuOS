@@ -501,8 +501,8 @@ sva_set_integer_stackp (sva_integer_state_t * intp, sva_sp_t p)
  */
 static void
 load_fp (sva_fp_state_t * buffer) {
-  const uintptr_t ts = 0x00000008;
-  uintptr_t cr0;
+  const unsigned int ts = 0x00000008;
+  unsigned int cr0;
  
   /* Old interrupt flags */
   uintptr_t rflags;
@@ -521,15 +521,18 @@ load_fp (sva_fp_state_t * buffer) {
   /*
    * Save the state of the floating point unit.
    */
-  __asm__ __volatile__ ("frstor %0" : "=m" (buffer->words));
+  if (buffer->present)
+    __asm__ __volatile__ ("fxrstor %0" : "=m" (buffer->words));
 
   /*
    * Mark the FPU has having been unused.  The first FP operation will cause
    * an exception into the Execution Engine.
    */
-  __asm__ __volatile__ ("movq %%cr0, %0\n"
-                        "orq  %1,    %0\n"
-                        "movq %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
+#if 0
+  __asm__ __volatile__ ("movl %%cr0, %0\n"
+                        "orl  %1,    %0\n"
+                        "movl %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
+#endif
   getCPUState()->fp_used = 0;
 
   /*
@@ -566,7 +569,8 @@ save_fp (sva_fp_state_t * buffer, int always) {
     if (sva_debug) ++sva_local_counters.sva_save_fp;
     sc_intrinsics[current_sysnum] |= MASK_LLVA_SAVE_FP;
 #endif
-    __asm__ __volatile__ ("fnsave %0" : "=m" (buffer->words) :: "memory");
+    __asm__ __volatile__ ("fxsave %0" : "=m" (buffer->words) :: "memory");
+    buffer->present = 1;
 
     /*
      * Re-enable interrupts.
@@ -1433,6 +1437,7 @@ sva_init_stack (unsigned char * start_stackp,
 #if 1
   integerp->kstackp = stackp;
 #endif
+  integerp->fpstate.present = 0;
 
   /*
    * Initialize the interrupt context of the new thread.  Note that we use
