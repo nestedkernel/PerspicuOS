@@ -150,6 +150,11 @@ sva_getCPUState (tss_t * tssp) {
     cpup->currentThread = st = findNextFreeThread();
 
     /*
+     * Flag that the floating point unit has not been used.
+     */
+    getCPUState()->fp_used = 0;
+
+    /*
      * Initialize a dummy interrupt context so that it looks like we
      * started the processor by taking a trap or system call.  The dummy
      * Interrupt Context should cause a fault if we ever try to put it back

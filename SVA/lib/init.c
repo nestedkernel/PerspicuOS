@@ -82,6 +82,7 @@
  */
 
 #include "sva/config.h"
+#include "sva/state.h"
 
 #include <string.h>
 #include <limits.h>
@@ -100,9 +101,6 @@ static void init_mmu (void);
 #endif
 void init_fpu ();
 static void init_dispatcher ();
-
-/* Flags whether the FPU has been used */
-unsigned char sva_fp_used = 0;
 
 /* Default LLVA interrupt, exception, and system call handlers */
 extern void default_interrupt (unsigned int number, void * icontext);
@@ -249,7 +247,7 @@ fptrap (void) {
   /*
    * Flag that the floating point unit has now been used.
    */
-  sva_fp_used = 1;
+  getCPUState()->fp_used = 1;
 
   /*
    * Turn off the TS bit in CR0; this allows the FPU to proceed with floating
@@ -430,11 +428,6 @@ init_fpu () {
    * been performed.
    */
   sva_register_general_exception (0x7, fptrap);
-
-  /*
-   * Flag that the floating point unit has not been used.
-   */
-  sva_fp_used = 0;
   return;
 }
 

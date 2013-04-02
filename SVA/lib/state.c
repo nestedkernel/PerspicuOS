@@ -504,7 +504,6 @@ load_fp (sva_fp_state_t * buffer) {
   const uintptr_t ts = 0x00000008;
   uintptr_t cr0;
   sva_fp_state_t * p = buffer;
-  extern unsigned char sva_fp_used;
  
   /* Old interrupt flags */
   uintptr_t rflags;
@@ -532,7 +531,7 @@ load_fp (sva_fp_state_t * buffer) {
   __asm__ __volatile__ ("movq %%cr0, %0\n"
                         "orq  %1,    %0\n"
                         "movq %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
-  sva_fp_used = 0;
+  getCPUState()->fp_used = 0;
 
   /*
    * Re-enable interrupts.

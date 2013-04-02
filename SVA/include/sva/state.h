@@ -249,6 +249,9 @@ struct CPUState {
 
   /* New current interrupt Context */
   sva_icontext_t * newCurrentIC;
+
+  /* Flags whether the floating point unit has been used */
+  unsigned char fp_used;
 };
 
 /*
