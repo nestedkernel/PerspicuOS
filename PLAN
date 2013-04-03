@@ -9,19 +9,19 @@ o SVA-OS
     x process creation
     o process deletion
   o Invoke instructions (1 week)
-  o Signal handler dispatch
+  x Signal handler dispatch
     x IC loading and saving
     x sva_ipush
-    o sva_ialloca
+    x sva_ialloca
   o Context Switching
     x Basic context switching
-    o FP optimzation
     o Adding page table register
-  o Interrupt Context
+    o FP optimzation
+  x Interrupt Context
     x System Calls
     x Interrupts
     x Process creation/destruction
-    o Floating point state
+    x Floating point state
   o I/O
   o IPI Interrupts (2 weeks)
 
