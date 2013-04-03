@@ -504,20 +504,6 @@ load_fp (sva_fp_state_t * buffer) {
   const unsigned int ts = 0x00000008;
   unsigned int cr0;
  
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
-
-#if LLVA_COUNTERS
-  ++sva_counters.sva_load_fp;
-  if (sva_debug) ++sva_local_counters.sva_load_fp;
-  sc_intrinsics[current_sysnum] |= MASK_LLVA_LOAD_FP;
-#endif
-
   /*
    * Save the state of the floating point unit.
    */
@@ -534,11 +520,6 @@ load_fp (sva_fp_state_t * buffer) {
                         "movl %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
 #endif
   getCPUState()->fp_used = 0;
-
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -555,34 +536,12 @@ load_fp (sva_fp_state_t * buffer) {
  */
 static int
 save_fp (sva_fp_state_t * buffer, int always) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
-
   if (always || getCPUState()->fp_used) {
-#if LLVA_COUNTERS
-    ++sva_counters.sva_save_fp;
-    if (sva_debug) ++sva_local_counters.sva_save_fp;
-    sc_intrinsics[current_sysnum] |= MASK_LLVA_SAVE_FP;
-#endif
     __asm__ __volatile__ ("fxsave %0" : "=m" (buffer->words) :: "memory");
     buffer->present = 1;
-
-    /*
-     * Re-enable interrupts.
-     */
-    sva_exit_critical (rflags);
     return 1;
   }
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return 0;
 }
 
