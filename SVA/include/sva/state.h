@@ -110,7 +110,7 @@ typedef struct sva_icontext {
 
   /* Flags whether the interrupt context is valid */
   unsigned long valid;                // 0xc0
-  unsigned long start;                // 0xc8
+  sva_fp_state_t * fpstate;           // 0xc8
 } __attribute__ ((aligned (16))) sva_icontext_t;
 
 /*
@@ -228,11 +228,17 @@ struct SVAThread {
   /* Interrupt contexts used for signal handler dispatch */
   sva_icontext_t savedInterruptContexts[maxIC + 1];
 
+  /* Floating point states associated with Interrput Contexts */
+  sva_fp_state_t ICFP[maxIC + 1];
+
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;
 
   /* Index of currently available saved Interrupt Context */
   unsigned char savedICIndex;
+
+  /* Index of next available FP for Interrupt Contexts */
+  unsigned char ICFPIndex;
 
   /* Flag whether the thread is in use */
   unsigned char used;

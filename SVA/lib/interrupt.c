@@ -94,6 +94,7 @@ findNextFreeThread (void) {
        */
       newThread->integerState.valid = 0;
       newThread->savedICIndex = 0;
+      newThread->ICFPIndex = 0;
 
       /*
        * Use the next-to-last interrupt context in the list as the first
@@ -161,9 +162,10 @@ sva_getCPUState (tss_t * tssp) {
      * on to the processor.
      */
     cpup->newCurrentIC = cpup->currentThread->interruptContexts + (maxIC - 1);
-    cpup->newCurrentIC->rip    = 0xfead;
-    cpup->newCurrentIC->cs     = 0x43;
-    cpup->newCurrentIC->valid  = 1;
+    cpup->newCurrentIC->rip     = 0xfead;
+    cpup->newCurrentIC->cs      = 0x43;
+    cpup->newCurrentIC->valid   = 1;
+    cpup->newCurrentIC->fpstate = 0;
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.
