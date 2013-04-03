@@ -21,6 +21,45 @@
 #include <sva/interrupt.h>
 
 /*****************************************************************************
+ * Utility Functions
+ ****************************************************************************/
+
+/*
+ * Function: load_fp()
+ *
+ * Description:
+ *  This function loads floating point state back on to the processor.
+ */
+static inline void
+load_fp (sva_fp_state_t * buffer) {
+  const unsigned int ts = 0x00000008;
+  unsigned int cr0;
+ 
+  /*
+   * Save the state of the floating point unit.
+   */
+  if (buffer->present)
+    __asm__ __volatile__ ("fxrstor %0" : "=m" (buffer->words));
+  return;
+}
+
+/*
+ * Function: save_fp()
+ *
+ * Description:
+ *  Save the processor's current floating point state into the specified
+ *  buffer.
+ *
+ * Inputs:
+ *  buffer - A pointer to the buffer in which to save the data.
+ */
+static inline void
+save_fp (sva_fp_state_t * buffer) {
+  __asm__ __volatile__ ("fxsave %0" : "=m" (buffer->words) :: "memory");
+  buffer->present = 1;
+}
+
+/*****************************************************************************
  * Interrupt Context Intrinsics
  ****************************************************************************/
 
@@ -494,58 +533,6 @@ sva_set_integer_stackp (sva_integer_state_t * intp, sva_sp_t p)
 #endif
 
 /*
- * Function: load_fp()
- *
- * Description:
- *  This intrinsic loads floating point state back on to the processor.
- */
-static void
-load_fp (sva_fp_state_t * buffer) {
-  const unsigned int ts = 0x00000008;
-  unsigned int cr0;
- 
-  /*
-   * Save the state of the floating point unit.
-   */
-  if (buffer->present)
-    __asm__ __volatile__ ("fxrstor %0" : "=m" (buffer->words));
-
-  /*
-   * Mark the FPU has having been unused.  The first FP operation will cause
-   * an exception into the Execution Engine.
-   */
-#if 0
-  __asm__ __volatile__ ("movl %%cr0, %0\n"
-                        "orl  %1,    %0\n"
-                        "movl %0,    %%cr0\n" : "=&r" (cr0) : "r" ((ts)));
-#endif
-  getCPUState()->fp_used = 0;
-  return;
-}
-
-/*
- * Function: save_fp()
- *
- * Description:
- *  Save the processor's current floating point state into the specified
- *  buffer.
- *
- * Inputs:
- *  buffer - A pointer to the buffer in which to save the data.
- *  always - Only save state if it was modified since the last load FP state.
- */
-static int
-save_fp (sva_fp_state_t * buffer, int always) {
-  if (always || getCPUState()->fp_used) {
-    __asm__ __volatile__ ("fxsave %0" : "=m" (buffer->words) :: "memory");
-    buffer->present = 1;
-    return 1;
-  }
-
-  return 0;
-}
-
-/*
  * Function: checkIntegerForLoad ()
  *
  * Description:
@@ -714,7 +701,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /*
    * Save the floating point state.
    */
-  save_fp (&(old->fpstate), 1);
+  save_fp (&(old->fpstate));
 
   /*
    * Save the current integer state.  Note that returning from sva_integer()
