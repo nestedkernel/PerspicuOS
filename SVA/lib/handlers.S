@@ -219,8 +219,11 @@ Trap:
   /* Flag the interrupt context as valid */
   movq $1, IC_VALID(%rsp)
 
-  /* Mark that we have not saved any FP state in the Interrupt Context */
-  movq $0, IC_FPP(%rsp)
+  /* Save FP state in the Interrupt Context */
+  clts
+  callq saveICFPState
+  RETTARGET
+  movq %rax, IC_FPP(%rsp)
 
   /*
    * Move the trap number into the %rdi register.
@@ -279,6 +282,12 @@ Trap:
    * Disable interrupts.
    */
   cli
+
+  /*
+   * Reload the floating point state if necessary.
+   */
+  callq loadICFPState
+  RETTARGET
 
   /*
    * Switch the stack pointer back to the interrupt context.
@@ -463,8 +472,11 @@ SVAsyscall:
   /* Flag the interrupt context as valid */
   movq $1, IC_VALID(%rsp)
 
-  /* Mark that we have not saved any FP state in the Interrupt Context */
-  movq $0, IC_FPP(%rsp)
+  /* Save FP state in the Interrupt Context */
+  clts
+  callq saveICFPState
+  RETTARGET
+  movq %rax, IC_FPP(%rsp)
 
   /*
    * Save the address of the current interrupt context into this processor's
@@ -508,6 +520,12 @@ sc_ret:
    * Disable interrupts.
    */
   cli
+
+  /*
+   * Reload the floating point state if necessary.
+   */
+  callq loadICFPState
+  RETTARGET
 
   /*
    * Switch the stack pointer back to the interrupt context.

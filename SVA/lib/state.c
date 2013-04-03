@@ -21,7 +21,7 @@
 #include <sva/interrupt.h>
 
 /*****************************************************************************
- * Utility Functions
+ * Internal Utility Functions
  ****************************************************************************/
 
 /*
@@ -57,6 +57,40 @@ static inline void
 save_fp (sva_fp_state_t * buffer) {
   __asm__ __volatile__ ("fxsave %0" : "=m" (buffer->words) :: "memory");
   buffer->present = 1;
+}
+
+/*****************************************************************************
+ * Externally Visibile Utility Functions
+ ****************************************************************************/
+
+sva_fp_state_t *
+saveICFPState (void) {
+  /* Get the current SVA thread */
+  struct SVAThread * thread = getCPUState()->currentThread;
+
+  /* Find the buffer into which we want to save state. */
+  sva_fp_state_t * fp = thread->ICFP + (thread->ICFPIndex++);
+
+  /*
+   * Save the FP state.
+   */
+  save_fp (fp);
+  return fp;
+}
+
+void
+loadICFPState (void) {
+  /* Get the current SVA thread */
+  struct SVAThread * thread = getCPUState()->currentThread;
+
+  /* Find the buffer into which we want to save state. */
+  sva_fp_state_t * fp = thread->ICFP + (thread->ICFPIndex--);
+
+  /*
+   * Save the FP state.
+   */
+  load_fp (fp);
+  return;
 }
 
 /*****************************************************************************
