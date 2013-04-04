@@ -9,6 +9,16 @@ o SVA-OS
     x process creation
     o process deletion
   o Invoke instructions (1 week)
+    o invoke
+      x sva_invoke
+      o sva_invokememcpy
+      o sva_invokestrcpy
+      o sva_invokememset
+    o sva_iunwind
+      x sva_invoke
+      o sva_invokememcpy
+      o sva_invokestrcpy
+      o sva_invokememset
   x Signal handler dispatch
     x IC loading and saving
     x sva_ipush
