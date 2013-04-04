@@ -352,7 +352,7 @@ extern void sva_load_kstackp (sva_sp_t);
 extern sva_sp_t sva_save_kstackp (void);
 #endif
 
-extern void sva_unwind (void);
+extern void sva_iunwind (void);
 extern unsigned int sva_invoke (uintptr_t arg1,
                                 uintptr_t arg2,
                                 uintptr_t arg3,

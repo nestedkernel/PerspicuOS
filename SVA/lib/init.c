@@ -398,6 +398,12 @@ init_mmu (void)
 }
 #endif
 
+int
+foo (void) {
+  printf ("SVA: Doing unwind\n");
+  sva_iunwind ();
+}
+
 /*
  * Function: init_fpu()
  *
@@ -428,6 +434,7 @@ init_fpu () {
    * been performed.
    */
   sva_register_general_exception (0x7, fptrap);
+  sva_register_general_exception (0xfe, foo);
   return;
 }
 

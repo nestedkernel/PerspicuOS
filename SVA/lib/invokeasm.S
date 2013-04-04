@@ -70,6 +70,8 @@ sva_invoke:
 
   /*
    * Call the function.
+   *
+   * TODO: Add a CFI check here.
    */
   callq *%r8
   RETTARGET
@@ -100,17 +102,39 @@ sva_invoke:
   addq $8, %rsp
 
   /* Return */
-  ret
+  RETQ
 
-#if 0
+  /*
+   * Exceptional (unwind) return path
+   */
 sva_invoke_except:
-  movl gip, %esp
-  movl $1, %eax
-  popl %ebp
-  popl %ebx
-  popl %esi
-  popl %edi
-  popl gip
-  addl $4, %esp
-  ret
-#endif
+  /*
+   * Move the stack pointer back to the most recently created invoke frame.
+   */
+  movq %gs:0x260, %rax
+  movq CPU_GIP(%rax), %rsp
+
+  /*
+   * Restore the register stored within the invoke frame.
+   */
+  popq %rbp
+  popq %rbx
+  popq %r12
+  popq %r13
+  popq %r14
+  popq %r15
+
+  /*
+   * Pop the top-most invoke frame off of the invoke frame linked list.
+   */
+  movq %gs:0x260, %rax
+  popq CPU_GIP(%rax)
+
+  /*
+   * Remove the last invoke frame field.
+   */
+  addq $8, %rsp
+
+  /* Return 1 to the caller */
+  movq $1, %rax
+  RETQ
