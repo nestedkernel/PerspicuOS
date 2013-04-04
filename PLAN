@@ -1,6 +1,15 @@
 SVA2 Master Plan
 ================
 
+o Critical Features
+  o Invoke
+  o CFI check that we're jumping to a kernel-level address
+  o Context Switching: Adding page table register
+  o Integrating load/store instrumentation pass
+  o Applications using Secure Memory
+  o Experiments
+  o Non-writable kernel code memory
+
 o SVA-OS
   o MMU
   o Thread local storage
