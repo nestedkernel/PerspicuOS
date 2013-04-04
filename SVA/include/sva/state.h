@@ -63,7 +63,7 @@ struct invoke_frame {
   /* Pointer to the next invoke frame in the list */
   struct invoke_frame * next;
 
-  unsigned int cpinvoke;
+  uintptr_t cpinvoke;
 };
 
 /*
@@ -350,15 +350,18 @@ extern void sva_push_syscall   (unsigned int sysnum, void * exceptp, void * fn);
 
 extern void sva_load_kstackp (sva_sp_t);
 extern sva_sp_t sva_save_kstackp (void);
+#endif
 
-extern void   sva_unwind      (sva_icontext_t * p);
-extern unsigned int  sva_invoke      (unsigned int * retvalue,
-                                       void *f, int arg1, int arg2, int arg3);
+extern void sva_unwind (void);
+extern unsigned int sva_invoke (uintptr_t arg1,
+                                uintptr_t arg2,
+                                uintptr_t arg3,
+                                uintptr_t * retvalue,
+                                void (*f)(uintptr_t, uintptr_t, uintptr_t));
 
 /*****************************************************************************
  * Global State
  ****************************************************************************/
-#endif
 
 extern uintptr_t sva_swap_integer  (uintptr_t new, uintptr_t * state);
 extern uintptr_t sva_init_stack (unsigned char * sp,
