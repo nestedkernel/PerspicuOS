@@ -166,6 +166,7 @@ sva_getCPUState (tss_t * tssp) {
     cpup->newCurrentIC->cs      = 0x43;
     cpup->newCurrentIC->valid   = 1;
     cpup->newCurrentIC->fpstate = 0;
+    cpup->gip                   = 0;
 
     /*
      * Initialize the TSS pointer so that the SVA VM can find it when needed.

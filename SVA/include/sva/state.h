@@ -43,6 +43,30 @@ typedef struct {
 } __attribute__ ((aligned (16))) sva_fp_state_t;
 
 /*
+ * Structure: invoke_frame
+ *
+ * Description:
+ *  This structure contains all of the information necessary to return
+ *  state to the exceptional basic block when an unwind needs to be performed.
+ *  Note that it contains all of the registers that a called function must
+ *  save for its caller.
+ */
+struct invoke_frame {
+  /* Callee saved registers */
+  uintptr_t rbp;
+  uintptr_t rbx;
+  uintptr_t r12;
+  uintptr_t r13;
+  uintptr_t r14;
+  uintptr_t r15;
+
+  /* Pointer to the next invoke frame in the list */
+  struct invoke_frame * next;
+
+  unsigned int cpinvoke;
+};
+
+/*
  * Structure: icontext_t
  *
  * Description:
@@ -190,25 +214,10 @@ typedef struct {
 
   /* Floating point state */
   sva_fp_state_t fpstate;            // 0xf0
-} sva_integer_state_t;
 
-/*
- * Structure: invoke_frame
- *
- * Description:
- *  This structure contains all of the information necessary to return
- *  state to the exceptional basic block when an unwind needs to be performed.
- */
-struct invoke_frame
-{
-  unsigned int ebp;
-  unsigned int ebx;
-  unsigned int esi;
-  unsigned int edi;
-                                                                                
-  struct invoke_frame * next;
-  unsigned int cpinvoke;
-};
+  /* Pointer to invoke frame */
+  struct invoke_frame * ifp;
+} sva_integer_state_t;
 
 /* The maximum number of interrupt contexts per CPU */
 static const unsigned char maxIC = 32;
@@ -261,6 +270,9 @@ struct CPUState {
 
   /* New current interrupt Context */
   sva_icontext_t * newCurrentIC;
+
+  /* Processor's Global Invoke Pointer: points to the first invoke frame */
+  struct invoke_frame * gip;
 
   /* Flags whether the floating point unit has been used */
   unsigned char fp_used;

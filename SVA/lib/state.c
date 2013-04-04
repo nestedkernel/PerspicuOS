@@ -726,11 +726,13 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 #endif
 
   /*
-   * Save the value of the current kernel stack pointer, IST3, and currentIC.
+   * Save the value of the current kernel stack pointer, IST3, currentIC, and
+   * the pointer to the global invoke frame pointer.
    */
-  old->kstackp = cpup->tssp->rsp0;
-  old->ist3 = cpup->tssp->ist3;
+  old->kstackp   = cpup->tssp->rsp0;
+  old->ist3      = cpup->tssp->ist3;
   old->currentIC = cpup->newCurrentIC;
+  old->ifp       = cpup->gip;
 
   /*
    * Save the floating point state.
@@ -800,9 +802,10 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * Switch the CPU over to using the new set of interrupt contexts.
      */
     cpup->currentThread = newThread;
-    cpup->tssp->rsp0 = new->kstackp;
-    cpup->tssp->ist3 = new->ist3;
-    cpup->newCurrentIC = new->currentIC;
+    cpup->tssp->rsp0    = new->kstackp;
+    cpup->tssp->ist3    = new->ist3;
+    cpup->newCurrentIC  = new->currentIC;
+    cpup->gip           = new->ifp;
 
     /*
      * Invalidate the state that we're about to load.
