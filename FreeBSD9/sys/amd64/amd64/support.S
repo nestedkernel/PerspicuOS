@@ -387,10 +387,14 @@ END(casuword)
  * addr = %rdi
  */
 
-ALTENTRY(fuword64)
-ENTRY(fuword)
+ALTENTRY(real_fuword64)
+ENTRY(real_fuword)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -402,9 +406,13 @@ ENTRY(fuword)
 END(fuword64)	
 END(fuword)
 
-ENTRY(fuword32)
+ENTRY(real_fuword32)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -429,9 +437,13 @@ ENTRY(fuswintr)
 END(suswintr)
 END(fuswintr)
 
-ENTRY(fuword16)
+ENTRY(real_fuword16)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi

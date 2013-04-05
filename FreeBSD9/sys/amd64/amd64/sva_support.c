@@ -16,6 +16,11 @@ extern int real_copyin(const void * __restrict udaddr, void * __restrict kaddr, 
 
 extern int real_copyout(const void * __restrict kaddr, void * __restrict udaddr, size_t len) __nonnull(1) __nonnull(2);
 
+extern long	real_fuword(const void *base);
+extern int	real_fuword16(void *base);
+extern int32_t	real_fuword32(const void *base);
+extern int64_t	real_fuword64(const void *base);
+
 /*
  * Implementations of the functions that use the SVA-OS intrinsics.
  */
@@ -71,10 +76,13 @@ copyin(const void * __restrict udaddr,
        void * __restrict kaddr,
 	    size_t len) {
   uintptr_t retval;
-  if (sva_invoke (udaddr, kaddr, len, &retval, real_copyin))
+  if (sva_invoke (udaddr, kaddr, len, &retval, real_copyin)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
     return EFAULT;
-  else
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
     return (int)(retval);
+  }
 }
 
 int
@@ -82,9 +90,53 @@ copyout(const void * __restrict kaddr,
         void * __restrict udaddr,
         size_t len) {
   uintptr_t retval;
-  if (sva_invoke (kaddr, udaddr, len, &retval, real_copyout))
+  if (sva_invoke (kaddr, udaddr, len, &retval, real_copyout)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
     return EFAULT;
-  else
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
     return (int)(retval);
+  }
+}
+
+int64_t
+fuword64 (const void * addr) {
+  uintptr_t retval;
+  if (sva_invoke (addr, 0, 0, &retval, real_fuword64)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int64_t)(retval);
+  }
+}
+
+int64_t
+fuword (const void * addr) {
+  return fuword64 (addr);
+}
+
+int32_t
+fuword32 (const void * addr) {
+  uintptr_t retval;
+  if (sva_invoke (addr, 0, 0, &retval, real_fuword32)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int32_t)(retval);
+  }
+}
+
+int
+fuword16 (void * addr) {
+  uintptr_t retval;
+  if (sva_invoke (addr, 0, 0, &retval, real_fuword16)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
 }
 
