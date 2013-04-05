@@ -358,6 +358,8 @@ extern unsigned int sva_invoke (uintptr_t arg1,
                                 uintptr_t arg3,
                                 uintptr_t * retvalue,
                                 void (*f)(uintptr_t, uintptr_t, uintptr_t));
+extern uintptr_t
+sva_invokestrncpy (char * dst, const char * src, uintptr_t count);
 
 /*****************************************************************************
  * Global State
@@ -424,33 +426,6 @@ sva_load_stackp  (sva_sp_t p)
 {
   __asm__ __volatile__ ("movl %0, %%esp\n" :: "r" (p));
   return;
-}
-
-extern inline struct invoke_frame * gip;
-
-/*
- * Intrinsic: sva_load_invoke()
- *
- * Description:
- *  Set the top of the invoke stack.
- */
-extern inline void
-sva_load_invoke (void * p)
-{
-  gip = p;
-  return;
-}
-
-/*
- * Intrinsic: sva_save_invoke()
- *
- * Description:
- *  Save the current value of the top of the invoke stack.
- */
-extern inline void *
-sva_save_invoke (void)
-{
-  return gip;
 }
 
 extern inline unsigned int

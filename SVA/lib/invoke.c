@@ -91,13 +91,14 @@ sva_iunwind (void) {
     case INVOKE_MEMCPY_W:
       ip->rcx = (ip->rcx) << 2;
     case INVOKE_MEMCPY_B:
+#endif
     case INVOKE_STRNCPY:
-      ip->rip = (void *)(gip->rsi);
-#else
+      ip->rip = (void *)(gip->rbx);
+      break;
+
     default:
       panic ("SVA: Other Invoke Frames Unsupported!\n");
       break;
-#endif
   }
 
   /*
@@ -149,6 +150,7 @@ sva_invokememcpy (void * to, const void * from, unsigned long count)
   gip = frame.next;
   return ret;
 }
+#endif
 
 /*
  * Intrinsic: sva_invokestrncpy()
@@ -169,56 +171,72 @@ sva_invokememcpy (void * to, const void * from, unsigned long count)
  *
  * NOTE:
  *  This function contains inline assembly code from the original i386 Linux
- *  kernel code.  I believe it originates from the __do_strncpy_from_user()
- *  macro in arch/i386/lib/usercopy.c.
+ *  2.4.22 kernel code.  I believe it originates from the
+ *  __do_strncpy_from_user() macro in arch/i386/lib/usercopy.c.
+ *
+ * TODO:
+ *  It is not clear whether this version will be as fast as the x86_64 version
+ *  in FreeBSD 9.0; this version is an x86_64 port of the original Linux 2.4.22
+ *  code for 32-bit processors.
  */
-int
-sva_invokestrncpy (char * dst, const char * src, int count)
-{
+uintptr_t
+sva_invokestrncpy (char * dst, const char * src, uintptr_t count) {
   /* The invoke frame placed on the stack */
   struct invoke_frame frame;
 
-  /* The invoke frame pointer */
-  extern struct invoke_frame * gip;
-
   /* Return value */
-  unsigned int ret = 0;
+  uintptr_t ret = 0;
 
   /* Other variables */
-  long res;
-  int __d0, __d1, __d2;
+  uintptr_t res;
+  uintptr_t __d0, __d1, __d2;
+
+  /*
+   * Determine if there is anything to copy.  If not, then return now.
+   */
+  if (count == 0)
+    return 0;
+
+  /*
+   * Get the pointer to the most recent invoke frame.
+   */
+  struct CPUState * cpup    = getCPUState();
+  struct invoke_frame * gip = cpup->gip;
 
   /* Mark the frame as being used for a memcpy */
   frame.cpinvoke = INVOKE_STRNCPY;
   frame.next = gip;
 
   /* Make it the top invoke frame */
-  gip = &frame;
+  cpup->gip = &frame;
 
   /* Perform the strncpy */
   __asm__ __volatile__(
-    " testl %1,%1\n"
-    " jz 3f\n"
-    " movl $2f, %5\n"
+    " movq $2f, %5\n"
     "0: lodsb\n"
     " stosb\n"
     " testb %%al,%%al\n"
     " jz 1f\n"
-    " decl %1\n"
+    " decq %1\n"
     " jnz 0b\n"
     " jmp 1f\n"
-    "2: movl $0xffffffff, %0\n"
+    "2: movq $0xffffffff, %0\n"
     " jmp 3f\n"
-    "1: subl %1,%0\n"
+    "1: subq %1,%0\n"
     "3:\n"
     : "=d"(res), "=c"(count), "=&a" (__d0), "=&S" (__d1),
-      "=&D" (__d2), "=m" (frame.esi)
+      "=&D" (__d2), "=m" (frame.rbx)
     : "i"(0), "0"(count), "1"(count), "3"(src), "4"(dst)
     : "memory");
 
+  /*
+   * Pop off the invoke frame.
+   */
+  cpup->gip = frame.next;
   return res;
 }
 
+#if 0
 /*
  * Return value:
  *  Returns the number of bytes left unset.
