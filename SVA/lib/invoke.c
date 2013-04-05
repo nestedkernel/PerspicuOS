@@ -167,7 +167,8 @@ sva_invokememcpy (void * to, const void * from, unsigned long count)
  *  dst   - The destination string
  *
  * Return value:
- *  Return the number of bytes copied, or -1 if a fault occurred.
+ *  Return the number of bytes copied (not counting the string terminator),
+ *  or -1 if a fault occurred.
  *
  * NOTE:
  *  This function contains inline assembly code from the original i386 Linux
@@ -220,7 +221,7 @@ sva_invokestrncpy (char * dst, const char * src, uintptr_t count) {
     " decq %1\n"
     " jnz 0b\n"
     " jmp 1f\n"
-    "2: movq $0xffffffff, %0\n"
+    "2: movq $0xffffffffffffffff, %0\n"
     " jmp 3f\n"
     "1: subq %1,%0\n"
     "3:\n"
