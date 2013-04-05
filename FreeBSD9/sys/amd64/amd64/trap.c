@@ -1438,7 +1438,11 @@ nogo:
 #if 0
 			frame->tf_rip = (long)PCPU_GET(curpcb)->pcb_onfault;
 #else
-			sva_icontext_setrip ((long)PCPU_GET(curpcb)->pcb_onfault);
+      if (PCPU_GET(curpcb)->pcb_onfault == 1) {
+        sva_iunwind();
+      } else {
+        sva_icontext_setrip ((long)PCPU_GET(curpcb)->pcb_onfault);
+      }
 #endif
 			return (0);
 		}

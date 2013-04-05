@@ -212,9 +212,13 @@ END(fillw)
  * copyout(from_kernel, to_user, len)  - MP SAFE
  *         %rdi,        %rsi,    %rdx
  */
-ENTRY(copyout)
+ENTRY(real_copyout)
 	movq	PCPU(CURPCB),%rax
+#if 0
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
+#else
+	movq	$1,PCB_ONFAULT(%rax)
+#endif
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyout
 
@@ -272,9 +276,13 @@ END(copyout)
  * copyin(from_user, to_kernel, len) - MP SAFE
  *        %rdi,      %rsi,      %rdx
  */
-ENTRY(copyin)
+ENTRY(real_copyin)
 	movq	PCPU(CURPCB),%rax
+#if 0
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
+#else
+	movq	$1,PCB_ONFAULT(%rax)
+#endif
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyin
 
