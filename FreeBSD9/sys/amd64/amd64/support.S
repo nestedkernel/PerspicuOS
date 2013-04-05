@@ -540,6 +540,7 @@ END(subyte)
  *	EFAULT on protection violations. If lencopied is non-zero,
  *	return the actual length in *lencopied.
  */
+#if 0
 ENTRY(copyinstr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
 	movq	%rcx,%r9			/* %r9 = *len */
@@ -599,6 +600,7 @@ cpystrflt_x:
 1:
 	RETQ
 END(copyinstr)
+#endif
 
 /*
  * copystr(from, to, maxlen, int *lencopied) - MP SAFE
