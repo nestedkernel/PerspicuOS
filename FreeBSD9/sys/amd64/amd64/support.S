@@ -326,9 +326,13 @@ END(copyin)
  * casuword32.  Compare and set user integer.  Returns -1 or the current value.
  *        dst = %rdi, old = %rsi, new = %rdx
  */
-ENTRY(casuword32)
+ENTRY(real_casuword32)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */
@@ -355,9 +359,13 @@ END(casuword32)
  * casuword.  Compare and set user word.  Returns -1 or the current value.
  *        dst = %rdi, old = %rsi, new = %rdx
  */
-ENTRY(casuword)
+ENTRY(real_casuword)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address is valid */

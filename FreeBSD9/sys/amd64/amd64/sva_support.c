@@ -28,6 +28,9 @@ extern int real_suword16(void *base, int word);
 extern int real_suword32(void *base, int32_t word);
 extern int real_suword64(void *base, int64_t word);
 
+extern uint32_t real_casuword32(volatile uint32_t *base, uint32_t oldval, uint32_t newval);
+extern u_long	 real_casuword(volatile u_long *p, u_long oldval, u_long newval);
+
 /*
  * Implementations of the functions that use the SVA-OS intrinsics.
  */
@@ -196,7 +199,7 @@ suword16(void *base, int word) {
 }
 
 int
-suword32(void *base, int32_t word){
+suword32(void *base, int32_t word) {
   uintptr_t retval;
   if (sva_invoke (base, word, 0, &retval, real_suword32)) {
     PCPU_GET(curpcb)->pcb_onfault = 0;
@@ -208,7 +211,7 @@ suword32(void *base, int32_t word){
 }
 
 int
-suword64(void *base, int64_t word){
+suword64(void *base, int64_t word) {
   uintptr_t retval;
   if (sva_invoke (base, word, 0, &retval, real_suword64)) {
     PCPU_GET(curpcb)->pcb_onfault = 0;
@@ -219,3 +222,26 @@ suword64(void *base, int64_t word){
   }
 }
 
+uint32_t
+casuword32 (volatile uint32_t *base, uint32_t oldval, uint32_t newval) {
+  uintptr_t retval;
+  if (sva_invoke (base, oldval, newval, &retval, real_casuword32)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+u_long
+casuword(volatile u_long *p, u_long oldval, u_long newval) {
+  uintptr_t retval;
+  if (sva_invoke (p, oldval, newval, &retval, real_casuword)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
