@@ -35,6 +35,10 @@
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 #include <cstdlib>
 
+namespace llvm {
+  extern FunctionPass * createSFIPass (void);
+}
+
 namespace {
   struct ForcePassLinking {
     ForcePassLinking() {
@@ -153,6 +157,7 @@ namespace {
       (void) llvm::createMemDepPrinter();
       (void) llvm::createInstructionSimplifierPass();
       (void) llvm::createBBVectorizePass();
+      (void) llvm::createSFIPass ();
 
       (void)new llvm::IntervalPartition();
       (void)new llvm::FindUsedTypes();
