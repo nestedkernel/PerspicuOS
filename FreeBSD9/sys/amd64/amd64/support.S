@@ -454,9 +454,13 @@ ENTRY(real_fuword16)
 	RETQ
 END(fuword16)
 
-ENTRY(fubyte)
+ENTRY(real_fubyte)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi
@@ -480,10 +484,14 @@ fusufault:
  * user memory.  All these functions are MPSAFE.
  * addr = %rdi, value = %rsi
  */
-ALTENTRY(suword64)
-ENTRY(suword)
+ALTENTRY(real_suword64)
+ENTRY(real_suword)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-8,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -497,9 +505,13 @@ ENTRY(suword)
 END(suword64)
 END(suword)
 
-ENTRY(suword32)
+ENTRY(real_suword32)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -512,9 +524,13 @@ ENTRY(suword32)
 	RETQ
 END(suword32)
 
-ENTRY(suword16)
+ENTRY(real_suword16)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-2,%rax
 	cmpq	%rax,%rdi			/* verify address validity */
@@ -527,9 +543,13 @@ ENTRY(suword16)
 	RETQ
 END(suword16)
 
-ENTRY(subyte)
+ENTRY(real_subyte)
 	movq	PCPU(CURPCB),%rcx
+#if 0
 	movq	$fusufault,PCB_ONFAULT(%rcx)
+#else
+	movq	$1,PCB_ONFAULT(%rcx)
+#endif
 
 	movq	$VM_MAXUSER_ADDRESS-1,%rax
 	cmpq	%rax,%rdi			/* verify address validity */

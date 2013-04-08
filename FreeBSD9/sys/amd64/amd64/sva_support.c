@@ -17,9 +17,16 @@ extern int real_copyin(const void * __restrict udaddr, void * __restrict kaddr, 
 extern int real_copyout(const void * __restrict kaddr, void * __restrict udaddr, size_t len) __nonnull(1) __nonnull(2);
 
 extern long	real_fuword(const void *base);
+extern int	real_fubyte(const void *base);
 extern int	real_fuword16(void *base);
 extern int32_t	real_fuword32(const void *base);
 extern int64_t	real_fuword64(const void *base);
+
+extern int real_subyte(void *base, int byte);
+extern int real_suword(void *base, long word);
+extern int real_suword16(void *base, int word);
+extern int real_suword32(void *base, int32_t word);
+extern int real_suword64(void *base, int64_t word);
 
 /*
  * Implementations of the functions that use the SVA-OS intrinsics.
@@ -132,6 +139,78 @@ int
 fuword16 (void * addr) {
   uintptr_t retval;
   if (sva_invoke (addr, 0, 0, &retval, real_fuword16)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+fubyte (const void * addr) {
+  uintptr_t retval;
+  if (sva_invoke (addr, 0, 0, &retval, real_fubyte)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+subyte(void *base, int byte) {
+  uintptr_t retval;
+  if (sva_invoke (base, byte, 0, &retval, real_subyte)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+suword(void *base, long word) {
+  uintptr_t retval;
+  if (sva_invoke (base, word, 0, &retval, real_suword)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+suword16(void *base, int word) {
+  uintptr_t retval;
+  if (sva_invoke (base, word, 0, &retval, real_suword16)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+suword32(void *base, int32_t word){
+  uintptr_t retval;
+  if (sva_invoke (base, word, 0, &retval, real_suword32)) {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return -1;
+  } else {
+    PCPU_GET(curpcb)->pcb_onfault = 0;
+    return (int)(retval);
+  }
+}
+
+int
+suword64(void *base, int64_t word){
+  uintptr_t retval;
+  if (sva_invoke (base, word, 0, &retval, real_suword64)) {
     PCPU_GET(curpcb)->pcb_onfault = 0;
     return -1;
   } else {
