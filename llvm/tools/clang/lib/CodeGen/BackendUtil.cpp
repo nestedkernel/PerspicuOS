@@ -38,10 +38,6 @@
 using namespace clang;
 using namespace llvm;
 
-namespace llvm {
-  extern FunctionPass * createSFIPass (void);
-}
-
 namespace {
 
 class EmitAssemblyHelper {
@@ -226,11 +222,6 @@ void EmitAssemblyHelper::CreatePasses() {
     if (!CodeGenOpts.DebugInfo)
       MPM->add(createStripSymbolsPass(true));
   }
-  
-  //
-  // Add SVA transform passes.
-  //
-  MPM->add (createSFIPass ());
   
   PMBuilder.populateModulePassManager(*MPM);
 }
