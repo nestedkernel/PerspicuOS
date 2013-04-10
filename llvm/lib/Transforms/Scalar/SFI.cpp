@@ -30,7 +30,7 @@ namespace {
 static const uintptr_t checkMask = 0xffffff0000000000u;
 
 /* Mask to set proper lower-order bits */
-static const uintptr_t setMask = 0xffffff8000000000u;
+static const uintptr_t setMask = 0x0000008000000000u;
 
 namespace llvm {
   //
@@ -105,11 +105,13 @@ SFI::isTriviallySafe (Value * Ptr, Type * MemType) {
   // allocated type.
   //
   Type * AllocatedType = 0;
+#if 0
   if (AllocaInst * AI = dyn_cast<AllocaInst>(Ptr->stripPointerCasts())) {
     if (!(AI->isArrayAllocation())) {
       AllocatedType = AI->getAllocatedType();
     }
   }
+#endif
 
   if (GlobalVariable * GV=dyn_cast<GlobalVariable>(Ptr->stripPointerCasts())) {
     AllocatedType = GV->getType()->getElementType();
@@ -202,14 +204,22 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
 void
 SFI::visitLoadInst (LoadInst & LI) {
   //
+  // Don't instrument trivially safe memory accesses.
+  //
+  Value * Pointer = LI.getPointerOperand();
+  if (isTriviallySafe (Pointer, LI.getType())) {
+    return;
+  }
+
+  //
   // Add the bit masking for the pointer.
   //
-  Value * newPtr = addBitMasking (LI.getPointerOperand(), LI);
+  Value * newPtr = addBitMasking (Pointer, LI);
 
   //
   // Update the operand of the store so that it uses the bit-masked pointer.
   //
-  LI.setOperand(0, newPtr);
+  LI.setOperand (0, newPtr);
 
   //
   // Update the statistics.
@@ -227,6 +237,14 @@ SFI::visitLoadInst (LoadInst & LI) {
 void
 SFI::visitStoreInst (StoreInst & SI) {
   //
+  // Don't instrument trivially safe memory accesses.
+  //
+  Value * Pointer = SI.getPointerOperand();
+  if (isTriviallySafe (Pointer, SI.getValueOperand()->getType())) {
+    return;
+  }
+
+  //
   // Add the bit masking for the pointer.
   //
   Value * newPtr = addBitMasking (SI.getPointerOperand(), SI);
@@ -234,7 +252,7 @@ SFI::visitStoreInst (StoreInst & SI) {
   //
   // Update the operand of the store so that it uses the bit-masked pointer.
   //
-  SI.setOperand(1, newPtr);
+  SI.setOperand (1, newPtr);
 
   //
   // Update the statistics.
