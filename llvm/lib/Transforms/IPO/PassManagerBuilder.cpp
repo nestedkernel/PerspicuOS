@@ -128,7 +128,9 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
   if (!DisableUnitAtATime) {
     addExtensionsToPM(EP_ModuleOptimizerEarly, MPM);
 
+#if 1
     MPM.add (createSFIPass ());
+#endif
     MPM.add(createGlobalOptimizerPass());     // Optimize out global vars
 
     MPM.add(createIPSCCPPass());              // IP SCCP
