@@ -16,6 +16,10 @@
 /* Size of the smallest page frame in bytes */
 static const uintptr_t X86_PAGE_SIZE = 4096u;
 
+/* Start and end addresses of the secure memory */
+#define SECMEMSTART 0xffffff0000000000u
+#define SECMEMEND   0xffffff8000000000u
+
 /*
  *****************************************************************************
  * Define structures used in the SVA MMU interface.

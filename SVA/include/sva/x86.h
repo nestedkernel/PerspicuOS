@@ -14,6 +14,9 @@
 
 #include <sys/types.h>
 
+#ifndef _SVA_X86_H
+#define _SVA_X86_H
+
 /*
  * Struction: tss_t
  *
@@ -50,4 +53,4 @@ typedef struct {
   /* I/O Permission Map */
   unsigned int iomap __attribute__((packed));
 } tss_t;
-
+#endif

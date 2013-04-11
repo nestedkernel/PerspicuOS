@@ -20,10 +20,6 @@
 #include "sva/mmu.h"
 #include "sva/state.h"
 
-/* Start and end addresses of the secure memory */
-#define SECMEMSTART 0xffffff0000000000u
-#define SECMEMEND   0xffffff8000000000u
-
 /*
  * Function: getNextSecureAddress()
  *
