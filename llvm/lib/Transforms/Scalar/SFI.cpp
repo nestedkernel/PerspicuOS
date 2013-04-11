@@ -155,23 +155,13 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
   Type * IntPtrTy = TD.getIntPtrType(I.getContext());
   Value * CheckMask = ConstantInt::get (IntPtrTy, checkMask);
   Value * SetMask   = ConstantInt::get (IntPtrTy, setMask);
-
-  //
-  // Create instructions that create a version of the pointer with the proper
-  // bit set.
-  //
-  Value * CastedPointer = new PtrToIntInst (Pointer, IntPtrTy, "ptr", &I);
-  Value * Masked = BinaryOperator::Create (Instruction::Or,
-                                           CastedPointer,
-                                           SetMask,
-                                           "setMask",
-                                           &I);
-  Masked = new IntToPtrInst (Masked, Pointer->getType(), "masked", &I);
+  Value * Zero      = ConstantInt::get (IntPtrTy, 0u);
 
   //
   // Create an instruction to mask off the proper bits to see if the pointer
   // is within the secure memory range.
   //
+  Value * CastedPointer = new PtrToIntInst (Pointer, IntPtrTy, "ptr", &I);
   Value * CheckMasked = BinaryOperator::Create (Instruction::And,
                                                 CastedPointer,
                                                 CheckMask,
@@ -192,7 +182,18 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
   // Create the select instruction that, at run-time, will determine if we use
   // the bit-masked pointer or the original pointer value.
   //
-  return (SelectInst::Create (Cmp, Masked, Pointer, "ptr", &I));
+  Value * MaskValue = SelectInst::Create (Cmp, SetMask, Zero, "ptr", &I);
+
+  //
+  // Create instructions that create a version of the pointer with the proper
+  // bit set.
+  //
+  Value * Masked = BinaryOperator::Create (Instruction::Or,
+                                           CastedPointer,
+                                           MaskValue,
+                                           "setMask",
+                                           &I);
+  return (new IntToPtrInst (Masked, Pointer->getType(), "masked", &I));
 }
 
 //
