@@ -591,58 +591,6 @@ sc_ret:
    */
   sysretq
 
-/*
- * Trap: secmemtrap
- *
- * Description:
- *  This trap handles secure memory allocations.
- *
- * Inputs:
- *  %rdi - This register should hold the size, in bytes, of secure memory to
- *         allocate.
- *
- * Return value:
- *  %rax - This register should hold a pointer to the allocated memory.
- */
-secmemtrap:
-  /* Use the swapgs instruction to switch to the kernel map */
-  swapgs
-
-  /* Call the secure memory allocator function */
-  call  allocSecureMemory
-  RETTARGET
-
-  /* Use the swapgs instruction to switch back to user mode */
-  swapgs
-
-  /* Return from the trap */
-  iretq
-
-/*
- * Trap: secfreetrap
- *
- * Description:
- *  This trap handles secure memory deallocations.
- *
- * Inputs:
- *  %rdi - The pointer to the first byte of secure memory to deallocate.
- *  %rsi - This register should hold the size, in bytes, of secure memory to
- *         allocate.
- */
-secfreetrap:
-  /* Use the swapgs instruction to switch to the kernel map */
-  swapgs
-
-  /* Call the secure memory deallocator function */
-  call  freeSecureMemory
-  RETTARGET
-
-  /* Use the swapgs instruction to switch back to user mode */
-  swapgs
-
-  /* Return from the trap */
-  iretq
-
 /* Define the trap handlers */
 TRAP(0)
 TRAP(1)
@@ -772,13 +720,8 @@ INTERRUPT(122)
 INTERRUPT(123)
 INTERRUPT(124)
 INTERRUPT(125)
-#if 0
-INTERRUPT(126)
-INTERRUPT(127)
-#else
 TRAP(126) /* Secure Memory Free Trap */
 TRAP(127) /* Secure Memory Allocation Trap */
-#endif
 INTERRUPT(128)
 INTERRUPT(129)
 INTERRUPT(130)
