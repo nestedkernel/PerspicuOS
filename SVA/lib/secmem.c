@@ -18,6 +18,7 @@
 
 #include "sva/callbacks.h"
 #include "sva/mmu.h"
+#include "sva/state.h"
 
 extern int printf(const char *, ...);
 
@@ -71,6 +72,7 @@ allocSecureMemory (uintptr_t size) {
    * Get the memory from the operating system.  Note that the OS provides the
    * physical address of the allocated memory.
    */
+  printf ("SVA: allocSecureMemory: %d\n", size);
   if ((sp = provideSVAMemory (size)) != 0) {
     /*
      * Map each page of the memory into the part of the virtual address space
@@ -97,8 +99,10 @@ allocSecureMemory (uintptr_t size) {
   }
 
   /*
-   * Return the memory to the caller.
+   * Place the return value into the interrupt context.
    */
+  printf ("SVA: allocSecureMemory: Return %lx\n", vaddr);
+  getCPUState()->newCurrentIC->rax = (uintptr_t) vaddr;
   return vaddr;
 }
 

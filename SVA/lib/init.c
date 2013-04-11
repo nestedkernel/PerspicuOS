@@ -509,16 +509,15 @@ sva_init_secondary () {
   extern void interrupt##number(void); \
   register_x86_interrupt ((number),interrupt##number, 0);
 
-extern void mem_trap14(void);
-extern void mem_trap17(void);
-
 static void
 init_dispatcher ()
 {
   /* Register the secure memory allocation and deallocation traps */
-  extern void secmemtrap(void);
-  extern void secfreetrap(void);
+  extern void trap126(void);
+  extern void trap127(void);
   extern void SVAbadtrap(void);
+  extern unsigned char * allocSecureMemory (uintptr_t size);
+  extern void freeSecureMemory (unsigned char * p, uintptr_t size);
 
   /*
    * Register the bad trap handler for all interrupts and traps.
@@ -526,12 +525,6 @@ init_dispatcher ()
   for (unsigned index = 0; index < 255; ++index) {
     register_x86_interrupt (index, SVAbadtrap, 0);
   }
-
-  /*
-   * Register the secure memory allocation and deallocation handlers.
-   */
-  register_x86_trap (0x7e, secfreetrap);
-  register_x86_trap (0x7f, secmemtrap);
 
   /* Register general exception */
   REGISTER_EXCEPTION(0);
@@ -662,8 +655,10 @@ init_dispatcher ()
   REGISTER_INTERRUPT(123)
   REGISTER_INTERRUPT(124)
   REGISTER_INTERRUPT(125)
+#if 0
   REGISTER_INTERRUPT(126)
   REGISTER_INTERRUPT(127)
+#endif
   REGISTER_INTERRUPT(128)
   REGISTER_INTERRUPT(129)
   REGISTER_INTERRUPT(130)
@@ -792,6 +787,15 @@ init_dispatcher ()
   REGISTER_INTERRUPT(253)
   REGISTER_INTERRUPT(254)
   REGISTER_INTERRUPT(255)
+
+  /*
+   * Register the secure memory allocation and deallocation handlers.
+   */
+  register_x86_interrupt (0x7e, trap126, 3);
+  register_x86_interrupt (0x7f, trap127, 3);
+  sva_register_general_exception (0x7e, freeSecureMemory);
+  sva_register_general_exception (0x7f, allocSecureMemory);
+
   return;
 }
 
