@@ -453,8 +453,11 @@ releaseUse (uintptr_t * ptp) {
  * Inputs:
  *  vaddr - The virtual address into which to map the physical page frame.
  *  paddr - The physical address of the page frame to map.
+ *
+ * Return value:
+ *  A pointer to the PML4e entry in the page table is returned.
  */
-void
+pml4e_t *
 mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Get the PML4E of the current page table.  If there isn't one in the
@@ -560,7 +563,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * Note that we've added another translation to the pde.
    */
   updateUses (pte);
-  return;
+  return pml4e;
 }
 
 /*

@@ -19,10 +19,7 @@
 #include <sys/types.h>
 
 #include "sva/x86.h"
-#if 0
-#include "sva/util.h"
-#include "sva/exceptions.h"
-#endif
+#include "sva/mmu.h"
 
 /* Processor privilege level */
 typedef unsigned char priv_level_t;
@@ -242,6 +239,12 @@ struct SVAThread {
 
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;
+
+  /* Pointer to secure memory page table */
+  pml4e_t * secmemPML4ep;
+
+  /* Amount of contiguous, allocated secure memory */
+  uintptr_t secmemSize;
 
   /* Index of currently available saved Interrupt Context */
   unsigned char savedICIndex;

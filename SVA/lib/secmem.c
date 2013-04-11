@@ -29,20 +29,17 @@
  *
  * Description:
  *  Find the next available address in the secure virtual address space.
- *
- * Notes:
- *  This function is called by multiple processors, so it must be SMP-safe.
  */
-unsigned char *
-getNextSecureAddress (void) {
+static inline unsigned char *
+getNextSecureAddress (struct SVAThread * threadp) {
   /* Start of virtual address space used for secure memory */
-  static unsigned char * secmemp = (unsigned char *) SECMEMSTART;
+  unsigned char * secmemp = (unsigned char *) SECMEMSTART;
 
   /*
    * Advance the address by a single page frame and return the value before
    * increment.
    */
-  return (unsigned char *)(__sync_fetch_and_add (((uintptr_t *)(&secmemp)), X86_PAGE_SIZE));
+  return secmemp + threadp->secmemSize + X86_PAGE_SIZE;
 }
 
 /*
@@ -66,10 +63,15 @@ allocSecureMemory (void) {
   /* Virtual address assigned to secure memory by SVA */
   unsigned char * vaddr = 0;
 
+  /* The address of the PML4e page table */
+  pml4e_t * pml4e = 0;
+
   /*
    * Get the current interrupt context; the arguments will be in it.
    */
-  sva_icontext_t * icp = getCPUState()->newCurrentIC;
+  struct CPUState * cpup = getCPUState();
+  struct SVAThread * threadp = cpup->currentThread;
+  sva_icontext_t * icp = cpup->newCurrentIC;
 
   /*
    * Get the size out of the interrupt context.
@@ -90,13 +92,29 @@ allocSecureMemory (void) {
        * Assign the memory to live within the secure memory virtual address
        * space.
        */
-      vaddr = getNextSecureAddress();
+      vaddr = getNextSecureAddress(threadp);
 
       /*
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
-      mapSecurePage (vaddr, paddr);
+      pml4e = mapSecurePage (vaddr, paddr);
+
+      /*
+       * If this is the first piece of secure memory that we've allocated,
+       * record the address of the top-level page table that maps in the secure
+       * memory region.  The context switching intrinsics will want to know
+       * where this entry is so that it can quickly enable and disable it on
+       * context switches.
+       */
+      if (!(threadp->secmemPML4ep)) {
+        threadp->secmemPML4ep = pml4e;
+      }
+
+      /*
+       * Increase the size of the allocated secure memory.
+       */
+      threadp->secmemSize += size;
     }
 
     /*
@@ -106,7 +124,8 @@ allocSecureMemory (void) {
   }
 
   /*
-   * Place the return value into the interrupt context.
+   * Set the return value in the Interrupt Context to be a pointer to the newly
+   * allocated memory.
    */
   icp->rax = (uintptr_t) vaddr;
   return vaddr;
