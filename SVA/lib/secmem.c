@@ -20,8 +20,6 @@
 #include "sva/mmu.h"
 #include "sva/state.h"
 
-extern int printf(const char *, ...);
-
 /* Start and end addresses of the secure memory */
 #define SECMEMSTART 0xffffff0000000000u
 #define SECMEMEND   0xffffff8000000000u
@@ -61,12 +59,22 @@ getNextSecureAddress (void) {
  *  A pointer to the first byte of the secure memory.
  */
 unsigned char *
-allocSecureMemory (uintptr_t size) {
+allocSecureMemory (void) {
   /* Physical address of allocated secure memory pointer */
   uintptr_t sp;
 
   /* Virtual address assigned to secure memory by SVA */
   unsigned char * vaddr = 0;
+
+  /*
+   * Get the current interrupt context; the arguments will be in it.
+   */
+  sva_icontext_t * icp = getCPUState()->newCurrentIC;
+
+  /*
+   * Get the size out of the interrupt context.
+   */
+  uintptr_t size = icp->rdi;
 
   /*
    * Get the memory from the operating system.  Note that the OS provides the
@@ -100,7 +108,7 @@ allocSecureMemory (uintptr_t size) {
   /*
    * Place the return value into the interrupt context.
    */
-  getCPUState()->newCurrentIC->rax = (uintptr_t) vaddr;
+  icp->rax = (uintptr_t) vaddr;
   return vaddr;
 }
 
@@ -113,10 +121,22 @@ allocSecureMemory (uintptr_t size) {
  * Inputs:
  *  p    - The first virtual address of the secure memory to free.
  *  size - The amount of secure memory to allocate measured in bytes.
+ *
+ * TODO:
+ *  o) Size should be validated to prevent a fault in supervisor mode.
  */
 void
-freeSecureMemory (unsigned char * p, uintptr_t size) {
-  printf ("SVA: freeSecureMemory: %p %lx\n", p, size);
+freeSecureMemory (void) {
+  /*
+   * Get the current interrupt context; the arguments will be in it.
+   */
+  sva_icontext_t * icp = getCPUState()->newCurrentIC;
+
+  /*
+   * Get the pointer address and size out of the interrupt context.
+   */
+  unsigned char * p = (unsigned char *)(icp->rdi);
+  uintptr_t size = icp->rsi;
 
   /*
    * Verify that the memory is within the secure memory portion of the
