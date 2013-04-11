@@ -61,7 +61,7 @@ main (int argc, char ** argv) {
    */
   access ("/foo");
 
-#if 1
+#if 0
   /*
    * Free the secure memory.
    */
