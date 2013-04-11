@@ -19,6 +19,8 @@
 
 #include "sva/callbacks.h"
 #include "sva/mmu.h"
+#include "sva/x86.h"
+#include "sva/state.h"
 
 /*
  * Frame usage constants
@@ -104,12 +106,6 @@ const unsigned int pageSize = 4096;
 /* Array describing the physical pages */
 /* The index is the physical page number */
 static page_desc_t page_desc[memSize / 4096];
-
-/* Flags bits in x86_64 PTE entries */
-const unsigned PTE_PRESENT  = 0x0001u;
-const unsigned PTE_CANWRITE = 0x0002u;
-const unsigned PTE_CANUSER  = 0x0004u;
-const unsigned PTE_PS       = 0x0080u;
 
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
@@ -743,6 +739,43 @@ void llva_check_pagetable(pgd_t* pgd) {
   return;
 }
 #endif
+
+/*
+ * Intrinsic: sva_mm_load_pgtable()
+ *
+ * Description:
+ *  Set the current page table.  This implementation will also enable paging.
+ *
+ * TODO:
+ *  This should check that the page table points to an L1 page frame.
+ */
+void
+sva_mm_load_pgtable (void * pg) {
+  /* Control Register 0 value (which is used to enable paging) */
+  unsigned int cr0;
+
+  /*
+   * Load the new page table and enable paging in the CR0 register.
+   */
+  __asm__ __volatile__ ("movq %1, %%cr3\n"
+                        "movl %%cr0, %0\n"
+                        "orl  $0x80000000, %0\n"
+                        "movl %0, %%cr0\n"
+                        : "=r" (cr0)
+                        : "r" (pg) : "memory");
+
+  /*
+   * Make sure that the secure memory region is still mapped within the current
+   * set of page tables.
+   */
+  struct SVAThread * threadp = getCPUState()->currentThread;
+  if (threadp->secmemSize) {
+    pml4e_t pml4e = threadp->integerState.secmemPML4e;
+    *(threadp->secmemPML4ep) = pml4e;
+  }
+
+  return;
+}
 
 #if 0
 /*

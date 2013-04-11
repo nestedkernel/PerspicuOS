@@ -36,6 +36,19 @@ extern pml4e_t * mapSecurePage (unsigned char * v, uintptr_t paddr);
 extern void unmapSecurePage (unsigned char * v);
 
 /*
+ *****************************************************************************
+ * SVA intrinsics implemented in the library
+ *****************************************************************************
+ */
+extern void sva_mm_load_pgtable (void * pg);
+
+/*
+ *****************************************************************************
+ * SVA intrinsics implemented as inline functions
+ *****************************************************************************
+ */
+
+/*
  * Function: sva_mm_save_pgtable()
  *
  * Description:
@@ -48,28 +61,6 @@ sva_mm_save_pgtable (void)
   __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (p));
   
   return p;
-}
-
-/*
- * Function: sva_mm_load_pgtable()
- *
- * Description:
- *  Set the current page table.  This implementation will also enable paging.
- *
- * TODO:
- *  This should check that the page table points to an L1 page frame.
- */
-static inline void
-sva_mm_load_pgtable (void * pg)
-{
-  unsigned int cr0;
-  __asm__ __volatile__ ("movq %1, %%cr3\n"
-                        "movl %%cr0, %0\n"
-                        "orl  $0x80000000, %0\n"
-                        "movl %0, %%cr0\n"
-                        : "=r" (cr0)
-                        : "r" (pg) : "memory");
-  return;
 }
 
 static inline void

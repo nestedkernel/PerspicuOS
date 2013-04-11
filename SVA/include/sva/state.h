@@ -214,6 +214,9 @@ typedef struct {
 
   /* Pointer to invoke frame */
   struct invoke_frame * ifp;
+
+  /* PML4e used for mapping secure memory */
+  pml4e_t secmemPML4e;
 } sva_integer_state_t;
 
 /* The maximum number of interrupt contexts per CPU */

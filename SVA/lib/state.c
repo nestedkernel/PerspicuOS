@@ -19,6 +19,8 @@
 #include <sva/util.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
+#include <sva/mmu.h>
+#include <sva/x86.h>
 
 /*****************************************************************************
  * Internal Utility Functions
@@ -667,6 +669,29 @@ checkIntegerForLoad (sva_integer_state_t * p) {
 }
 
 /*
+ * Function: flushSecureMemory()
+ *
+ * Description:
+ *  This function flushes TLB entries and caches for a thread's secure memory.
+ */
+static inline void
+flushSecureMemory (struct SVAThread * threadp) {
+  /* Start of virtual address space used for secure memory */
+  unsigned char * secmemp = (unsigned char *) SECMEMSTART;
+
+  /* The number of flushed data measured in bytes */
+  uintptr_t flushedSize = 0;
+
+  /* Flush each secure memory page away one at a time */
+  while (flushedSize < threadp->secmemSize) {
+    sva_mm_flush_tlb (secmemp + flushedSize);
+    flushedSize += X86_PAGE_SIZE;
+  }
+
+  return;
+}
+
+/*
  * Intrinsic: sva_swap_integer()
  *
  * Description:
@@ -761,6 +786,17 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 #endif
 
     /*
+     * If the new state uses secure memory, we need to map it into the page
+     * table.  Note that we refetch the state information from the CPUState
+     * to ensure that we're not accessing stale local variables.
+     */
+    cpup = getCPUState();
+    if (cpup->currentThread->secmemSize) {
+      pml4e_t pml4e = cpup->currentThread->integerState.secmemPML4e;
+      *(cpup->currentThread->secmemPML4ep) = pml4e;
+    }
+
+    /*
      * Re-enable interrupts.
      */
     sva_exit_critical (rflags);
@@ -772,6 +808,32 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * calling interim FreeBSD code that does a native FreeBSD context switch.
    */
   old->hackRIP = __builtin_return_address(0);
+
+  /*
+   * If the current state is using secure memory, we need to flush out the TLBs
+   * and caches that might contain it.
+   */
+  if (oldThread->secmemSize) {
+    /*
+     * Save the old PML4e mapping for the secure memory region.
+     */
+    old->secmemPML4e = *(oldThread->secmemPML4ep);
+
+    /*
+     * Mark the secure memory is unmapped in the page tables.
+     */
+    *(oldThread->secmemPML4ep) &= ~(PTE_PRESENT);
+
+    /*
+     * Flush the secure memory page mappings.
+     */
+    flushSecureMemory (oldThread);
+
+    /*
+     * Flush the caches.
+     */
+    __asm__ __volatile__ ("wbinvd\n");
+  }
 
   /*
    * Mark the saved integer state as valid.
