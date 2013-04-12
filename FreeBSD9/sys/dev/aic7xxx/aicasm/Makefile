@@ -5,7 +5,6 @@
 
 PROG=	aicasm
 
-CC=gcc
 CSRCS=	aicasm.c aicasm_symbol.c
 YSRCS=	aicasm_gram.y aicasm_macro_gram.y
 LSRCS=	aicasm_scan.l aicasm_macro_scan.l
@@ -41,3 +40,4 @@ LFLAGS+= -d
 .endif
 
 .include <bsd.prog.mk>
+CC=gcc
