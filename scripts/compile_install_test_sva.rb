@@ -209,7 +209,7 @@ end
 
 if (options[:buildSVA]) then
     buildSVA(svaSourceDir, options[:clean])
-    buildKernel(kernelSourceDir, true)
+    buildKernel(kernelSourceDir, false)
 end
 
 if (options[:buildKernel]) then
