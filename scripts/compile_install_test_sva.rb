@@ -216,15 +216,18 @@ if (options[:buildKernel]) then
     buildKernel(kernelSourceDir, options[:clean])
 end
 
+#===============================================================================
+# Install kernel to particular locations: machine root / or mounted disk image
+#===============================================================================
+
+# ------------------------------------------------------------------------------
+# Install the kernel to the machine's root directory and boot /boot
+# ------------------------------------------------------------------------------
 if (options[:instKernToMachDisk]) then
     Dir.chdir(kernelSourceDir) do
         system("sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=sva")
     end
 end
-
-#===============================================================================
-# Install kernel to particular locations: machine root / or mounted disk image
-#===============================================================================
 
 # ------------------------------------------------------------------------------
 # This option will mount the qemu disk image, change to the FreeBSD kernel
@@ -258,7 +261,7 @@ if (options[:testSVAQemu]) then
     qemuOpts = "-curses -no-reboot -m 2G"
 
     # start qemu with specified disk image
-    system("qemu-system-x86_64 #{qemuOpts} -hda #{diskImagesDir}/sva_ndd.img")
+    system("qemu-system-x86_64 #{qemuOpts} -hda #{imagePath}")
 end
 
 #===============================================================================
