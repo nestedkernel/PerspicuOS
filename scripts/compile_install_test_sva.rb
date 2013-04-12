@@ -37,7 +37,7 @@ optparse = OptionParser.new do|opts|
     opts.on("-k", "--buildKernel", "Build the SVA kernel") do 
        options[:buildKernel] = true
     end
-    opts.on("-s", "--buildSVA", "Build SVA, also builds the kernel") do
+    opts.on("-s", "--buildSVA", "Build SVA") do
        options[:buildSVA] = true
     end
     opts.on("-l", "--buildLLVM", "Build llvm, also builds SVA and the kernel.") do
@@ -209,7 +209,6 @@ end
 
 if (options[:buildSVA]) then
     buildSVA(svaSourceDir, options[:clean])
-    buildKernel(kernelSourceDir, false)
 end
 
 if (options[:buildKernel]) then
