@@ -21,6 +21,14 @@
 #include "sva/mmu.h"
 #include "sva/x86.h"
 #include "sva/state.h"
+#include "sva/util.h"
+
+//TODO:FIXME Why can't these be put into the .h file? 
+/*
+ *****************************************************************************
+ * Define paging structures and related constants
+ *****************************************************************************
+ */
 
 /*
  * Frame usage constants
@@ -96,6 +104,7 @@ struct PTInfo {
   unsigned char valid;
 };
 
+
 /* Memory to use for missing pages in the page table */
 struct PTInfo PTPages[64];
 
@@ -151,7 +160,7 @@ get_pagetable (void) {
 }
 
 /*
- * Function: protect_pte()
+ * Function: protect_paging()
  *
  * Description:
  *  Protects the page table entry. This disables the flag in CR0 which bypasses
@@ -159,7 +168,7 @@ get_pagetable (void) {
  *  interrupts.
  */
 static inline void
-protect_pte(void) {
+protect_paging(void) {
   /* The flag value for enabling page protection */
   const uintptr_t flag = 0x00010000;
   uintptr_t value = 0;
@@ -170,7 +179,7 @@ protect_pte(void) {
 }
 
 /*
- * Function: unprotect_pte
+ * Function: unprotect_paging
  *
  * Description:
  *  This function disables page protection on x86_64 systems.  It is used by
@@ -178,7 +187,7 @@ protect_pte(void) {
  *  page tables.
  */
 static inline void
-unprotect_pte(void) {
+unprotect_paging(void) {
   /* The flag value for enabling page protection */
   const uintptr_t flag = 0xfffffffffffeffff;
   uintptr_t value;
@@ -196,14 +205,14 @@ get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
   return (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
 }
 
-static inline pdpte_t *
+static inline pdpe_t *
 get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
-  return (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
+  return (pdpe_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
 }
 
 static inline pde_t *
-get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr) {
+get_pdeVaddr (pdpe_t * pdpte, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
   return (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
 }
@@ -250,7 +259,7 @@ getPhysicalAddr (void * v) {
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
 
   /*
    * Determine if the PDPTE has the PS flag set.  If so, then it's pointing to
@@ -485,7 +494,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Get the PDPTE entry (or add it if it is not present).
    */
-  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
     /* Page table page index */
     unsigned int ptindex;
@@ -590,7 +599,7 @@ unmapSecurePage (unsigned char * v) {
   /*
    * Get the PDPTE entry (or add it if it is not present).
    */
-  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
     panic ("SVA: unmapSecurePage: No PDPTE!\n");
   }
@@ -777,7 +786,7 @@ sva_mm_load_pgtable (void * pg) {
   return;
 }
 
-#if 0
+#if 1
 /*
  * Intrinsic: sva_declare_l1_page()
  *
@@ -789,29 +798,47 @@ sva_mm_load_pgtable (void * pg) {
  * Inputs:
  *  frame - The frame number of the physical page frame that will be used as a
  *          Level 1 page frame.
+ *  *pte  - the virtual address that accesses the page table 
  */
 void
-sva_declare_l1_page (unsigned frame) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned eflags;
-  __asm__ __volatile__ ("pushf; popl %0; cli\n" : "=r" (eflags));
+sva_declare_l1_page (unsigned long frame, pde_t *pde) 
+{
+    /*
+     * Disable interrupts so that we appear to execute as a single instruction.
+     */
+    unsigned long rflags;
+    rflags = sva_enter_critical();
 
-  /*
-   * Mark this page frame as an L1 page frame.
-   */
-  page_desc[frame].type = PG_L1;
+    /*
+     * Mark this page frame as an L1 page frame.
+     */
+    page_desc[frame].type = PG_L1;
 
-  /* The data contained in the page is set to 0 */
-  memset (getVirtual (frame), 0, X86_PAGE_SIZE);
- 
-  /* Update the page table entry with the new RO flag */ 
-  unprotect_pte();
-  (*pte) = new_val;
-  protect_pte();
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+    /* The data contained in the page is set to 0 */
+    // TODO/FIXME: The size here is assumed, we need to either have this passed
+    // in from the caller or dynamicaly identify the size of the existing page.
+    // I actually think given the pde for this frame we can deduce the size
+    // directly. 
+    memset (getVirtual (frame), 0, X86_PAGE_SIZE);
+
+    /* Update the page table entry with the new RO flag */ 
+    unprotect_paging();
+    
+    //-------------------------------------------------------------------------
+    //Mask out none address portions of frame because this input comes from the
+    //kernel and must be sanitized. Then add the RO flag of the pde referencing
+    //this new page. This is an update type of operation.
+    //-------------------------------------------------------------------------
+    //*pde = (frame & PG_FRAME) & ~PG_RW;
+    // FIXME:TODO Test code for the unprotect operations -- change when wanting
+    // to add Read-only
+    pde_t pte = *pde;
+    *pde = pte;
+
+    protect_paging();
+
+    /* Restore interrupts */
+    sva_exit_critical (rflags);
 }
 #endif
 
@@ -837,39 +864,56 @@ void llva_remove_l1_page(pte_t * pteptr) {
 
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  llva_unprotect_pte();
+  unprotect_paging();
   (*pte) = new_val;
-  llva_protect_pte();
+  protect_paging();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
 
+#endif
+
+#if 0
 /*
- * Sets a physical page as a level 2 page for pagetables.
+ * Sets a physical page as a level 2 page for pagetables. After setting
+ * metadata zero out the page and demark it at RO
  */
-void llva_declare_l2_page(pgd_t * pgdptr) {
+void sva_declare_l2_page(unsigned long frame, pdpe_t * pdpe) {
 
-  void* pagetable = get_pagetable();
+    void* pagetable = get_pagetable();
 
-  memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
-  memcpy(pgdptr + USER_PTRS_PER_PGD,
-      swapper_pg_dir + USER_PTRS_PER_PGD,
-      (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
+    memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
+    memcpy(pgdptr + USER_PTRS_PER_PGD,
+            swapper_pg_dir + USER_PTRS_PER_PGD,
+            (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
 
-  pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
-  pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
-  unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
-  page_desc[index].l2 = 1;
+    pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
+    pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
+    unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
 
-  unsigned eflags;
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  llva_unprotect_pte();
-  (*pte) = new_val;
-  llva_protect_pte();
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
+    /* Setup metadata tracking for this new page */
+    page_desc[frame].l2 = 1;
+
+    /* Get VA of pdpe */
+
+    /* Zero page */
+
+    /* Disable interrupts so that we appear to execute as a single instruction. */
+    unsigned long rflags;
+    rflags = sva_enter_critical();
+
+    /* Unprotect the pte for this new mapping and update its value for RO */
+    unprotect_paging();
+    //(*pdpe) = p;
+    //*pdpe = (frame & PG_FRAME) & ~PG_RW;
+    protect_paging();
+
+    /* Restore interrupts */
+    sva_exit_critical (rflags);
 }
+#endif
 
+#if 0
 /*
  * Removes the l2 flag of the page and sets the page writable.
  */
@@ -891,9 +935,9 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
   /*
    * Make the page writeable again.
    */
-  llva_unprotect_pte();
+  unprotect_paging();
   (*pte) = new_val;
-  llva_protect_pte();
+  protect_paging();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
@@ -937,7 +981,7 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
  
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  llva_unprotect_pte();
+  unprotect_paging();
   (*pte) = new_val;
   
   /* (3) Make page table pages read only, and set the level1 flag */
@@ -973,11 +1017,13 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
     page_desc[page_index].code = 1;
   }
 
-  //llva_protect_pte();
+  //protect_paging();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
 
+#endif
+#if 0
 /* 
  * Function: llva_update_l1_mapping()
  *
@@ -996,7 +1042,7 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
  *           configuration bits.
  */
 void
-llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
+sva_update_l1_mapping(pte_t* pteptr, pte_t val) {
   void* pagetable = get_pagetable();
   unsigned long new_index = pte_val(val) >> PAGE_SHIFT;
 
@@ -1136,13 +1182,15 @@ llva_update_l1_mapping(pte_t* pteptr, pte_t val) {
   /* Perform the pagetable mapping update */
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  llva_unprotect_pte();
+  unprotect_paging();
   (*pteptr) = val;
-  llva_protect_pte();
+  protect_paging();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
+#endif /* sva_update_l1_mapping */
 
+#if 0
 /*
  * Updates a level2 mapping (a mapping to a l1 page).
  *
@@ -1205,9 +1253,9 @@ llva_update_l2_mapping(pmd_t* pmdptr, pmd_t val) {
   /* Perform the pagetable mapping update */
   unsigned eflags;
   __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  llva_unprotect_pte();
+  unprotect_paging();
   *pmdptr = val;
-  llva_protect_pte();
+  protect_paging();
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
