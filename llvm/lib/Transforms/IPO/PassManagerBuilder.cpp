@@ -128,7 +128,7 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
   if (!DisableUnitAtATime) {
     addExtensionsToPM(EP_ModuleOptimizerEarly, MPM);
 
-#if 1
+#if 0
     MPM.add (createSFIPass ());
 #endif
     MPM.add(createGlobalOptimizerPass());     // Optimize out global vars
