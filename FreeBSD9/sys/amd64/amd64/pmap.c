@@ -108,6 +108,8 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 #include "opt_pmap.h"
 #include "opt_vm.h"
 
+#include <sva/mmu.h>
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -581,6 +583,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 * Initialize the kernel pmap (which is statically allocated).
 	 */
 	PMAP_LOCK_INIT(kernel_pmap);
+// ********* NDD ********* // 
 	kernel_pmap->pm_pml4 = (pdp_entry_t *)PHYS_TO_DMAP(KPML4phys);
 	kernel_pmap->pm_root = NULL;
 	CPU_FILL(&kernel_pmap->pm_active);	/* don't allow deactivation */
@@ -1661,6 +1664,10 @@ pmap_pinit(pmap_t pmap)
 
 	/* install self-referential address mapping entry(s) */
 	pmap->pm_pml4[PML4PML4I] = VM_PAGE_TO_PHYS(pml4pg) | PG_V | PG_RW | PG_A | PG_M;
+    /*SVA-TODO this is where we are establishing the reference, and looks also
+     * like a good place to setup the declare function*/
+    //sva_declare_l4_page();
+    //sva_update_cr3_mapping();
 
 	pmap->pm_root = NULL;
 	CPU_ZERO(&pmap->pm_active);
@@ -1678,6 +1685,12 @@ pmap_pinit(pmap_t pmap)
  * one or two pages may be held during the wait, only to be released
  * afterwards.  This conservative approach is easily argued to avoid
  * race conditions.
+ */
+/*** SVA-TODO: NDD-note
+ * Review this function in detail to identify all of the page table
+ * modifications. There are several already marked with comments below, but a
+ * more thorough evaluation of the code needs to be done to identify all page
+ * modification actions. 
  */
 static vm_page_t
 _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
@@ -1708,6 +1721,18 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		 */
 		return (NULL);
 	}
+    // ---NDD-NOTES-----------------------------------------------------------
+    // At this point we have m, a vm_page_t type, which is simply an object
+    // that represents in the kernel an allocated physical page. It captures
+    // information with respect to the state of that physical page: physaddr,
+    // object and offset it belongs to etc. 
+    // ---NDD-NOTES-----------------------------------------------------------
+    /** 
+     * TODO: NDD-note: This may be a point where we need to insert a call to
+     * verify that the zeroing has occured, but in the case of a malicious
+     * kernel this line could be completely left out. So we may need to make
+     * the zero check a part of larger routine... 
+     */
 	if ((m->flags & PG_ZERO) == 0)
 		pmap_zero_page(m);
 
@@ -1723,7 +1748,10 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		/* Wire up a new PDPE page */
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
+        /*** TODO NDD-NOTE: Adding a new PML4-Entry or PDP-entry ***/
 		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+        //sva_declare_l3_page(VM_PAGE_TO_PHYS(m));
+        //sva_update_l4_mapping();
 
 	} else if (ptepindex >= NUPDE) {
 		vm_pindex_t pml4index;
@@ -1754,7 +1782,10 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
+        /*** TODO NDD-NOTE: Adding a new PDP -- insert mapping in l3 to l2 page ***/
 		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+        //sva_declare_l2_page(VM_PAGE_TO_PHYS(m), pdp);
+        //sva_update_l3_mapping();
 
 	} else {
 		vm_pindex_t pml4index;
@@ -1795,6 +1826,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 				}
 			} else {
 				/* Add reference to the pd page */
+                /* SVA-TODO: modify pdpe to point to new pd-page */
 				pdpg = PHYS_TO_VM_PAGE(*pdp & PG_FRAME);
 				pdpg->wire_count++;
 			}
@@ -1803,6 +1835,9 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
+        /**** SVA-TODO: updating an l2 entry, the pde value */
+        sva_declare_l1_page(VM_PAGE_TO_PHYS(m), pd);
+        //sva_update_l2_mapping();
 		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 	}
 
@@ -1852,17 +1887,37 @@ pmap_allocpte(pmap_t pmap, vm_offset_t va, int flags)
 	/*
 	 * Calculate pagetable page index
 	 */
+    // NDD: va shifted to the right 21 bits, gets the top half of va including
+    // the pml4, pdp, and pd.  I don't get why it says ptepindex here... this
+    // is a pde page index... but it also has other stuff...
 	ptepindex = pmap_pde_pindex(va);
 retry:
 	/*
 	 * Get the page directory entry
 	 */
+    // NDD: the pde references a page table --- pd is actually a pde****
 	pd = pmap_pde(pmap, va);
 
 	/*
 	 * This supports switching from a 2MB page to a
 	 * normal 4K page.
 	 */
+
+    /***** NDD_ NOTE
+     * So if the pde has both the 2MB and valid bits set then we demote the
+     * pde. The demote action does a lot of potential creation of new l2 and l1
+     * mappings as well as modifications to the entries on those pages. I did
+     * not go through it in detail, but to be able to capture these
+     * modifications in SVA we will need to go through in depth and instrument. 
+     * Note though that this only happens if we the PDE is configured with a 
+     * 2MB page size. Oh so if we are dealing with a 2MB page size for this
+     * particular entry in the pdp and in the case of this function we are
+     * attempting to allocate a PTE, which only exists if we have 4kb page
+     * size. So we need to demote the particular PDE to work with a 4kb page
+     * size, which means we need to modify the configuration of this pde as
+     * well as generate new pd-page and the subsequent mappings of adding a new
+     * level. 
+     */
 	if (pd != NULL && (*pd & (PG_PS | PG_V)) == (PG_PS | PG_V)) {
 		if (!pmap_demote_pde(pmap, pd, va)) {
 			/*
@@ -1880,6 +1935,7 @@ retry:
 	if (pd != NULL && (*pd & PG_V) != 0) {
 		m = PHYS_TO_VM_PAGE(*pd & PG_FRAME);
 		m->wire_count++;
+        /* SVA-TODO: NDD -- update mapping count for this page */
 	} else {
 		/*
 		 * Here if the pte page isn't mapped, or if it has been
@@ -1995,6 +2051,9 @@ pmap_growkernel(vm_offset_t addr)
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 			*pdpe = (pdp_entry_t)
 				(paddr | PG_V | PG_RW | PG_A | PG_M);
+            /*SVA-TODO*/
+            //sva_declare_l2_page(paddr);
+            //sva_update_l3_mapping();
 			continue; /* try again */
 		}
 		pde = pmap_pdpe_to_pde(pdpe, kernel_vm_end);
@@ -2017,6 +2076,9 @@ pmap_growkernel(vm_offset_t addr)
 		paddr = VM_PAGE_TO_PHYS(nkpg);
 		newpdir = (pd_entry_t) (paddr | PG_V | PG_RW | PG_A | PG_M);
 		pde_store(pde, newpdir);
+        /*SVA-TODO*/
+        //sva_declare_l1_page(paddr);
+        //sva_update_l2_mapping();
 
 		kernel_vm_end = (kernel_vm_end + NBPDR) & ~PDRMASK;
 		if (kernel_vm_end - 1 >= kernel_map->max_offset) {
@@ -2500,6 +2562,8 @@ pmap_demote_pde(pmap_t pmap, pd_entry_t *pde, vm_offset_t va)
 		 * is the only part of the kernel address space that must be
 		 * handled here.
 		 */
+        /* SVA-TODO: analyze this function and flesh out what this page here is
+         * used for mpte*/
 		if ((oldpde & PG_A) == 0 || (mpte = vm_page_alloc(NULL,
 		    pmap_pde_pindex(va), (va >= DMAP_MIN_ADDRESS && va <
 		    DMAP_MAX_ADDRESS ? VM_ALLOC_INTERRUPT : VM_ALLOC_NORMAL) |
@@ -3207,6 +3271,14 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_prot_t access, vm_page_t m,
 	 * In the case that a page table page is not
 	 * resident, we are creating it here.
 	 */
+    /***** NDD_NOTE
+     * This is where we actually map in the new frame. The pte will be added to
+     * the given pmap. This is the actual frame that will be inserted into the
+     * pte. note "m"pte... these functions are where we will have new l1
+     * declarations. The rest of the function includes some verification and
+     * Kernel metadata management stuff. There are some potential modifications
+     * to the pte that we will need to track though.
+     */
 	if (va < VM_MAXUSER_ADDRESS)
 		mpte = pmap_allocpte(pmap, va, M_WAITOK);
 
@@ -3226,6 +3298,14 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_prot_t access, vm_page_t m,
 	/*
 	 * Mapping has not changed, must be protection or wiring change.
 	 */
+    /**** NDD_NOTE
+     * If we hit here this means that we did not hit a page fault due to the
+     * frame being inactive in the page cache, but rather due to some other
+     * reason... protection or wiring change.
+     *
+     *
+     * This does mean that we may need to do an update on the pte in sva
+     */
 	if (origpte && (opa == pa)) {
 		/*
 		 * Wiring change, just update stats. We don't worry about
@@ -3343,7 +3423,10 @@ validate:
 			if (invlva)
 				pmap_invalidate_page(pmap, va);
 		} else
-			pte_store(pte, newpte);
+			/*NDD-old function for modifying l1-entry*/ 
+            pte_store(pte, newpte);
+            /*TODO::Fix this up*/
+            //sva_update_l1_mapping();
 	}
 
 	/*
@@ -3818,6 +3901,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr, vm_size_t len,
 			    pmap_pv_insert_pde(dst_pmap, addr, srcptepaddr &
 			    PG_PS_FRAME))) {
 				*pde = srcptepaddr & ~PG_W;
+                //sva_update_l2_mapping() ??? TODO verfiy and analize this//
+                //are we creating  anew mapping at all? 
 				pmap_resident_count_inc(dst_pmap, NBPDR / PAGE_SIZE);
 			} else
 				dstmpde->wire_count--;
@@ -4696,6 +4781,7 @@ pmap_unmapdev(vm_offset_t va, vm_size_t size)
 /*
  * Tries to demote a 1GB page mapping.
  */
+/*SVA-TODO: analyze the remainder of this function to find declares*/
 static boolean_t
 pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 {
@@ -4728,13 +4814,17 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 	 */
 	for (pde = firstpde; pde < firstpde + NPDEPG; pde++) {
 		*pde = newpde;
+        /*SVA-TODO: verify out what intrinsic to call for this setting*/
+        //sva_update_l2_mapping();
 		newpde += NBPDR;
 	}
 
 	/*
 	 * Demote the mapping.
 	 */
+    /*SVA-TODO: verify out what intrinsic to call for this setting*/
 	*pdpe = newpdpe;
+    //sva_update_l3_mapping();
 
 	/*
 	 * Invalidate a stale recursive mapping of the page directory page.
