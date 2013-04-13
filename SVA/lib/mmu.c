@@ -23,10 +23,9 @@
 #include "sva/state.h"
 #include "sva/util.h"
 
-//TODO:FIXME Why can't these be put into the .h file? 
 /*
  *****************************************************************************
- * Define paging structures and related constants
+ * Define paging structures and related constants local to this source file
  *****************************************************************************
  */
 
