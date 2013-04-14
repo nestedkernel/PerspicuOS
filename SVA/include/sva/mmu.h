@@ -6,7 +6,52 @@
  * the University of Illinois Open Source License. See LICENSE.TXT for details.
  * 
  *===----------------------------------------------------------------------===
+ *
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 1991 Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * the Systems Programming Group of the University of Utah Computer
+ * Science Department and William Jolitz of UUNET Technologies Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * Derived from hp300 version by Mike Hibler, this version by William
+ * Jolitz uses a recursive map [a pde points to the page directory] to
+ * map the page tables using the pagetables themselves. This is done to
+ * reduce the impact on kernel virtual memory for lots of sparse address
+ * space, and to reduce the cost of memory to each process.
+ *
+ *  from: hp300: @(#)pmap.h 7.2 (Berkeley) 12/16/90
+ *  from: @(#)pmap.h    7.4 (Berkeley) 5/12/91
+ * $FreeBSD: release/9.0.0/sys/amd64/include/pmap.h 222813 2011-06-07 08:46:13Z attilio $
+ *
+ *===----------------------------------------------------------------------===
  */
+
 
 #ifndef SVA_MMU_H
 #define SVA_MMU_H
@@ -20,32 +65,32 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
 #define SECMEMSTART 0xffffff0000000000u
 #define SECMEMEND   0xffffff8000000000u
 
-//----------------------------------------------------------------------------
 /*
  * ===========================================================================
  * BEGIN FreeBSD CODE BLOCK
+ *
+ * $FreeBSD: release/9.0.0/sys/amd64/include/pmap.h 222813 2011-06-07 08:46:13Z attilio $
  * ===========================================================================
  */
 
 /* MMU Flags ---- Intel Nomenclature ---- */
-/*TODO FIXME John I include freebsd defines here... bad?*/
-#define PG_V        0x001   /* P    Valid           */
-#define PG_RW       0x002   /* R/W  Read/Write      */
+#define PG_V        0x001   /* P    Valid               */
+#define PG_RW       0x002   /* R/W  Read/Write          */
 #define PG_U        0x004   /* U/S  User/Supervisor     */
 #define PG_NC_PWT   0x008   /* PWT  Write through       */
 #define PG_NC_PCD   0x010   /* PCD  Cache disable       */
-#define PG_A        0x020   /* A    Accessed        */
-#define PG_M        0x040   /* D    Dirty           */
+#define PG_A        0x020   /* A    Accessed            */
+#define PG_M        0x040   /* D    Dirty               */
 #define PG_PS       0x080   /* PS   Page size (0=4k,1=2M)   */
-#define PG_PTE_PAT  0x080   /* PAT  PAT index       */
-#define PG_G        0x100   /* G    Global          */
+#define PG_PTE_PAT  0x080   /* PAT  PAT index           */
+#define PG_G        0x100   /* G    Global              */
 #define PG_AVAIL1   0x200   /*    / Available for system    */
 #define PG_AVAIL2   0x400   /*   <  programmers use     */
-#define PG_AVAIL3   0x800   /*    \             */
-#define PG_PDE_PAT  0x1000  /* PAT  PAT index       */
-#define PG_NX       (1ul<<63) /* No-execute */
+#define PG_AVAIL3   0x800   /*    \                     */
+#define PG_PDE_PAT  0x1000  /* PAT  PAT index           */
+#define PG_NX       (1ul<<63) /* No-execute             */
 
-/* Our various interpretations of the above */
+/* Various interpretations of the above */
 #define PG_W        PG_AVAIL1   /* "Wired" pseudoflag */
 #define PG_MANAGED  PG_AVAIL2
 #define PG_FRAME    (0x000ffffffffff000ul)
@@ -58,8 +103,6 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
  * END FreeBSD CODE BLOCK
  * ===========================================================================
  */
-//----------------------------------------------------------------------------
-//----------------------------------------------------------------------------
 
 /*
  *****************************************************************************
