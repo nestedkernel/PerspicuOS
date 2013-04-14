@@ -23,6 +23,14 @@
 #include "sva/state.h"
 #include "sva/util.h"
 
+/* TODO:FIXME Why can't these be put into the .h file? */
+
+/* Defines for #if #endif blocks for commenting out lines of code */
+#define NOT_YET_IMPLEMENTED 0
+#define UNDER_TEST          1
+#define TMP_DISABLED        0
+#define OBSOLETE            0
+
 /*
  *****************************************************************************
  * Define paging structures and related constants local to this source file
@@ -795,17 +803,18 @@ sva_mm_load_pgtable (void * pg) {
  *  mappings within the frame are not used by the MMU.
  *
  * Inputs:
+ *  [[[ TODO ]]] Figure out whether or not to the frame number of frame address
  *  frame - The frame number of the physical page frame that will be used as a
  *          Level 1 page frame.
- *  *pte  - the virtual address that accesses the page table 
+ *  *pde  - the virtual address that accesses the page table from the kernel
  */
 void
 sva_declare_l1_page (unsigned long frame, pde_t *pde) 
 {
+    unsigned long rflags;
     /*
      * Disable interrupts so that we appear to execute as a single instruction.
      */
-    unsigned long rflags;
     rflags = sva_enter_critical();
 
     /*
@@ -813,27 +822,36 @@ sva_declare_l1_page (unsigned long frame, pde_t *pde)
      */
     page_desc[frame].type = PG_L1;
 
+    /*
+     * TODO/FIXME: The size here is assumed, we need to either have this passed
+     * in from the caller or dynamicaly identify the size of the existing page.
+     * I actually think given the pde for this frame we can deduce the size
+     * directly. 
+     */
+
     /* The data contained in the page is set to 0 */
-    // TODO/FIXME: The size here is assumed, we need to either have this passed
-    // in from the caller or dynamicaly identify the size of the existing page.
-    // I actually think given the pde for this frame we can deduce the size
-    // directly. 
     memset (getVirtual (frame), 0, X86_PAGE_SIZE);
 
-    /* Update the page table entry with the new RO flag */ 
+    /* Disable page protection so we can write to the referencing table entry */
     unprotect_paging();
     
-    //-------------------------------------------------------------------------
-    //Mask out none address portions of frame because this input comes from the
-    //kernel and must be sanitized. Then add the RO flag of the pde referencing
-    //this new page. This is an update type of operation.
-    //-------------------------------------------------------------------------
-    //*pde = (frame & PG_FRAME) & ~PG_RW;
-    // FIXME:TODO Test code for the unprotect operations -- change when wanting
-    // to add Read-only
+    /*
+     * Mask out none address portions of frame because this input comes from the
+     * kernel and must be sanitized. Then add the RO flag of the pde referencing
+     * this new page. This is an update type of operation.
+     */
+#if NOT_YET_IMPLEMENTED
+    /* Update the page table entry with the new RO flag */ 
+    *pde = (frame & PG_FRAME) & ~PG_RW;
+#elif TMP_TEST_CODE
+    /*
+     * FIXME:TODO Test code for the unprotect operations, will be eliminated. 
+     */
     pde_t pte = *pde;
     *pde = pte;
+#endif
 
+    /* Reenable page protection */
     protect_paging();
 
     /* Restore interrupts */
