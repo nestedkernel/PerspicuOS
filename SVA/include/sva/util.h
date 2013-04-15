@@ -98,7 +98,7 @@ isNotWithinSecureMemory (void * p) {
   const uintptr_t secmemstart = 0xffffff0000000000u;
   const uintptr_t secmemend   = 0xffffff8000000000u;
   uintptr_t i = (uintptr_t) p;
-  if ((secmemstart <= p) && (p <= secmemend))
+  if ((secmemstart <= i) && (i <= secmemend))
     return 0;
   else
     return 1;
