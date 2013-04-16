@@ -14,6 +14,7 @@ imageDir = svaBaseDir+"/images"
 imagePath = imageDir+"/sva_ndd.img"
 llvmSourceDir = svaBaseDir+"/llvm"
 svaSourceDir = svaBaseDir+"/SVA"
+kernCompileOpts = ""
 
 optparse = OptionParser.new do|opts|
     # Set a banner, displayed at the top
@@ -32,7 +33,7 @@ optparse = OptionParser.new do|opts|
     #end
     
     opts.on("-c", "--makeClean", "make clean any build targets") do 
-       options[:clean] = true
+        options[:clean] = true
     end
     opts.on("-k", "--buildKernel", "Build the SVA kernel") do 
        options[:buildKernel] = true
@@ -92,6 +93,10 @@ begin
         #puts optparse
         #exit
     #end
+    if (!options[:clean] && !options[:buildLLVM]) 
+        kernCompileOpts = "-DNO_KERNELCLEAN -DNO_KERNELCONFIG " ,
+            "-DNO_KERNELDEPEND -DNO_KERNELOBJ"
+    end
 rescue OptionParser::InvalidOption, OptionParser::MissingArgument
     puts $!.to_s        # Friendly output when parsing fails
     puts optparse
@@ -105,6 +110,10 @@ def mountImage(pathToImg)
     puts "Mounting disk image #{pathToImg} to /mnt"
     system("sudo mdconfig -a -t vnode -f #{pathToImg} -u 1")
     system("sudo mount /dev/md1p2 /mnt")
+    unless($?.success?)
+        puts "<<<< MOUNT FAILED >>>>"
+        exit
+    end
 end
 
 # Unmount command to both unmount the virtual disk and eliminate the vnode
@@ -114,6 +123,10 @@ def unMountImage()
     puts "Unmounting disk"
     system("sudo umount /mnt")
     system("sudo mdconfig -d -u 1")
+    unless($?.success?)
+        puts "<<<< UMOUNT FAILED >>>>"
+        exit
+    end
 end
 
 #
@@ -174,13 +187,12 @@ end
 #
 # Args: FreeBSD source dir and boolean clean directive
 #
-def buildKernel(kernelSourceDir, clean)
+def buildKernel(kernelSourceDir, extraOpts)
     puts "Compiling Kernel with SVA..."
 
     # CD to source dir, once block completes the function auto CDs back to orig
     Dir.chdir(kernelSourceDir) do
-        system("make clean") if(clean)
-        system("make -j15 buildkernel KERNCONF=SVA")
+        system("make -j15 buildkernel KERNCONF=SVA #{extraOpts}")
         unless($?.success?)
             puts "Error: Make failed!"
             exit
@@ -204,15 +216,15 @@ end
 if (options[:rebuildAll] || options[:buildLLVM]) then
     buildLLVM(llvmSourceDir, options[:clean])
     buildSVA(svaSourceDir, true)
-    buildKernel(kernelSourceDir, true)
+    buildKernel(kernelSourceDir, kernCompileOpts)
 end
 
 if (options[:buildSVA]) then
-    buildSVA(svaSourceDir, options[:clean])
+    buildSVA(svaSourceDir, clean)
 end
 
 if (options[:buildKernel]) then
-    buildKernel(kernelSourceDir, options[:clean])
+    buildKernel(kernelSourceDir, kernCompileOpts)
 end
 
 #===============================================================================
