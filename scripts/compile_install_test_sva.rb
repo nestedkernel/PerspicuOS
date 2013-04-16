@@ -220,7 +220,7 @@ if (options[:rebuildAll] || options[:buildLLVM]) then
 end
 
 if (options[:buildSVA]) then
-    buildSVA(svaSourceDir, clean)
+    buildSVA(svaSourceDir, options[:clean])
 end
 
 if (options[:buildKernel]) then
