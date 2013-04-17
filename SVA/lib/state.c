@@ -746,6 +746,10 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 #if SVA_CHECK_INTEGER
   if ((pchk_check_int (new)) == 0) {
     poolcheckfail ("sva_swap_integer: Bad integer state", (unsigned)old, (void*)__builtin_return_address(0));
+    /*
+     * Re-enable interrupts.
+     */
+    sva_exit_critical (rflags);
     return 0;
   }
 #endif
@@ -1056,14 +1060,18 @@ sva_load_icontext (void) {
   /*
    * Verify that the interrupt context represents user-space state.
    */
-  if (sva_was_privileged ())
-    return;
+  if (sva_was_privileged ()) {
+      sva_exit_critical (rflags);
+      return;
+  }
 
   /*
    * Verify that we have a free interrupt context to use.
    */
-  if (threadp->savedICIndex < 1)
-    return;
+  if (threadp->savedICIndex < 1) {
+      sva_exit_critical (rflags);
+      return;
+  }
 
   /*
    * Load the interrupt context.
@@ -1109,14 +1117,18 @@ sva_save_icontext (void) {
   /*
    * Verify that the interrupt context represents user-space state.
    */
-  if (sva_was_privileged ())
-    return 0;
+  if (sva_was_privileged ()) {
+      sva_exit_critical (rflags);
+      return 0;
+  }
 
   /*
    * Verify that we have a free interrupt context to use.
    */
-  if (threadp->savedICIndex > maxIC)
-    return 0;
+  if (threadp->savedICIndex > maxIC) {
+      sva_exit_critical (rflags);
+      return 0;
+  }
 
   /*
    * Save the interrupt context.
