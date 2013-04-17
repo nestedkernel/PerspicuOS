@@ -174,6 +174,9 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 #define	pa_index(pa)	((pa) >> PDRSHIFT)
 #define	pa_to_pvh(pa)	(&pv_table[pa_index(pa)])
 
+#define SVA_ENA 1
+#define SVA_ENA_DEBUG 0
+
 struct pmap kernel_pmap_store;
 
 vm_offset_t virtual_avail;	/* VA of first avail page (after kernel bss) */
@@ -1558,6 +1561,12 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
 		*pml4 = 0;
+        /*
+         * Update the pml4 pdp page
+         */
+#if 0
+        sva_update_l4_pointer_entry
+#endif
 	} else if (m->pindex >= NUPDE) {
 		/* PD page */
 		pdp_entry_t *pdp;
@@ -1727,7 +1736,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
     // information with respect to the state of that physical page: physaddr,
     // object and offset it belongs to etc. 
     // ---NDD-NOTES-----------------------------------------------------------
-    /** 
+    /* 
      * TODO: NDD-note: This may be a point where we need to insert a call to
      * verify that the zeroing has occured, but in the case of a malicious
      * kernel this line could be completely left out. So we may need to make
@@ -1749,9 +1758,12 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
         /*** TODO NDD-NOTE: Adding a new PML4-Entry or PDP-entry ***/
-		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
-        //sva_declare_l3_page(VM_PAGE_TO_PHYS(m));
+        sva_declare_l3_page(VM_PAGE_TO_PHYS(m), pml4);
+#if SVA_UPDATE
         //sva_update_l4_mapping();
+#else
+		*pml4 = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+#endif
 
 	} else if (ptepindex >= NUPDE) {
 		vm_pindex_t pml4index;
@@ -1782,10 +1794,18 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
-        /*** TODO NDD-NOTE: Adding a new PDP -- insert mapping in l3 to l2 page ***/
-		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
-        //sva_declare_l2_page(VM_PAGE_TO_PHYS(m), pdp);
+
+        /* 
+         * Declare the l2 page to SVA. This will initialize paging structures
+         * and make the page table page as read only
+         */
+        sva_declare_l2_page(VM_PAGE_TO_PHYS(m), pdp);
+
+        /*
+         * Update the mappings to the newly created page table page
+         */
         //sva_update_l3_mapping();
+		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 
 	} else {
 		vm_pindex_t pml4index;
@@ -1835,10 +1855,29 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
-        /**** SVA-TODO: updating an l2 entry, the pde value */
+
+#if SVA_ENA_DEBUG
+        printf("\n<<< FBSD KERNEL: pre declare va-pentry: %p, contents: 0x%lx\n", pd, *pd);
+#endif
+
+        /* 
+         * Declare the l1 page to SVA. This will initialize paging structures
+         * and make the page table page as read only
+         */
         sva_declare_l1_page(VM_PAGE_TO_PHYS(m), pd);
+
+#if SVA_ENA_DEBUG
+        printf("\n<<< FBSD KERNEL: post declare va-pentry: %p, contents: 0x%lx\n", pd, *pd);
+#endif
+        /**** SVA-TODO: updating an l2 entry, the pde value */
         //sva_update_l2_mapping();
+        
 		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+
+#if SVA_ENA_DEBUG
+        printf("\n<<< FBSD KERNEL: post write from FBSD: %p, contents: 0x%lx\n", pd, *pd);
+#endif
+
 	}
 
 	pmap_resident_count_inc(pmap, 1);
@@ -2049,11 +2088,22 @@ pmap_growkernel(vm_offset_t addr)
 			if ((nkpg->flags & PG_ZERO) == 0)
 				pmap_zero_page(nkpg);
 			paddr = VM_PAGE_TO_PHYS(nkpg);
+
+            /* 
+             * Declare the l2 page to SVA. This will initialize paging
+             * structures and make the page table page as read only
+             */
+#if 1
+            sva_declare_l2_page(paddr, pdpe);
+#endif
+
+            /*
+             * SVA update the mappings to the newly created page table page
+             */
 			*pdpe = (pdp_entry_t)
 				(paddr | PG_V | PG_RW | PG_A | PG_M);
-            /*SVA-TODO*/
-            //sva_declare_l2_page(paddr);
             //sva_update_l3_mapping();
+            
 			continue; /* try again */
 		}
 		pde = pmap_pdpe_to_pde(pdpe, kernel_vm_end);
@@ -2074,10 +2124,16 @@ pmap_growkernel(vm_offset_t addr)
 		if ((nkpg->flags & PG_ZERO) == 0)
 			pmap_zero_page(nkpg);
 		paddr = VM_PAGE_TO_PHYS(nkpg);
+
+        /*SVA-TODO*/
+        /* 
+         * Declare the l2 page to SVA. This will initialize paging structures
+         * and make the page table page as read only
+         */
+        //sva_declare_l1_page(paddr, newpdir);
+
 		newpdir = (pd_entry_t) (paddr | PG_V | PG_RW | PG_A | PG_M);
 		pde_store(pde, newpdir);
-        /*SVA-TODO*/
-        //sva_declare_l1_page(paddr);
         //sva_update_l2_mapping();
 
 		kernel_vm_end = (kernel_vm_end + NBPDR) & ~PDRMASK;
@@ -3422,11 +3478,12 @@ validate:
 				vm_page_aflag_clear(om, PGA_WRITEABLE);
 			if (invlva)
 				pmap_invalidate_page(pmap, va);
-		} else
+		} else {
 			/*NDD-old function for modifying l1-entry*/ 
             pte_store(pte, newpte);
             /*TODO::Fix this up*/
             //sva_update_l1_mapping();
+        }
 	}
 
 	/*
@@ -3665,6 +3722,7 @@ pmap_enter_quick_locked(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * Now validate mapping with RO protection
 	 */
 	if ((m->oflags & VPO_UNMANAGED) != 0)
+        /* SVA-TODO analyze and setup function calls here */
 		pte_store(pte, pa | PG_V | PG_U);
 	else
 		pte_store(pte, pa | PG_V | PG_U | PG_MANAGED);

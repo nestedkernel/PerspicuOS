@@ -111,9 +111,10 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
  */
 typedef uintptr_t cr3_t;
 typedef uintptr_t pml4e_t;
-typedef uintptr_t pdpe_t;
+typedef uintptr_t pdpte_t;
 typedef uintptr_t pde_t;
 typedef uintptr_t pte_t;
+typedef uintptr_t page_entry_t;
 
 extern uintptr_t getPhysicalAddr (void * v);
 extern pml4e_t * mapSecurePage (unsigned char * v, uintptr_t paddr);
@@ -126,6 +127,9 @@ extern void unmapSecurePage (unsigned char * v);
  */
 extern void sva_mm_load_pgtable (void * pg);
 extern void sva_declare_l1_page (unsigned long frame, pde_t *pde);
+extern void sva_declare_l2_page (unsigned long frame, pdpte_t *pdpte);
+extern void sva_declare_l3_page (unsigned long frame, pml4e_t *pml4e);
+//extern void sva_declare_l4_page (unsigned long frame, pdpte_t *pdpte);
 
 /*
  *****************************************************************************

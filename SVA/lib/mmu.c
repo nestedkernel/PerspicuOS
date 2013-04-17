@@ -25,11 +25,21 @@
 
 /* TODO:FIXME Why can't these be put into the .h file? */
 
-/* Defines for #if #endif blocks for commenting out lines of code */
-#define NOT_YET_IMPLEMENTED 0
-#define UNDER_TEST          1
-#define TMP_DISABLED        0
-#define OBSOLETE            0
+/* 
+ * Defines for #if #endif blocks for commenting out lines of code
+ */
+/* Used to denote unimplemented code */
+#define NOT_YET_IMPLEMENTED 0   
+/* Code that is under test and may cause issues */
+#define UNDER_TEST          1   
+/* Used to temporarily disable code for any reason */
+#define TMP_DISABLED        0   
+/* Used to denote obsolete code that hasn't been deleted yet */
+#define OBSOLETE            0   
+/* Denotes code that is in for some type of testing but is only temporary */
+#define TMP_TEST_CODE       1
+/* Define whether to enable DEBUG blocks #if statements */
+#define DEBUG               0
 
 /*
  *****************************************************************************
@@ -47,10 +57,14 @@ const unsigned char PG_CODE   = 0x3;
 const unsigned char PG_STACK  = 0x4;
 const unsigned char PG_IO     = 0x5;
 const unsigned char PG_SVA    = 0x6;
-const unsigned char PG_L1     = 0x7;
-const unsigned char PG_L2     = 0x8;
-const unsigned char PG_L3     = 0x9;
-const unsigned char PG_L4     = 0xA;
+
+/* Enum representing the four page types */
+enum page_type {
+    PG_L1,
+    PG_L2,
+    PG_L3,
+    PG_L4
+};
 
 /* Mask to get the proper number of bits from the virtual address */
 static const uintptr_t vmask = 0x0000000000000fffu;
@@ -68,7 +82,7 @@ static const uintptr_t addrmask = 0x000ffffffffff000u;
  */
 typedef struct page_desc_t {
   /* Type of frame */
-  unsigned char type;
+  enum page_type type;
 
   /* Number of times a page is mapped */
   unsigned count : 12;
@@ -116,7 +130,7 @@ struct PTInfo {
 struct PTInfo PTPages[64];
 
 /* Size of the physical memory and page size in bytes */
-const unsigned int memSize = 1024*1024*1024;
+const unsigned int memSize = 16*1024*1024*1024;
 const unsigned int pageSize = 4096;
 
 /* Array describing the physical pages */
@@ -125,6 +139,12 @@ static page_desc_t page_desc[memSize / 4096];
 
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
+
+/*
+ *****************************************************************************
+ * Define helper functions for MMU operations
+ *****************************************************************************
+ */
 
 /*
  * Function: getVirtual()
@@ -170,6 +190,8 @@ get_pagetable (void) {
  * Function: protect_paging()
  *
  * Description:
+ *  Actually enforce read only protection. 
+ *
  *  Protects the page table entry. This disables the flag in CR0 which bypasses
  *  the RW flag in pagetables. After this call, it is safe to re-enable
  *  interrupts.
@@ -203,6 +225,79 @@ unprotect_paging(void) {
   __asm__ __volatile("movq %0,%%cr0\n": : "r"(value));
 }
 
+/* Functions for aiding in declare and updating of page tables */
+
+/*
+ * Function: init_page_entry
+ *
+ * Description:
+ *  This function zeros out the physical page pointed to by frameAddr and sets
+ *  as read only the page_entry. The page_entry is agnostic as to which level
+ *  page table entry we are modifying as the format of the entry is the same in
+ *  all cases. 
+ *
+ * Inputs:
+ *  frameAddr: represents the physical address of this frame
+ *
+ *  page_entry: represents an entry in a page table page that references the
+ *      frameAddr, which is the new page being declared in the MMU.
+ */
+static inline void 
+init_page_entry (unsigned long frameAddr, unsigned long *page_entry) {
+
+    unsigned long rflags;
+
+    /* Disable interrupts so that we appear to execute as a single instruction. */
+    rflags = sva_enter_critical();
+
+    /* Zero page */
+    memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
+
+    /* Disable page protection so we can write to the referencing table entry */
+
+    /* 
+     * FIXME: I wonder if we may have an issue where this function is called
+     * when the kernel has already disabled paging protection, and our
+     * disable/reenable here may cause some problems in capturing that state?
+     */
+    unprotect_paging();
+    
+    /*
+     * Mask out none address portions of frame because this input comes from the
+     * kernel and must be sanitized. Then add the RO flag of the pde referencing
+     * this new page. This is an update type of operation.
+     */
+#if DEBUG
+    printf("\n##### SVA<init_page_entry>: pre-write ");
+    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+#endif
+    
+#if NOT_YET_IMPLEMENTED
+    /* 
+     * Update the page table entry with the new RO flag. A value of 0 in bit
+     * position 2 configures for no writes.
+     */ 
+    *page_entry = (frameAddr & PG_FRAME) & ~PG_RW;
+#elif TMP_TEST_CODE
+    /*
+     * FIXME:TODO Test code for the unprotect operations, will be eliminated. 
+     */
+    unsigned long page_entry_val = *page_entry;
+    *page_entry = page_entry_val;
+#endif
+
+#if DEBUG
+    printf("##### SVA<init_page_entry>: post-write ");
+    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+#endif
+
+    /* Reenable page protection */
+    protect_paging();
+
+    /* Restore interrupts */
+    sva_exit_critical (rflags);
+}
+
 /* Functions for finding the virtual address of page table components */
 
 static inline pml4e_t *
@@ -212,14 +307,14 @@ get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
   return (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
 }
 
-static inline pdpe_t *
+static inline pdpte_t *
 get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
-  return (pdpe_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
+  return (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
 }
 
 static inline pde_t *
-get_pdeVaddr (pdpe_t * pdpte, uintptr_t vaddr) {
+get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
   return (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
 }
@@ -266,7 +361,7 @@ getPhysicalAddr (void * v) {
   /*
    * Use the PML4E to get the address of the PDPTE.
    */
-  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
 
   /*
    * Determine if the PDPTE has the PS flag set.  If so, then it's pointing to
@@ -501,7 +596,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Get the PDPTE entry (or add it if it is not present).
    */
-  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
     /* Page table page index */
     unsigned int ptindex;
@@ -606,7 +701,7 @@ unmapSecurePage (unsigned char * v) {
   /*
    * Get the PDPTE entry (or add it if it is not present).
    */
-  pdpe_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
     panic ("SVA: unmapSecurePage: No PDPTE!\n");
   }
@@ -793,7 +888,7 @@ sva_mm_load_pgtable (void * pg) {
   return;
 }
 
-#if 1
+#if UNDER_TEST
 /*
  * Intrinsic: sva_declare_l1_page()
  *
@@ -803,59 +898,30 @@ sva_mm_load_pgtable (void * pg) {
  *  mappings within the frame are not used by the MMU.
  *
  * Inputs:
- *  [[[ TODO ]]] Figure out whether or not to the frame number of frame address
- *  frame - The frame number of the physical page frame that will be used as a
+ *  frameAddr - The address of the physical page frame that will be used as a
  *          Level 1 page frame.
  *  *pde  - the virtual address that accesses the page table from the kernel
  */
 void
-sva_declare_l1_page (unsigned long frame, pde_t *pde) 
-{
-    unsigned long rflags;
-    /*
-     * Disable interrupts so that we appear to execute as a single instruction.
-     */
-    rflags = sva_enter_critical();
+sva_declare_l1_page (unsigned long frameAddr, pde_t *pde) {
+
+    unsigned long frame = frameAddr/pageSize;
+
+#if DEBUG
+    printf("##### SVA: declare_l1_page\n");
+#endif
 
     /*
      * Mark this page frame as an L1 page frame.
      */
     page_desc[frame].type = PG_L1;
-
-    /*
-     * TODO/FIXME: The size here is assumed, we need to either have this passed
-     * in from the caller or dynamicaly identify the size of the existing page.
-     * I actually think given the pde for this frame we can deduce the size
-     * directly. 
-     */
-
-    /* The data contained in the page is set to 0 */
-    memset (getVirtual (frame), 0, X86_PAGE_SIZE);
-
-    /* Disable page protection so we can write to the referencing table entry */
-    unprotect_paging();
     
-    /*
-     * Mask out none address portions of frame because this input comes from the
-     * kernel and must be sanitized. Then add the RO flag of the pde referencing
-     * this new page. This is an update type of operation.
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
      */
-#if NOT_YET_IMPLEMENTED
-    /* Update the page table entry with the new RO flag */ 
-    *pde = (frame & PG_FRAME) & ~PG_RW;
-#elif TMP_TEST_CODE
-    /*
-     * FIXME:TODO Test code for the unprotect operations, will be eliminated. 
-     */
-    pde_t pte = *pde;
-    *pde = pte;
-#endif
-
-    /* Reenable page protection */
-    protect_paging();
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+    init_page_entry(frameAddr, (page_entry_t *) pde);
 }
 #endif
 
@@ -890,13 +956,20 @@ void llva_remove_l1_page(pte_t * pteptr) {
 
 #endif
 
-#if 0
+#if UNDER_TEST
 /*
  * Sets a physical page as a level 2 page for pagetables. After setting
  * metadata zero out the page and demark it at RO
  */
-void sva_declare_l2_page(unsigned long frame, pdpe_t * pdpe) {
+void sva_declare_l2_page(unsigned long frameAddr, pdpte_t * pdpte) {
+    
+    unsigned long frame = frameAddr/pageSize;
 
+    /*
+     * TODO: Not certain if this is obsoete yet as we might need to handle
+     * dynamic page sizes and this code should help with that. 
+     */
+#if OBSOLETE
     void* pagetable = get_pagetable();
 
     memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
@@ -907,26 +980,28 @@ void sva_declare_l2_page(unsigned long frame, pdpe_t * pdpe) {
     pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
     pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
     unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
+#endif
+
+#if DEBUG
+    printf("##### SVA: declare_l2_page\n");
+#endif
+
+    /*
+     * TODO: Will this frame be zeroed out by some type of paging out process
+     * or function? If not we need to zero out the page_desc being accessed
+     * here. What I mean is that if this frame was previously used for another
+     * page table page then we need to make sure the data has been zeroed out.
+     */
 
     /* Setup metadata tracking for this new page */
-    page_desc[frame].l2 = 1;
+    page_desc[frame].type = PG_L2;
 
-    /* Get VA of pdpe */
-
-    /* Zero page */
-
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags;
-    rflags = sva_enter_critical();
-
-    /* Unprotect the pte for this new mapping and update its value for RO */
-    unprotect_paging();
-    //(*pdpe) = p;
-    //*pdpe = (frame & PG_FRAME) & ~PG_RW;
-    protect_paging();
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr, (page_entry_t *) pdpte);
 }
 #endif
 
@@ -958,7 +1033,79 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
   if (eflags & 0x00000200)
     __asm__ __volatile__ ("sti":::"memory");
 }
+#endif
 
+#if UNDER_TEST
+/*
+ * Intrinsic: sva_declare_l3_page()
+ *
+ * Description:
+ *  This intrinsic marks the specified physical frame as a Level 1 page table
+ *  frame.  It will zero out the contents of the page frame so that stale
+ *  mappings within the frame are not used by the MMU.
+ *
+ * Inputs:
+ *  frameAddr - The address of the physical page frame that will be used as a
+ *          Level 1 page frame.
+ *  *pde  - the virtual address that accesses the page table from the kernel
+ */
+void
+sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
+
+    unsigned long frame = frameAddr/pageSize;
+
+#if DEBUG
+    printf("##### SVA: declare_l3_page\n");
+#endif
+
+    /*
+     * Mark this page frame as an L1 page frame.
+     */
+    page_desc[frame].type = PG_L3;
+    
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr, (page_entry_t *) pml4e);
+}
+#endif
+
+#if NOT_IMPLEMENTED_YET
+/*
+ * Intrinsic: sva_declare_l4_page()
+ *
+ * Description:
+ *  This intrinsic marks the specified physical frame as a Level 1 page table
+ *  frame.  It will zero out the contents of the page frame so that stale
+ *  mappings within the frame are not used by the MMU.
+ *
+ * Inputs:
+ *  frameAddr - The address of the physical page frame that will be used as a
+ *          Level 1 page frame.
+ *  *pde  - the virtual address that accesses the page table from the kernel
+ */
+void
+sva_declare_l4_page (unsigned long frameAddr, pde_t *pde) {
+
+    unsigned long frame = frameAddr/pageSize;
+
+    /*
+     * Mark this page frame as an L1 page frame.
+     */
+    page_desc[frameAddr].type = PG_L1;
+    
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr, (page_entry_t *) pde);
+}
+#endif
+
+#if 0
 /*
  * Called by the memory intialisation process of the kernel once the
  * bootstrap pagetable is populated. 
