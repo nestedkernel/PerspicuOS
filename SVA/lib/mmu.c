@@ -39,7 +39,7 @@
 /* Denotes code that is in for some type of testing but is only temporary */
 #define TMP_TEST_CODE       1
 /* Define whether to enable DEBUG blocks #if statements */
-#define DEBUG               0
+#define DEBUG               1
 
 /*
  *****************************************************************************
@@ -228,6 +228,40 @@ unprotect_paging(void) {
 /* Functions for aiding in declare and updating of page tables */
 
 /*
+ * Function:
+ * Description:
+ * Inputs:
+ */
+static inline void
+page_entry_store (unsigned long *page_entry, unsigned long newVal) {
+    
+    /* Disable page protection so we can write to the referencing table entry */
+    unprotect_paging();
+    
+    /*
+     * Mask out none address portions of frame because this input comes from the
+     * kernel and must be sanitized. Then add the RO flag of the pde referencing
+     * this new page. This is an update type of operation.
+     */
+#if DEBUG
+    printf("\n##### SVA<init_page_entry>: pre-write ");
+    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+#endif
+    
+    /* Write the new value to the page_entry */
+    *page_entry = newVal;
+
+#if DEBUG
+    printf("##### SVA<init_page_entry>: post-write ");
+    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+#endif
+
+    /* Reenable page protection */
+    protect_paging();
+
+}
+
+/*
  * Function: init_page_entry
  *
  * Description:
@@ -246,6 +280,7 @@ static inline void
 init_page_entry (unsigned long frameAddr, unsigned long *page_entry) {
 
     unsigned long rflags;
+    unsigned long pageEntryVal;
 
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
@@ -253,46 +288,21 @@ init_page_entry (unsigned long frameAddr, unsigned long *page_entry) {
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
-    /* Disable page protection so we can write to the referencing table entry */
-
-    /* 
-     * FIXME: I wonder if we may have an issue where this function is called
-     * when the kernel has already disabled paging protection, and our
-     * disable/reenable here may cause some problems in capturing that state?
-     */
-    unprotect_paging();
-    
-    /*
-     * Mask out none address portions of frame because this input comes from the
-     * kernel and must be sanitized. Then add the RO flag of the pde referencing
-     * this new page. This is an update type of operation.
-     */
-#if DEBUG
-    printf("\n##### SVA<init_page_entry>: pre-write ");
-    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
-#endif
-    
 #if NOT_YET_IMPLEMENTED
     /* 
-     * Update the page table entry with the new RO flag. A value of 0 in bit
-     * position 2 configures for no writes.
+     * A value of 0 in bit position 2 configures for no writes.
      */ 
-    *page_entry = (frameAddr & PG_FRAME) & ~PG_RW;
+    pageEntryVal = (frameAddr & PG_FRAME) & ~PG_RW;
 #elif TMP_TEST_CODE
     /*
-     * FIXME:TODO Test code for the unprotect operations, will be eliminated. 
+     * TODO: eliminate later:
+     * Test code for the unprotect operations, will be eliminated. 
      */
-    unsigned long page_entry_val = *page_entry;
-    *page_entry = page_entry_val;
+    pageEntryVal = *page_entry;
 #endif
 
-#if DEBUG
-    printf("##### SVA<init_page_entry>: post-write ");
-    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
-#endif
-
-    /* Reenable page protection */
-    protect_paging();
+    /* Perform the actual store of the value to the page_entry */
+    page_entry_store(page_entry,pageEntryVal);
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -1207,6 +1217,17 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
  */
 void
 sva_update_l1_mapping(pte_t* pteptr, pte_t val) {
+
+
+    ///***** NATHAN TODO: 
+    // just make this code initially directly write the passed in value with no
+    // checks. Have some high level routing though that does:
+    //      if(valid_update())
+    //          update_val_to_bla()
+    //      else
+    //          signal_error()
+    ///////
+
   void* pagetable = get_pagetable();
   unsigned long new_index = pte_val(val) >> PAGE_SHIFT;
 
