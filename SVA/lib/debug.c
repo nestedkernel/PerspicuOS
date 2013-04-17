@@ -17,6 +17,7 @@
 #include <sva/config.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
+#include <sva/util.h>
 #include <machine/frame.h>
 
 /*****************************************************************************
@@ -355,6 +356,24 @@ sva_print_inttable (void) {
     if (interrupt_table[index] != default_interrupt)
       printf ("SVA: %d: %lx\n", index, interrupt_table[index]);
   }
+  return;
+}
+
+void
+sva_checkptr (uintptr_t p) {
+  //
+  // If we're in kernel memory but not above the secure memory region, hit a
+  // breakpoint.
+  //
+#if 0
+  if (p >= 0xffffff8000000000) {
+    if (!(p & 0x0000008000000000u)) {
+      bochsBreak();
+      __asm__ __volatile__ ("int $3\n");
+    }
+  }
+#endif
+
   return;
 }
 
