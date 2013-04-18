@@ -29,13 +29,17 @@
 static inline unsigned char *
 getNextSecureAddress (struct SVAThread * threadp) {
   /* Start of virtual address space used for secure memory */
-  unsigned char * secmemp = (unsigned char *) SECMEMSTART;
+  unsigned char * secmemStartp = (unsigned char *) SECMEMSTART;
+
+  /* Secure memory address to return */
+  unsigned char * secmemp = secmemStartp + threadp->secmemSize;
 
   /*
    * Advance the address by a single page frame and return the value before
    * increment.
    */
-  return secmemp + threadp->secmemSize + X86_PAGE_SIZE;
+  threadp->secmemSize += X86_PAGE_SIZE;
+  return secmemp;
 }
 
 /*
@@ -57,10 +61,10 @@ allocSecureMemory (void) {
   uintptr_t sp;
 
   /* Virtual address assigned to secure memory by SVA */
-  unsigned char * vaddr = 0;
+  unsigned char * vaddrStart = 0;
 
   /* The address of the PML4e page table */
-  pml4e_t * pml4e = 0;
+  pml4e_t * pml4ep = 0;
 
   /*
    * Get the current interrupt context; the arguments will be in it.
@@ -84,6 +88,9 @@ allocSecureMemory (void) {
      * used for private memory.
      */
     for (uintptr_t paddr = sp; paddr < (sp + size); paddr += X86_PAGE_SIZE) {
+      /* Virtual address for the current page to map */
+      unsigned char * vaddr = 0;
+
       /*
        * Assign the memory to live within the secure memory virtual address
        * space.
@@ -91,10 +98,17 @@ allocSecureMemory (void) {
       vaddr = getNextSecureAddress(threadp);
 
       /*
+       * If this is the virtual address of the first page, record it so that we
+       * can return it to the caller.
+       */
+      if (!vaddrStart)
+        vaddrStart = vaddr;
+
+      /*
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
-      pml4e = mapSecurePage (vaddr, paddr);
+      pml4ep = mapSecurePage (vaddr, paddr);
 
       /*
        * If this is the first piece of secure memory that we've allocated,
@@ -104,7 +118,7 @@ allocSecureMemory (void) {
        * context switches.
        */
       if (!(threadp->secmemPML4ep)) {
-        threadp->secmemPML4ep = pml4e;
+        threadp->secmemPML4ep = pml4ep;
       }
 
       /*
@@ -116,15 +130,16 @@ allocSecureMemory (void) {
     /*
      * Zero out the memory.
      */
-    memset (vaddr, 0, size);
+    memset (vaddrStart, 0, size);
   }
 
   /*
    * Set the return value in the Interrupt Context to be a pointer to the newly
    * allocated memory.
    */
-  icp->rax = (uintptr_t) vaddr;
-  return vaddr;
+  printf ("SVA: allocSecureMemory: Returning %lx\n", vaddrStart);
+  icp->rax = (uintptr_t) vaddrStart;
+  return vaddrStart;
 }
 
 /*
