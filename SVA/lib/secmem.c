@@ -123,7 +123,6 @@ allocSecureMemory (void) {
        * context switches.
        */
       if (firstSecAlloc) {
-        printf ("SVA: xxx: Creating %lx\n", pml4e);
         threadp->secmemPML4e = pml4e;
       }
 
@@ -143,7 +142,6 @@ allocSecureMemory (void) {
    * Set the return value in the Interrupt Context to be a pointer to the newly
    * allocated memory.
    */
-  printf ("SVA: allocSecureMemory: Returning %lx\n", vaddrStart);
   icp->rax = (uintptr_t) vaddrStart;
   return vaddrStart;
 }
