@@ -1331,7 +1331,6 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
    * Get the most recent interrupt context.
    */
   sva_icontext_t * ep = getCPUState()->newCurrentIC;
-  printf ("SVA: sva_reinit_icontext: %p\n", ep);
 
   /*
    * Check the memory.
