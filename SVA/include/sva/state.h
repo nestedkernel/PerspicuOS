@@ -214,9 +214,6 @@ typedef struct {
 
   /* Pointer to invoke frame */
   struct invoke_frame * ifp;
-
-  /* PML4e used for mapping secure memory */
-  pml4e_t secmemPML4e;
 } sva_integer_state_t;
 
 /* The maximum number of interrupt contexts per CPU */
@@ -243,8 +240,8 @@ struct SVAThread {
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;
 
-  /* Pointer to secure memory page table */
-  pml4e_t * secmemPML4ep;
+  /* PML4e used for mapping secure memory */
+  pml4e_t secmemPML4e;
 
   /* Amount of contiguous, allocated secure memory */
   uintptr_t secmemSize;

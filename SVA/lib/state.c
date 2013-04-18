@@ -795,9 +795,17 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * to ensure that we're not accessing stale local variables.
      */
     cpup = getCPUState();
-    if (cpup->currentThread->secmemSize) {
-      pml4e_t pml4e = cpup->currentThread->integerState.secmemPML4e;
-      *(cpup->currentThread->secmemPML4ep) = pml4e;
+    oldThread = cpup->currentThread;
+    if (oldThread->secmemSize) {
+      /*
+       * Get a pointer into the page tables for the secure memory region.
+       */
+      pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
+
+      /*
+       * Restore the PML4E entry for the secure memory region.
+       */
+      *secmemp = oldThread->secmemPML4e;
     }
 
     /*
@@ -819,14 +827,14 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    */
   if (oldThread->secmemSize) {
     /*
-     * Save the old PML4e mapping for the secure memory region.
+     * Get a pointer into the page tables for the secure memory region.
      */
-    old->secmemPML4e = *(oldThread->secmemPML4ep);
+    pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
 
     /*
      * Mark the secure memory is unmapped in the page tables.
      */
-    *(oldThread->secmemPML4ep) &= ~(PTE_PRESENT);
+    *secmemp &= ~(PTE_PRESENT);
 
     /*
      * Flush the secure memory page mappings.

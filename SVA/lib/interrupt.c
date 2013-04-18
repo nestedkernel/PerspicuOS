@@ -95,7 +95,6 @@ findNextFreeThread (void) {
       newThread->integerState.valid = 0;
       newThread->savedICIndex = 0;
       newThread->ICFPIndex = 0;
-      newThread->secmemPML4ep = 0;
       newThread->secmemSize = 0;
 
       /*

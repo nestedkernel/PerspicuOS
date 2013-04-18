@@ -65,6 +65,15 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
 #define SECMEMSTART 0xffffff0000000000u
 #define SECMEMEND   0xffffff8000000000u
 
+/* Mask to get the proper number of bits from the virtual address */
+static const uintptr_t vmask = 0x0000000000000fffu;
+
+/*
+ * Offset into the PML4E at which the mapping for the secure memory region can
+ * be found.
+ */
+static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
+
 /*
  * ===========================================================================
  * BEGIN FreeBSD CODE BLOCK
@@ -117,7 +126,7 @@ typedef uintptr_t pte_t;
 typedef uintptr_t page_entry_t;
 
 extern uintptr_t getPhysicalAddr (void * v);
-extern pml4e_t * mapSecurePage (unsigned char * v, uintptr_t paddr);
+extern pml4e_t mapSecurePage (unsigned char * v, uintptr_t paddr);
 extern void unmapSecurePage (unsigned char * v);
 
 /*
@@ -157,6 +166,53 @@ sva_mm_flush_tlb (void * address) {
   __asm__ __volatile__ ("invlpg %0" : : "m" (address) : "memory");
   return;
 }
+
+/*
+ *****************************************************************************
+ * SVA utility functions needed by multiple compilation units
+ *****************************************************************************
+ */
+
+/*
+ * Function: getVirtual()
+ *
+ * Description:
+ *  This function takes a physical address and converts it into a virtual
+ *  address that the SVA VM can access.
+ *
+ *  In a real system, this is done by having the SVA VM create its own
+ *  virtual-to-physical mapping of all of physical memory within its own
+ *  reserved portion of the virtual address space.  However, for now, we'll
+ *  take advantage of FreeBSD's direct map of physical memory so that we don't
+ *  have to set one up.
+ */
+static inline unsigned char *
+getVirtual (uintptr_t physical) {
+  return (unsigned char *)(physical | 0xfffffe0000000000u);
+}
+
+/*
+ * Function: get_pagetable()
+ *
+ * Description:
+ *  Return a physical address that can be used to access the current page table.
+ */
+static inline unsigned char *
+get_pagetable (void) {
+  /* Value of the CR3 register */
+  uintptr_t cr3;
+
+  /* Get the page table value out of CR3 */
+  __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (cr3));
+
+  /*
+   * Shift the value over 12 bits.  The lower-order 12 bits of the page table
+   * pointer are assumed to be zero, and so they are reserved or used by the
+   * hardware.
+   */
+  return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
+}
+
 
 #endif
 

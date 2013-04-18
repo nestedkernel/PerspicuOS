@@ -66,9 +66,6 @@ enum page_type {
     PG_L4
 };
 
-/* Mask to get the proper number of bits from the virtual address */
-static const uintptr_t vmask = 0x0000000000000fffu;
-
 /* Mask to get the address bits out of a PTE, PDE, etc. */
 static const uintptr_t addrmask = 0x000ffffffffff000u;
 
@@ -145,46 +142,6 @@ const unsigned PAGESHIFT = 12;
  * Define helper functions for MMU operations
  *****************************************************************************
  */
-
-/*
- * Function: getVirtual()
- *
- * Description:
- *  This function takes a physical address and converts it into a virtual
- *  address that the SVA VM can access.
- *
- *  In a real system, this is done by having the SVA VM create its own
- *  virtual-to-physical mapping of all of physical memory within its own
- *  reserved portion of the virtual address space.  However, for now, we'll
- *  take advantage of FreeBSD's direct map of physical memory so that we don't
- *  have to set one up.
- */
-static inline unsigned char *
-getVirtual (uintptr_t physical) {
-  return (unsigned char *)(physical | 0xfffffe0000000000u);
-}
-
-/*
- * Function: get_pagetable()
- *
- * Description:
- *  Return a physical address that can be used to access the current page table.
- */
-static inline unsigned char *
-get_pagetable (void) {
-  /* Value of the CR3 register */
-  uintptr_t cr3;
-
-  /* Get the page table value out of CR3 */
-  __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (cr3));
-
-  /*
-   * Shift the value over 12 bits.  The lower-order 12 bits of the page table
-   * pointer are assumed to be zero, and so they are reserved or used by the
-   * hardware.
-   */
-  return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
-}
 
 /*
  * Function: protect_paging()
@@ -572,10 +529,13 @@ releaseUse (uintptr_t * ptp) {
  *  paddr - The physical address of the page frame to map.
  *
  * Return value:
- *  A pointer to the PML4e entry in the page table is returned.
+ *  The value of the PML4E entry mapping the secure memory region is returned.
  */
-pml4e_t *
+uintptr_t
 mapSecurePage (unsigned char * v, uintptr_t paddr) {
+  /* PML4e value for the secure memory region */
+  pml4e_t pml4eVal;
+
   /*
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
@@ -586,7 +546,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     /* Page table page index */
     unsigned int ptindex;
 
-    printf ("SVA: mapSecurePage: No PML4E!\n");
+    printf ("SVA: mapSecurePage: No PML4E: %lx\n", pml4e);
 
     /* Fetch a new page table page */
     ptindex = allocPTPage ();
@@ -601,7 +561,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Enable writing to the virtual address space used for secure memory.
    */
-  *pml4e |= PTE_CANUSER;
+  pml4eVal = (*pml4e |= PTE_CANUSER);
 
   /*
    * Get the PDPTE entry (or add it if it is not present).
@@ -680,7 +640,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * Note that we've added another translation to the pde.
    */
   updateUses (pte);
-  return pml4e;
+  return pml4eVal;
 }
 
 /*
@@ -891,8 +851,15 @@ sva_mm_load_pgtable (void * pg) {
    */
   struct SVAThread * threadp = getCPUState()->currentThread;
   if (threadp->secmemSize) {
-    pml4e_t pml4e = threadp->integerState.secmemPML4e;
-    *(threadp->secmemPML4ep) = pml4e;
+    /*
+     * Get a pointer into the page tables for the secure memory region.
+     */
+    pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
+
+    /*
+     * Restore the PML4E entry for the secure memory region.
+     */
+    *secmemp = threadp->secmemPML4e;
   }
 
   return;

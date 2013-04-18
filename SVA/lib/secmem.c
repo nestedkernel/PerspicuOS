@@ -64,7 +64,7 @@ allocSecureMemory (void) {
   unsigned char * vaddrStart = 0;
 
   /* The address of the PML4e page table */
-  pml4e_t * pml4ep = 0;
+  pml4e_t pml4e = 0;
 
   /*
    * Get the current interrupt context; the arguments will be in it.
@@ -77,6 +77,11 @@ allocSecureMemory (void) {
    * Get the size out of the interrupt context.
    */
   uintptr_t size = icp->rdi;
+
+  /*
+   * Determine if this is the first secure memory allocation.
+   */
+  unsigned char firstSecAlloc = (threadp->secmemSize == 0);
 
   /*
    * Get the memory from the operating system.  Note that the OS provides the
@@ -108,7 +113,7 @@ allocSecureMemory (void) {
        * Map the memory into a part of the address space reserved for secure
        * memory.
        */
-      pml4ep = mapSecurePage (vaddr, paddr);
+      pml4e = mapSecurePage (vaddr, paddr);
 
       /*
        * If this is the first piece of secure memory that we've allocated,
@@ -117,8 +122,9 @@ allocSecureMemory (void) {
        * where this entry is so that it can quickly enable and disable it on
        * context switches.
        */
-      if (!(threadp->secmemPML4ep)) {
-        threadp->secmemPML4ep = pml4ep;
+      if (firstSecAlloc) {
+        printf ("SVA: xxx: Creating %lx\n", pml4e);
+        threadp->secmemPML4e = pml4e;
       }
 
       /*
