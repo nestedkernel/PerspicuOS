@@ -26,11 +26,16 @@ namespace {
   STATISTIC (LSChecks, "Load/Store Instrumentation Added");
 }
 
+#if 0
 /* Mask to determine if we use the original value or the masked value */
 static const uintptr_t checkMask = 0xffffff0000000000u;
+#else
+/* Mask to determine if we use the original value or the masked value */
+static const uintptr_t checkMask = 0x00000000ffffff00;
+#endif
 
 /* Mask to set proper lower-order bits */
-static const uintptr_t setMask = 0x0000008000000000u;
+static const uintptr_t setMask   = 0x0000008000000000u;
 
 namespace llvm {
   //
@@ -56,6 +61,9 @@ namespace llvm {
         AU.setPreservesCFG();
         return;
       }
+
+     // Initialization method
+     bool doInitialization (Module & M);
 
      // Visitor methods
      void visitLoadInst  (LoadInst  & LI);
@@ -140,6 +148,23 @@ SFI::isTriviallySafe (Value * Ptr, Type * MemType) {
 }
 
 //
+// Method: doInitialization()
+//
+// Description:
+//  This method is called by the PassManager to permit this pass to perform one
+//  time global initialization.  In this particular pass, we will add a
+//  declaration for a utility function.
+//
+bool
+SFI::doInitialization (Module & M) {
+  M.getOrInsertFunction ("sva_checkptr",
+                         Type::getVoidTy (M.getContext()),
+                         Type::getInt64Ty (M.getContext()),
+                         0);
+  return true;
+}
+
+//
 // Method: addBitMasking()
 //
 // Description:
@@ -156,27 +181,51 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
   Value * CheckMask = ConstantInt::get (IntPtrTy, checkMask);
   Value * SetMask   = ConstantInt::get (IntPtrTy, setMask);
   Value * Zero      = ConstantInt::get (IntPtrTy, 0u);
+  Value * ThirtyTwo = ConstantInt::get (IntPtrTy, 32u);
 
+  //
+  // Convert the pointer into an integer and then shift the higher order bits
+  // into the lower-half of the integer.  Bit-masking operations can use
+  // constant operands, reducing register pressure, if the operands are 32-bits
+  // or smaller.
+  //
+  Value * CastedPointer = new PtrToIntInst (Pointer, IntPtrTy, "ptr", &I);
+  Value * PtrHighBits = BinaryOperator::Create (Instruction::LShr,
+                                                CastedPointer,
+                                                ThirtyTwo,
+                                                "highbits",
+                                                &I);
+                                                    
+#if 1
+#if 1
   //
   // Create an instruction to mask off the proper bits to see if the pointer
   // is within the secure memory range.
   //
-  Value * CastedPointer = new PtrToIntInst (Pointer, IntPtrTy, "ptr", &I);
   Value * CheckMasked = BinaryOperator::Create (Instruction::And,
-                                                CastedPointer,
+                                                PtrHighBits,
                                                 CheckMask,
                                                 "checkMask",
                                                 &I);
+#endif
 
   //
   // Compare the masked pointer to the mask.  If they're the same, we need to
   // set that bit.
   //
+#if 1
   Value * Cmp = new ICmpInst (&I,
                               CmpInst::ICMP_EQ,
                               CheckMasked,
                               CheckMask,
                               "cmp");
+#else
+  Value * Cmp = new ICmpInst (&I,
+                              CmpInst::ICMP_ULE,
+                              CheckMask,
+                              CastedPointer,
+                              "cmp");
+#endif
 
   //
   // Create the select instruction that, at run-time, will determine if we use
@@ -194,6 +243,13 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
                                            "setMask",
                                            &I);
   return (new IntToPtrInst (Masked, Pointer->getType(), "masked", &I));
+#else
+  Module * M = I.getParent()->getParent()->getParent();
+  Function * CheckFunction = cast<Function>(M->getFunction ("sva_checkptr"));
+  assert (CheckFunction && "CheckFunction not found!\n");
+  CallInst::Create (CheckFunction, CastedPointer, "", &I);
+  return Pointer;
+#endif
 }
 
 //
