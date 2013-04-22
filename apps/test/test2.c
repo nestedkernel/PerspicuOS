@@ -7,9 +7,9 @@ main (int argc, char ** argv) {
   unsigned index;
   unsigned int status;
 
-  wait (&status);
   for (index = 0; index < 10; ++index) {
     printf ("Address: %p %c\n", &(ptr[index]), ptr[index]);
+    fflush (stdout);
   }
 
   return 0;

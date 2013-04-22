@@ -21,6 +21,7 @@ main (int argc, char ** argv) {
    */
   size = strtoul (argv[1], NULL, 0);
   printf ("Secure Memory size: %lx\n", size);
+  fflush (stdout);
 
   /*
    * Call the secure memory allocator.
@@ -29,18 +30,19 @@ main (int argc, char ** argv) {
   printf ("Secure Memory at %p\n", (void *)ptr);
   fflush (stdout);
 
-
   /*
    * Read from the secure memory.
    */
+  __asm__ __volatile__ ("xchg %bx, %bx\n");
   printf ("Reading Secure Memory at %p\n", (void *)ptr);
   fflush (stdout);
   for (index = 0; index < size; ++index) {
-    printf ("Address: %p\n", &(ptr[index]));
+    printf ("Address: %p\n", ptr + index);
     fflush (stdout);
     sum += ptr[index];
   }
   printf ("%d\n", sum);
+  fflush (stdout);
 
   /*
    * Write to the secure memory.
@@ -48,12 +50,14 @@ main (int argc, char ** argv) {
   printf ("Writing Secure Memory at %p\n", (void *)ptr);
   fflush (stdout);
   for (index = 0; index < size; ++index) {
-    printf ("Address: %p\n", &(ptr[index]));
+    printf ("Address: %p\n", ptr + index);
+    fflush (stdout);
     ptr[index] = 'c';
   }
   ptr[5] = 0;
   for (index = 0; index < size; ++index) {
-    printf ("Address: %p %c\n", &(ptr[index]), ptr[index]);
+    printf ("Address: %p %c\n", ptr + index, ptr[index]);
+    fflush (stdout);
   }
 
   /*
