@@ -117,6 +117,9 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
       Inliner = 0;
     }
     addExtensionsToPM(EP_EnabledOnOptLevel0, MPM);
+#if 0
+    MPM.add (createSFIPass ());
+#endif
     return;
   }
 
@@ -128,9 +131,6 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
   if (!DisableUnitAtATime) {
     addExtensionsToPM(EP_ModuleOptimizerEarly, MPM);
 
-#if 0
-    MPM.add (createSFIPass ());
-#endif
     MPM.add(createGlobalOptimizerPass());     // Optimize out global vars
 
     MPM.add(createIPSCCPPass());              // IP SCCP
@@ -217,6 +217,9 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
       MPM.add(createConstantMergePass());     // Merge dup global constants
   }
   addExtensionsToPM(EP_OptimizerLast, MPM);
+#if 0
+  MPM.add (createSFIPass ());
+#endif
 }
 
 void PassManagerBuilder::populateLTOPassManager(PassManagerBase &PM,
