@@ -1,4 +1,5 @@
 /*===- debug.c - SVA Execution Engine  ------------------------------------===
+  RETTARGET
  * 
  *                        Secure Virtual Architecture
  *
@@ -43,7 +44,7 @@ assertGoodIC (void) {
    */
   sva_icontext_t * ip;
   unsigned char found = 0;
-  for (ip = cpup->currentThread->interruptContexts; ip < cpup->currentThread->interruptContexts + maxIC; ++ip) {
+  for (ip = cpup->currentThread->interruptContexts; ip <= cpup->currentThread->interruptContexts + maxIC; ++ip) {
     if (ip == p) {
       found = 1;
       break;
@@ -57,7 +58,7 @@ assertGoodIC (void) {
 
   if (p->valid != 1) {
     sva_print_icontext ("assertGoodIC");
-    panic ("SVA: assertGoodIC: Bad IC\n");
+    panic ("SVA: assertGoodIC: Bad IC: %lx\n", p->valid);
   }
   return;
 }
