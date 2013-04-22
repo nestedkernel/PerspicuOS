@@ -38,6 +38,10 @@
 using namespace clang;
 using namespace llvm;
 
+namespace llvm {
+  extern FunctionPass * createSFIPass (void);
+}
+
 namespace {
 
 class EmitAssemblyHelper {
@@ -207,6 +211,14 @@ void EmitAssemblyHelper::CreatePasses() {
  
   // Set up the per-function pass manager.
   FunctionPassManager *FPM = getPerFunctionPasses();
+
+#if 0
+  //
+  // Add SVA transform passes.
+  //
+  FPM->add (createSFIPass ());
+#endif
+  
   if (CodeGenOpts.VerifyModule)
     FPM->add(createVerifierPass());
   PMBuilder.populateFunctionPassManager(*FPM);
