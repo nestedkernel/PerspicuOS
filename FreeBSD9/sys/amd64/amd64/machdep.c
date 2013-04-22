@@ -497,6 +497,7 @@ sys_sigreturn(td, uap)
 #if 0
 	pcb = td->td_pcb;
 	p = td->td_proc;
+#endif
 
 	error = copyin(uap->sigcntxp, &uc, sizeof(uc));
 	if (error != 0) {
@@ -504,7 +505,6 @@ sys_sigreturn(td, uap)
 		    p->p_pid, td->td_name);
 		return (error);
 	}
-#endif
 	ucp = &uc;
 #if 0
 	if ((ucp->uc_mcontext.mc_flags & ~_MC_FLAG_MASK) != 0) {
