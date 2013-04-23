@@ -9,6 +9,8 @@
  *
  * This file implements a proof of concept rootkit which tries to attack
  * applications on the Virtual Ghost system.
+ *
+ * This code is based on the examples in Designing BSD Rootkits by Joseph Kong.
  *===----------------------------------------------------------------------===
  */
 
