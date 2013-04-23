@@ -1,3 +1,4 @@
+CC=gcc
 KMOD= rootkit
 SRCS= rootkit.c
 
