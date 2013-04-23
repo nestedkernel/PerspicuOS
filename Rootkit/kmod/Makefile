@@ -1,5 +1,5 @@
 CC=clang
 KMOD= rootkit
-SRCS= rootkit.c
+SRCS= rootkit.c injected.S
 
 .include <bsd.kmod.mk>

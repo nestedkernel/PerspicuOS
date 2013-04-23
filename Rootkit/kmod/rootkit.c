@@ -87,6 +87,10 @@ insertMaliciousCode (struct thread * td) {
   printf ("Rootkit: error = %d: memory at %lx\n", error, td->td_retval[0]);
 
   //
+  // TODO: Install malicious code into the allocated memory.
+  //
+
+  //
   // Mark that we've inserted the malicious code.
   //
   injected = 1;
