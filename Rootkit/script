@@ -2,5 +2,6 @@
 
 mount /dev/md0p2 /mnt
 cp kmod/rootkit.ko /mnt
+cp hack/hack /mnt/bin
 umount /mnt
 
