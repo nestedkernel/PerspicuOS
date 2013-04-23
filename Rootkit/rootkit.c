@@ -1,7 +1,7 @@
 #include <sys/param.h>
 #include <sys/module.h>
 #include <sys/kernel.h>
-#include <sys/systm.H>
+#include <sys/systm.h>
 
 static int
 load (struct module * module, int cmd, void * arg) {
