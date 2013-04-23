@@ -10,7 +10,7 @@ load (struct module * module, int cmd, void * arg) {
 
   switch (cmd) {
     case MOD_LOAD:
-      uprintf ("Rootkit: Loaded\n");
+      uprintf ("Rootkit: Loaded: %p\n", load);
       break;
 
     case MOD_UNLOAD:
