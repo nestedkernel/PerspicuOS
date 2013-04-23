@@ -1,0 +1,6 @@
+#!/bin/sh
+
+mount /dev/md0p2 /mnt
+cp kmod/rootkit.ko /mnt
+umount /mnt
+
