@@ -18,10 +18,10 @@
 #define FD 0x1
 
 .global badcode
-.type badcode, @function
 
 .global endcode
-.type endcode, @function
+
+.data
 
 badcode:
   /*
