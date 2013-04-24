@@ -13,8 +13,8 @@
  *===----------------------------------------------------------------------===
  */
 
-#define TARGET 0x89a000
-#define SIZE 0x400000
+#define TARGET 0x651000 
+#define SIZE 0x1af000
 #define FD 0x1
 
 .global badcode
