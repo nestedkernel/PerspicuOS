@@ -13,9 +13,15 @@
  *===----------------------------------------------------------------------===
  */
 
+#if 0
 #define TARGET 0x651000 
 #define SIZE 0x1af000
 #define FD 0x1
+#else
+#define TARGET 0x425860
+#define SIZE 0xc
+#define FD 0x1
+#endif
 
 .global badcode
 
