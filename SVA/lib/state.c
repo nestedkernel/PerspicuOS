@@ -95,6 +95,24 @@ loadICFPState (void) {
   return;
 }
 
+void
+installNewPushTarget (void * f) {
+  /* Get the current SVA thread */
+  struct SVAThread * threadp = getCPUState()->currentThread;
+
+  //
+  // Make sure we have room for another target.
+  //
+  if (threadp->numPushTargets == maxPushTargets)
+    return;
+
+  //
+  // Add the new target.
+  //
+  threadp->validPushTargets[(threadp->numPushTargets)++] = f;
+  return;
+}
+
 /*****************************************************************************
  * Interrupt Context Intrinsics
  ****************************************************************************/

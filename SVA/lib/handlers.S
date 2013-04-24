@@ -723,7 +723,7 @@ INTERRUPT(121)
 INTERRUPT(122)
 INTERRUPT(123)
 INTERRUPT(124)
-INTERRUPT(125)
+TRAP(125) /* Install Push Target Trap */
 TRAP(126) /* Secure Memory Free Trap */
 TRAP(127) /* Secure Memory Allocation Trap */
 INTERRUPT(128)
