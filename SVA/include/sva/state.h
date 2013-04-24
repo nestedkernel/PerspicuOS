@@ -219,6 +219,9 @@ typedef struct {
 /* The maximum number of interrupt contexts per CPU */
 static const unsigned char maxIC = 32;
 
+/* The maximum number of valid function targets */
+static const unsigned char maxPushTargets = 16;
+
 /*
  * Struct: SVAThread
  *
@@ -236,6 +239,12 @@ struct SVAThread {
 
   /* Floating point states associated with Interrput Contexts */
   sva_fp_state_t ICFP[maxIC + 1];
+
+  /* Function pointers valid for sva_ipush_function */
+  void * validPushTargets[maxPushTargets];
+
+  /* Number of push targets */
+  unsigned char numPushTargets;
 
   /* Integer state for this thread for context switching */
   sva_integer_state_t integerState;

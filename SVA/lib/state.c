@@ -311,7 +311,28 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
   /*
    * Get the most recent interrupt context.
    */
+  struct SVAThread * threadp = getCPUState()->currentThread;
   sva_icontext_t * ep = getCPUState()->newCurrentIC;
+
+  /*
+   * Verify that the target function is in the list of valid function targets.
+   * Note that if no push targets have been specified, then any target is valid.
+   */
+  if (threadp->numPushTargets) {
+    unsigned index = 0;
+    unsigned char found = 0;
+    for (index = 0; index < threadp->numPushTargets; ++index) {
+      if (threadp->validPushTargets[index] == newf) {
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found) {
+      sva_exit_critical (rflags);
+      return;
+    }
+  }
 
   /*
    * Check the memory.

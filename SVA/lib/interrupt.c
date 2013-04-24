@@ -96,6 +96,7 @@ findNextFreeThread (void) {
       newThread->savedICIndex = 0;
       newThread->ICFPIndex = 0;
       newThread->secmemSize = 0;
+      newThread->numPushTargets = 0;
 
       /*
        * Use the next-to-last interrupt context in the list as the first
