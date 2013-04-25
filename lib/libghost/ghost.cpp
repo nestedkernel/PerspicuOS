@@ -129,4 +129,9 @@ _fstat(int fd, struct stat *sb) {
   return ret;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// Define weak aliases to make the wrappers appear as the actual system call
+//////////////////////////////////////////////////////////////////////////////
+
+void accept () __attribute__ ((weak, alias ("_accept")));
 void fstat () __attribute__ ((weak, alias ("_fstat")));
