@@ -18,8 +18,10 @@
 #include <sys/mman.h>
 #include <sys/un.h>
 
+#include <cstdlib>
+
 /* Size of traditional memory buffer */
-static const uintptr_t tradlen = 4096;
+static uintptr_t tradlen = 4096;
 
 /* Buffer containing the traditional memory */
 static unsigned char * tradBuffer;
@@ -27,17 +29,44 @@ static unsigned char * tradBuffer;
 /* Pointer into the traditional memory buffer stack */
 static unsigned char * tradsp;
 
+//
+// Function: ghostinit()
+//
+// Description:
+//  This function initializes the ghost run-time.  It should be called in a
+//  program's main() function.
+//
+void
 ghostinit (void) {
-  tradBuffer = mmap(0, tradlen, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
+  tradBuffer = (unsigned char *) mmap(0, tradlen, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
   if (tradBuffer == MAP_FAILED) {
     abort ();
   }
 
   tradsp = tradBuffer;
+  return;
 }
 
+template<typename T>
+static inline T *
+allocateTradMem (unsigned char * & framePointer) {
+  //
+  // Save the current location of the traditional memory stack pointer.
+  //
+  framePointer = tradsp;
+
+  //
+  // Allocate memory on the traditional memory stack.
+  //
+  tradsp += sizeof (T);
+  return (T)tradsp;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Wrappers for system calls
+//////////////////////////////////////////////////////////////////////////////
 int
-accept (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
+accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   struct args {
     struct sockaddr_un addr;
     socklen_t addrlen;
@@ -45,8 +74,10 @@ accept (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
 
   unsigned char * tradbp = tradsp;
   tradsp += sizeof (struct args);
+  return 0;
 }
 
+#if 0
 int
 accept2 (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
   unsigned char * tradbp = tradsp;
@@ -55,3 +86,4 @@ accept2 (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
     struct sockaddr_un addr;
   };
 }
+#endif
