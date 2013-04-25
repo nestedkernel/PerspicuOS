@@ -109,6 +109,7 @@ allocAndCopy (unsigned char * & framePointer, T* data) {
 // Wrappers for system calls
 //////////////////////////////////////////////////////////////////////////////
 
+#if 0
 int
 _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   int ret;
@@ -125,6 +126,7 @@ _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   tradsp = framep;
   return ret;
 }
+#endif
 
 int
 _fstat(int fd, struct stat *sb) {
