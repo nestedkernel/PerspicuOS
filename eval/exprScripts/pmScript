@@ -1,0 +1,16 @@
+#!/bin/sh
+
+#
+# This script runs the postmark benchmarks
+#
+
+# Create the directory in which postmark will do its business
+mkdir -p /postmark-files
+mkdir -p /usr/postmark-files
+
+# Run postmark on the hard disk
+postmark < PMHDInput > PMHDResults
+
+# Run postmark on the SSD
+postmark < PMSSDInput > PMSSDResults
+

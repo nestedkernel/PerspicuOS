@@ -1,0 +1,7 @@
+set transactions 100
+set location /usr/postmark-files
+show
+run
+run
+run
+
