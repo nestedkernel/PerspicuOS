@@ -57,6 +57,7 @@
 #define SVA_MMU_H
 
 #include <sys/types.h>
+#include "mmu_types.h"
 
 /* Size of the smallest page frame in bytes */
 static const uintptr_t X86_PAGE_SIZE = 4096u;
@@ -73,6 +74,75 @@ static const uintptr_t vmask = 0x0000000000000fffu;
  * be found.
  */
 static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
+
+/*
+ * Assert macro for SVA
+ */
+#define SVA_ASSERT(res,string) if(!res) panic(string)
+
+/*
+ *****************************************************************************
+ * Define structures used in the SVA MMU interface.
+ *****************************************************************************
+ */
+
+/*
+ * Frame usage constants
+ */
+/* Enum representing the four page types */
+enum page_type_t {
+    PG_UNUSED,
+    PG_L1,          /* Defines a page being used as an L1 PTP */
+    PG_L2,          /* Defines a page being used as an L2 PTP */
+    PG_L3,          /* Defines a page being used as an L3 PTP */
+    PG_L4,          /* Defines a page being used as an L4 PTP */
+    PG_LEAF,    /* TODO: only a temporary listing */
+    PG_TKDATA,  /* TODO don't care about */    /* Defines a kernel data page */
+    PG_TUDATA,  /* TODO don't care about */    /* Defines a user data page */
+    PG_CODE,        /* Defines a code page */
+    PG_STACK,   /* TODO don't care about */
+    PG_IO,      /* TODO don't care about */
+    PG_SVA,         /* Defines an SVA system page */
+    PG_SECMEM,      /* Defines a secure page */
+};
+
+/* Mask to get the address bits out of a PTE, PDE, etc. */
+static const uintptr_t addrmask = 0x000ffffffffff000u;
+
+/*
+ * Struct: page_desc_t
+ *
+ * Description:
+ *  There is one element of this structure for each physical page of memory
+ *  in the system.  It records information about the physical memory (and the
+ *  data stored within it) that SVA needs to perform its MMU safety checks.
+ */
+typedef struct page_desc_t {
+    /* Type of frame */
+    enum page_type_t type;
+
+    /* State of page: value of != 0 is active and 0 is inactive */
+    unsigned active : 1;
+
+    /* Number of times a page is mapped */
+    unsigned count : 12;
+
+    /* Number of times a page is used as a l1 page */
+    unsigned l1_count : 5;
+
+    /* Number of times a page is used as a l2 page (unused in non-PAE) */
+    unsigned l2_count : 2;
+
+    /* Is this page a L1 in user-space? */
+    unsigned l1_user : 1;
+
+    /* Is this page a L1 in kernel-space? */
+    unsigned l1_kernel : 1;
+
+    /* Is this page a user page? */
+    unsigned user : 1;
+} page_desc_t;
+
 
 /*
  * ===========================================================================
@@ -113,69 +183,36 @@ static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
  * ===========================================================================
  */
 
-/*
- *****************************************************************************
- * Define structures used in the SVA MMU interface.
- *****************************************************************************
- */
-typedef uintptr_t cr3_t;
-typedef uintptr_t pml4e_t;
-typedef uintptr_t pdpte_t;
-typedef uintptr_t pde_t;
-typedef uintptr_t pte_t;
-typedef uintptr_t page_entry_t;
-
 extern uintptr_t getPhysicalAddr (void * v);
 extern pml4e_t mapSecurePage (unsigned char * v, uintptr_t paddr);
 extern void unmapSecurePage (unsigned char * v);
 
 /*
  *****************************************************************************
- * SVA intrinsics implemented in the library
+ * SVA Implementation Function Prototypes
  *****************************************************************************
  */
-extern void sva_mm_load_pgtable (void * pg);
-extern void sva_declare_l1_page (unsigned long frame, pde_t *pde);
-extern void sva_declare_l2_page (unsigned long frame, pdpte_t *pdpte);
-extern void sva_declare_l3_page (unsigned long frame, pml4e_t *pml4e);
-extern void sva_declare_l4_page (unsigned long frame, pml4e_t *pml4e);
-extern void sva_update_l1_mapping (pte_t * ptePtr, page_entry_t val);
-extern void sva_update_l2_mapping (pde_t * pdePtr, page_entry_t val);
-extern void sva_update_l3_mapping (pdpte_t * pdptePtr, page_entry_t val);
-extern void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val);
-
-/*
- *****************************************************************************
- * SVA intrinsics implemented as inline functions
- *****************************************************************************
- */
-
-/*
- * Function: sva_mm_save_pgtable()
- *
- * Description:
- *  Get the current page table.
- */
-static inline void *
-sva_mm_save_pgtable (void)
-{
-  void * p;
-  __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (p));
-  
-  return p;
-}
-
-static inline void
-sva_mm_flush_tlb (void * address) {
-  __asm__ __volatile__ ("invlpg %0" : : "m" (address) : "memory");
-  return;
-}
+void init_mmu(void);
+void init_leaf_page_from_mapping(page_entry_t val);
 
 /*
  *****************************************************************************
  * SVA utility functions needed by multiple compilation units
  *****************************************************************************
  */
+
+/*
+ * Description:
+ *  Given a page table entry value, return the page description associate with
+ *  the frame being addressed in the mapping.
+ *
+ * Inputs:
+ *  mapping: the mapping with the physical address of the referenced frame
+ *
+ * Return:
+ *  Pointer to the page_desc for this frame
+ */
+page_desc_t * getPageDescPtr(unsigned long mapping);
 
 /*
  * Function: getVirtual()
@@ -217,6 +254,113 @@ get_pagetable (void) {
   return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
 }
 
+/*
+ *****************************************************************************
+ * MMU declare, update, and verification helper routines
+ *****************************************************************************
+ */
+
+#if 0
+/*
+ * Function: isInvalidMappingOrder
+ *
+ * Description: This function verifies that the mapping being inserted is
+ *      correct by checking that the va address being mapped into this
+ *      particular page table entry should be in that address location.
+ *
+ *      To prove that we have a valid ordering we can just verify that the
+ *      update is being applied to the correct page table (at any level) and
+ *      that the particuler page table entry (at any level) is at the index
+ *      defined by the virtual address.
+ *
+ * Inputs:
+ *  
+ */
+static inline int 
+isInvalidMappingOrder (page_desc_t pgDesc) {
+    /* 
+     * Check that we have the correct page table for the given VA and teh
+     * active set of MMU mappings.
+     */
+    if (updatePageFrame != expectedPageFrameForVA(va)) {
+        return false;
+    }
+
+    /*
+     * Check that we have the correct index into the given page table from the
+     * virtual address
+     */
+    else if (pteIndex != expectedPTEIndex(va)) {
+        return false;
+    } else {
+        return true;
+    }
+}
+#endif
+
+#if 0
+static inline uintptr_t
+pageVA(page_desc_t pg){
+    return getVirtual(pg.physAddress);    
+}
+#endif
+
+/*
+ * Function: readOnlyPage
+ *
+ * Description: 
+ *  This function determines whether or not the given page descriptor
+ *  references a page that should be marked as read only. We set this for pages
+ *  of type: l4,l3,l2,l1, code, and TODO: is this all of them?
+ *
+ * Inputs:
+ *  pg  - page descriptor to check
+ *
+ * Return:
+ *  - 0 denotes not a read only page
+ *  - 1 denotes a read only page
+ */
+static inline int
+readOnlyPage(page_desc_t pg){
+    return  pg.type == PG_L4    ||
+            pg.type == PG_L3    ||
+            pg.type == PG_L2    ||
+            pg.type == PG_L1    ||
+            pg.type == PG_CODE  ||
+            pg.type == PG_SVA 
+            ;
+}
+
+/*
+ *****************************************************************************
+ * Page descriptor query functions
+ *****************************************************************************
+ */
+
+/* State whether this kernel virtual address is in the secure memory range */
+static inline int isSecureMemVA(uintptr_t va)
+    { return va > SECMEMSTART && va < SECMEMEND; }
+
+/* Description: Return whether the page is active or not */
+static inline int pgIsActive (page_desc_t page) { return page.type != PG_UNUSED ; } 
+
+/* 
+ * The following functions query the given page descriptor for type attributes.
+ */
+static inline int isFramePg (page_desc_t page) { 
+    return page.type == PG_TKDATA   ||       /* Defines a kernel data page */
+           page.type == PG_TUDATA   ||       /* Defines a user data page */
+           page.type == PG_FRAME             /* Defines a code page */
+        ;
+}
+
+static inline int isL1Pg (page_desc_t page) { return page.type == PG_L1; }
+static inline int isL2Pg (page_desc_t page) { return page.type == PG_L2; }
+static inline int isL3Pg (page_desc_t page) { return page.type == PG_L3; }
+static inline int isL4Pg (page_desc_t page) { return page.type == PG_L4; }
+static inline int isSVAPg (page_desc_t page) { return page.type == PG_SVA; }
+static inline int isSecureMemPG(page_desc_t page)
+    { return page.type == PG_SECMEM; }
 
 #endif
 

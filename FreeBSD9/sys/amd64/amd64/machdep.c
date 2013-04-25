@@ -142,7 +142,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include <isa/rtc.h>
 
 #include <sva/init.h>
-#include <sva/mmu.h>
+#include <sva/mmu_intrinsics.h>
 #include <sva/state.h>
 
 /* Sanity check for __curthread() */
@@ -1554,6 +1554,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
 			*pte = pa | PG_V | PG_RW | PG_N;
+            //sva_update_l1_mapping()
 			invltlb();
 
 			tmp = *(int *)ptr;

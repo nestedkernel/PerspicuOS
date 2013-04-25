@@ -15,10 +15,12 @@
  */
 
 #include <string.h>
+
 #include <sys/types.h>
 
 #include "sva/callbacks.h"
 #include "sva/mmu.h"
+#include "sva/mmu_intrinsics.h"
 #include "sva/x86.h"
 #include "sva/state.h"
 #include "sva/util.h"
@@ -38,6 +40,8 @@
 #define OBSOLETE            0   
 /* Denotes code that is in for some type of testing but is only temporary */
 #define TMP_TEST_CODE       1
+/* Denotes whether or not we are activating read only protection */
+#define ACTIVATE_PROT       0
 /* Define whether to enable DEBUG blocks #if statements */
 #define DEBUG               1
 
@@ -46,59 +50,6 @@
  * Define paging structures and related constants local to this source file
  *****************************************************************************
  */
-
-/*
- * Frame usage constants
- */
-const unsigned char PG_UNUSED = 0x0;
-const unsigned char PG_TKDATA = 0x1;
-const unsigned char PG_TUDATA = 0x2;
-const unsigned char PG_CODE   = 0x3;
-const unsigned char PG_STACK  = 0x4;
-const unsigned char PG_IO     = 0x5;
-const unsigned char PG_SVA    = 0x6;
-
-/* Enum representing the four page types */
-enum page_type {
-    PG_L1,
-    PG_L2,
-    PG_L3,
-    PG_L4
-};
-
-/* Mask to get the address bits out of a PTE, PDE, etc. */
-static const uintptr_t addrmask = 0x000ffffffffff000u;
-
-/*
- * Struct: page_desc_t
- *
- * Description:
- *  There is one element of this structure for each physical page of memory
- *  in the system.  It records information about the physical memory (and the
- *  data stored within it) that SVA needs to perform its MMU safety checks.
- */
-typedef struct page_desc_t {
-  /* Type of frame */
-  enum page_type type;
-
-  /* Number of times a page is mapped */
-  unsigned count : 12;
-
-  /* Number of times a page is used as a l1 page */
-  unsigned l1_count : 5;
-
-  /* Number of times a page is used as a l2 page (unused in non-PAE) */
-  unsigned l2_count : 2;
-
-  /* Is this page a L1 in user-space? */
-  unsigned l1_user : 1;
-
-  /* Is this page a L1 in kernel-space? */
-  unsigned l1_kernel : 1;
-
-  /* Is this page a user page? */
-  unsigned user : 1;
-} page_desc_t;
 
 /*
  * Struct: PTInfo
@@ -129,13 +80,40 @@ struct PTInfo PTPages[64];
 /* Size of the physical memory and page size in bytes */
 const unsigned int memSize = 16*1024*1024*1024;
 const unsigned int pageSize = 4096;
+const unsigned int numPageDescEntries = memSize / pageSize;
 
 /* Array describing the physical pages */
 /* The index is the physical page number */
-static page_desc_t page_desc[memSize / 4096];
+static page_desc_t page_desc[numPageDescEntries];
 
 /* Number of bits to shift to get the page number out of a PTE entry */
 const unsigned PAGESHIFT = 12;
+
+/*
+ * Description:
+ *  Given a page table entry value, return the page description associate with
+ *  the frame being addressed in the mapping.
+ *
+ * Inputs:
+ *  mapping: the mapping with the physical address of the referenced frame
+ *
+ * Return:
+ *  Pointer to the page_desc for this frame
+ */
+page_desc_t * getPageDescPtr(unsigned long mapping) {
+    return &page_desc[ (mapping & PG_FRAME) >> pageSize ];
+}
+
+/*
+ * Function: init_mmu
+ *
+ * Description:
+ *  Initialize MMU data structures.
+ */
+void 
+init_mmu () {
+    memset(&page_desc, 0, numPageDescEntries);
+}
 
 /*
  *****************************************************************************
@@ -185,21 +163,208 @@ unprotect_paging(void) {
 /* Functions for aiding in declare and updating of page tables */
 
 /*
+ * Function: page_entry_store
+ *
+ * Description:
+ *  This function takes a pointer to a page table entry and updates its value
+ *  to the new value provided.
+ *
+ * Inputs:
+ *  *page_entry -: A pointer to the page entry to store the new value to, a
+ *                 valid VA for accessing the page_entry.
+ *  newVal      -: The new value to store, including the address of the
+ *                 referenced page.
+ */
+static inline void
+page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
+    
+    /* Disable page protection so we can write to the referencing table entry */
+    unprotect_paging();
+    
+#if DEBUG >= 3
+    printf("##### SVA<page_entry_store>: pre-write ");
+    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+#endif
+    
+    /* Write the new value to the page_entry */
+    *page_entry = newVal;
+
+#if DEBUG >= 3
+    printf("##### SVA<page_entry_store>: post-write ");
+    printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
+#endif
+
+    /* Reenable page protection */
+    protect_paging();
+
+}
+
+/*
  * Function: pt_update_is_valid()
  *
  * Description:
  *  This function assesses a potential page table update for a valid mapping.
  *
+ *  NOTE: This function assumes that the page being mapped in has already been
+ *  declared and has it's intial page metadata captured as defined in the
+ *  initial mapping of the page.
+ *
  * Inputs:
  *  *page_entry  - VA pointer to the page entry being modified
  *  newVal       - Representes the new value to write including the reference
  *                 to the underlying mapping.
+ *
+ * Return:
+ *  The value to be written to the pte. Note that in this function we check
  */
-static inline int
+static inline unsigned long
 pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
+
+    /* Collect associated information for the existing mapping */
+    unsigned long origPA = *page_entry & PG_FRAME;
+    unsigned long origFrame = origPA >> pageSize;
+    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
+    page_desc_t origPG = page_desc[origFrame >> pageSize];
+
+    /* Get associated information for the new page being mapped */
+    unsigned long newPA = newVal & PG_FRAME;
+    unsigned long newFrame = newPA >> pageSize;
+    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
+    page_desc_t newPG = page_desc[newFrame >> pageSize];
+
+    /* Get the page table page descriptor. The page_entry is the viratu */
+    uintptr_t pteFrame = getPhysicalAddr (page_entry) >> pageSize;
+    page_desc_t ptePG = page_desc[ pteFrame ];
+
+#if 0 /* This is under test and isn't ready for live use */
+
+    /* Make sure we have a new mapping */
+    SVA_ASSERT (newPA != 0, "MMU: new mapping is empty");
+
+    /* If the new page hasn't been registered then fail */
+    SVA_ASSERT (!pgIsActive(newPG), "Kernel attempted to map an inactive frame");
+
+    /* If the new mapping references a secure memory page fail */
+    SVA_ASSERT (!isSecureMemPG(newPG), "Kernel attempted to map a secure page");
+    
+    /* If the pte is in a secure page table page, a secure VA region, then fail */
+    SVA_ASSERT (!isSecureMemVA((uintptr_t) page_entry), 
+            "Kernel attempted to map into a secure page table page");
+
+    /* If the new page is an SVA page then fail */
+    SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+    
+    /* If the pt entry resides in an SVA page table page then fail */
+    SVA_ASSERT (!isSVAPTPage(ptePG), 
+            "Kernel attempt to map into an SVA page table page");
+
+    /*
+     * If new mapping is to a physical page that is used in a kernel stack, flag
+     * an error.
+     */
+    SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
+    
+    /*
+     * If the new mapping is set for user access, but the VA being used is to
+     * kernel space, fail. Also capture in this check is if the new mapping is
+     * set for super user access, but the VA being used is to user space, fail.
+     *
+     * 3 things to assess for matches: 
+     *  - U/S Flag of new mapping
+     *  - Type of the new mapping frame
+     *  - Type of the PTE frame
+     *
+     * Ensure:
+     *  - new mapping PG_U matches the type of frame being mapped
+     *  - new mapping PG_U matches the type of PT page frame being mapped into
+     */
+#if NOT_YET_IMPLEMENTED
+    /* 
+     * TODO: this functionality depends on the pages in question being marked
+     * as kernel or user page privilege. Once that functionality is added then
+     * this check can be enabled. The function doing this is 
+     * check_and_init_first_mapping.
+     */
+
+    /* TODO: is this only required if we are updating an l1 entry? */
+
+    /* Ensures the new mapping U/S flag matches the PT page frame type */
+    SVA_ASSERT (isUserMapping(newVal) == isUserPGTPage(ptePG),
+            "Attempt to map user page to kernel PTE or kernel page to user PTE");
+
+    /* Ensures the new mapping U/S flag matches the new page frame type */
+    SVA_ASSERT (isUserMapping(newVal) == isUserPG(newPG),
+            "Attempt to make user page assessible by kernel or kernel page accessable to user");
+#endif
+    
+    /* 
+     * If the original PA is not equivalent to the new PA then we are creating
+     * an entirely new mapping, thus make sure that this is a valid new page
+     * reference, and if so reduce the reference count the old page.
+     */
+    if (origPA != newPA) {
+#if NOT_YET_IMPLEMENTED
+        /* 
+         * TODO: I need to think about this more to make sure I understand why
+         * this check is necessary. 
+         */
+         /* If the old mapping was to a stack fail */
+        SVA_ASSERT (!isStackPG(origPG));
+#endif
+            
+        /* 
+         * If the old mapping was to a code page then we know we shouldn't be
+         * pointing this entry to another code page, thus fail.
+         */
+        SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
+    }
+
+    /* TODO cannot map kernel code pages into userspace */
+
+#if NOT_YET_IMPLEMENTED
+    /* 
+     * If the new page a page table page or any other protected kernel page,
+     * verify that the mapping does not enable user access.
+     *
+     * TODO: think on this more.
+     */
+    if (isProtectedKernelPage(newPG)){
+        SVA_ASSERT (!isUserMapping(newVal), 
+                "MMU: mapping a page table page as user accessible."); 
+    }
+#endif
+
+    /*
+     * Verify that for each page update that the mapping matches the correct
+     * type of page allowed to be mapped into this page table. 
+     */
+    switch(ptePG.type) {
+        case PG_L1:
+            SVA_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
+            break;
+        case PG_L2:
+            SVA_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
+            break;
+        case PG_L3:
+            SVA_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
+            break;
+        case PG_L4:
+            /* 
+             * FreeBSD inserts a self mapping into the pml4, therefore it is
+             * valid to map in an L4 page into the L4. TODO: consider the
+             * security implications of this...
+             */
+            SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+                    "MMU: attempted to map non-L3/L4 page into L4.");
+            break;
+        default:
+            SVA_ASSERT (0,"MMU attempted to make update to non page table page.");
+    }
+#endif
+    
     return 1;
 
-#if 0
+#if OBSOLETE
     void* pagetable = get_pagetable();
     unsigned long new_index = pte_val(val) >> PAGE_SHIFT;
 
@@ -263,6 +428,8 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
             }
         }
 #endif
+
+#if 0
         /*
          * If the new mapping wants to make the page accessible to user-space but
          * the page currently contains typed or untyped kernel objects, then the
@@ -274,6 +441,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
             poolcheckfail("MMU: Mapping kernel page into user-space: ",
                     new_index, __builtin_return_address(0));
         }
+#endif
 
         /*
          * If the frame is currently accessible by user-space code and the new
@@ -293,8 +461,17 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         if (unlikely(page_desc[old_index].stack)) {
             poolcheckfail("MMU: try to modify the mapping of a stack: %x", __builtin_return_address(0));
         }
+        /** NDD NOTES:
+         * If the old was an sva page, then the pte entry will be an entry in
+         * an sva page table, and thus be captured when we check to see if we
+         * are mapping into an sva page table page. Thus, this check is
+         * superceeded by the check to see if we are mapping into an SVA page. 
+         */
         if (unlikely(page_desc[old_index].sva))
             poolcheckfail("MMU: try to modify the mapping of a sva page: %x", __builtin_return_address(0));
+        /** NDD NOTES:
+         * This check is saying that a code mapping should never change... 
+         */
         if (unlikely(page_desc[old_index].code))
             poolcheckfail("MMU: try to modify the mapping of kernel code: %x", __builtin_return_address(0));
     }
@@ -309,6 +486,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
             page_desc[old_index].user = 0;
         }
     }
+    
     if (new_index) {
         if (page_desc[new_index].count < ((1 << 12) - 1)) {
             page_desc[new_index].count++;
@@ -325,7 +503,11 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         }
     }
 
-#if 0
+    /* OBSOLETE NOTE: This is obsolete because this function assumes all pages
+     * have already been declared and intialized based upon that inital
+     * declare. This means that we should not hit an instance where an update
+     * is going to change the user/super flag.
+     */
     /*
      * If the new mapping makes the page available to user-space, record that.
      */
@@ -335,43 +517,72 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         page_desc[new_index].kernel = 1;
     }
 #endif
-#endif
+
 }
 
 /*
- * Function: page_entry_store
+ * Function: __do_mmu_update
  *
  * Description:
- *  This function takes a pointer to a page table entry and updates its value
- *  to the new value provided.
+ *  If the update has been validated this function manages metadata by updating
+ *  the internal SVA reference counts for pages, sets the read only flag if
+ *  necessary, and then performs the actual update. 
  *
- * Inputs:
- *  *page_entry -: A pointer to the page entry to store the new value to.
- *  newVal      -: The new value to store, including the address of the
- *                 referenced page.
+ * Inputs: 
+ *  *page_entry  - VA pointer to the page entry being modified 
+ *  newVal       - Representes the mapping to insert into the page_entry
  */
 static inline void
-page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
-    
-    /* Disable page protection so we can write to the referencing table entry */
-    unprotect_paging();
-    
-#if DEBUG >= 3
-    printf("##### SVA<page_entry_store>: pre-write ");
-    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+__do_mmu_update (pte_t * pteptr, page_entry_t val) {
+    uintptr_t origPA = *pteptr & PG_FRAME;
+    unsigned long origFrame = origPA >> pageSize;
+    page_desc_t origPG = page_desc[origFrame];
+    uintptr_t newPA = val & PG_FRAME;
+    unsigned long newFrame = newPA >> pageSize;
+    page_desc_t newPG = page_desc[newFrame];
+
+#if 0
+    /*
+     * If we have a new mapping as opposed to just changing the flags of an
+     * existing mapping, then update the sva meta data for the pages.
+     */
+    if (newPA != origPA) {
+        /*
+         * TODO: I'm not sure if this scenario, completely changing a mapping
+         * from one page to another, is possible. Oh the physical address can
+         * change, but the page being mapped should not be changed. 
+         *
+         * Think more on this. 
+         */
+
+        /* 
+         * TODO: what happens if the count is already zero here? For example
+         * when we remove a page, do we zero out the references to it from the
+         * PTs or do we just do an invalidate update?
+         */
+
+        /* Update the mapping count of the old and new mapped physical pages */
+        if (origPG.active)
+            origPG.count--;
+
+        /* TODO: why is this 1<<12? Think on and verify */
+        /* 
+         * Since we are adding a new mapping to a new page, then we update the
+         * count for the new page mapping. First check that we aren't
+         * overflowing the counter.
+         */
+        SVA_ASSERT (newPG.count < ((1<<12-1)), "MMU: overflow for the mapping count");
+        newPG.count++;
+    }
+
+
+    /* If the new page should be read only, mark the entry value as such */
+    if (readOnlyPage(newPG))
+        val &= ~PG_RW;
 #endif
-    
-    /* Write the new value to the page_entry */
-    *page_entry = newVal;
 
-#if DEBUG >= 3
-    printf("##### SVA<page_entry_store>: post-write ");
-    printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
-#endif
-
-    /* Reenable page protection */
-    protect_paging();
-
+    /* perform the actual write to the pte entry */
+    page_entry_store ((page_entry_t *) pteptr, val);
 }
 
 /*
@@ -387,7 +598,9 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
  *  frameAddr: represents the physical address of this frame
  *
  *  *page_entry: A pointer to a page table entry that will be used to
- *      initialize the mapping to this newly created page as read only.
+ *      initialize the mapping to this newly created page as read only. Note
+ *      that the address of the page_entry must be a virtually accessible
+ *      address.
  */
 static inline void 
 init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
@@ -397,7 +610,7 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
-#if NOT_YET_IMPLEMENTED
+#if ACTIVATE_PROT
     /*
      * Mask out non-address portions of frame because this input comes from the
      * kernel and must be sanitized. Then add the RO flag of the pde referencing
@@ -417,6 +630,131 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
 
     /* Perform the actual store of the value to the page_entry */
     page_entry_store(page_entry, pageEntryVal);
+}
+
+/*
+ * Function: 
+ */
+static inline void
+setFramePrivType (unsigned long frame, unsigned long newMapping){
+#if NOT_YET_IMPLEMENTED
+    page_desc_t pgDesc = page_desc[frame];
+    /* 
+     * TODO: Figure out how to detect the user/kernel association of new page
+     * table pages.
+     */
+
+    /*
+     * TODO: figure out whether or not this is a leaf frame or a page table
+     * page frame. If it is a frame then the type is given by the newMapping
+     * value. If it is a page table frame then I need to figure out how to
+     * figure out the mapping.
+     */
+    if (){
+    }
+    /* If the new mapping points to user level */
+    if (isUserVA(newVA)){
+    } else {
+    }
+#endif
+}
+
+/*
+ * Function: isFirstMappingToFrame
+ *
+ * Description:
+ *  This function determines whether or not this frame has any existing
+ *  references.
+ *
+ * Input:
+ *  - frame : the physical frame number to check
+ *
+ * Return:
+ *  - 1: true, the first mapping
+ *  - 0: false, this frame has an existing mapping
+ */
+static inline int
+isFirstMappingToFrame (unsigned long frame) {
+    /* SVA_ASSERT here just in case we have some odd error situation */
+#if NOT_YET_IMPLEMENTED
+    printf("The page frame count %d\n",page_desc[frame].count);
+    SVA_ASSERT (page_desc[frame].count >= 0, "MMU: page count is negative");
+#endif
+
+    /* 
+     * If the count is set to 0 then there are no existing references to this
+     * frame.
+     */
+    return page_desc[frame].count == 0;
+}
+
+/*
+ * Function: check_and_init_first_mapping
+ *
+ * Description:
+ *  There are certain labels that must be applied to a particular frame that
+ *  can only be applied when using it's first mapping. Currently, the only
+ *  thing that is needed upon first mapping is to label the page desc of the
+ *  frame as either user or kernel depending on the new mapping.
+ *
+ * Input: 
+ *  - newMapping    : Represents the new mapping to insert
+ */
+static inline void
+check_and_init_first_mapping(unsigned long newMapping){
+
+    /* Get the frame number in the new mapping */
+    unsigned long frame = (newMapping & PG_FRAME) >> pageSize;
+
+    /* 
+     * If this is the first mapping to the frame then set the privilege on the
+     * frame. 
+     */
+    if (isFirstMappingToFrame(frame))
+        setFramePrivType(frame, newMapping);
+}
+
+/*
+ * Function: __update_mapping
+ *
+ * Description:
+ *  Mapping update function that is agnostic to the level of page table. Most
+ *  of the verification code is consistent regardless of which level page
+ *  update we are doing. 
+ *
+ * Inputs:
+ *  - pageEntryPtr : reference to the page table entry to insert the mapping
+ *      into
+ *  - val : new entry value
+ */
+static inline void
+__update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
+    unsigned long rflags;
+
+    /* Disable interrupts so that we appear to execute as a single instruction. */
+    rflags = sva_enter_critical();
+
+    /* 
+     * If this is the first mapping to the page then establish initial values
+     * for page types 
+     */
+#if NOT_YET_IMPLEMENTED
+    check_and_init_first_mapping(val);
+#endif
+
+    /* 
+     * If the given page update is valid then store the new value to the page
+     * table entry, else raise an error.
+     */
+    if (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
+        /* Perform the pagetable mapping update */
+        __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
+    } else {
+        panic("##### SVA invalid page update!!!\n");
+    }
+
+    /* Restore interrupts */
+    sva_exit_critical (rflags);
 }
 
 /* Functions for finding the virtual address of page table components */
@@ -696,6 +1034,12 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    */
   uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
+
+#if UNDER_TEST
+  /* TODO: figure out if this assumption is correct */
+  SVA_ASSERT(isPresent(pml4e),
+          "SVA-MMU: pml4 page is not present... OS should alloc this"); 
+#else
   if (!isPresent (pml4e)) {
     /* Page table page index */
     unsigned int ptindex;
@@ -711,6 +1055,7 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     uintptr_t paddr = PTPages[ptindex].paddr;
     *pml4e = (paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
+#endif
 
   /*
    * Enable writing to the virtual address space used for secure memory.
@@ -1008,7 +1353,7 @@ sva_mm_load_pgtable (void * pg) {
     /*
      * Get a pointer into the page tables for the secure memory region.
      */
-    pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
+    pml4e_t * secmemp = (pml4e_t *) getVirtual ((uintptr_t) get_pagetable() + secmemOffset);
 
     /*
      * Restore the PML4E entry for the secure memory region.
@@ -1017,6 +1362,49 @@ sva_mm_load_pgtable (void * pg) {
   }
 
   return;
+}
+
+/*
+ * Intrinsic: sva_declare_leaf_page()
+ *
+ * Description:
+ *  This intrinsic marks the specified physical frame as a leaf page frame It
+ *  will zero out the contents of the page frame so that stale mappings within
+ *  the frame are not used by the MMU.
+ *
+ * Inputs:
+ *  frameAddr - The address of the physical page frame that will be used as a
+ *          leaf page frame.
+ *  *pte  - the virtual address of the pte referencing this new create leaf
+ *          page
+ */
+void
+sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
+
+    unsigned long rflags;
+    unsigned long frame = frameAddr >> pageSize;
+    
+    /* Disable interrupts so that we appear to execute as a single instruction. */
+    rflags = sva_enter_critical();
+
+#if DEBUG >= 1
+    printf("##### SVA: declare_leaf_page\n");
+#endif
+
+    /*
+     * Mark this page frame as leaf page frame.
+     */
+    page_desc[frame].type = PG_LEAF;
+    
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr, (page_entry_t *) pte);
+
+    /* Restore interrupts */
+    sva_exit_critical (rflags);
 }
 
 /*
@@ -1355,7 +1743,39 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
 
 #endif
 
-#if UNDER_TEST
+/*
+ * Function: init_leaf_page_from_mapping
+ *
+ * Description:
+ *  This function serves to perform a function like declare_leaf_page for leaf
+ *  pages. The most important aspect of the declare functions are to zero out
+ *  the page and establish read only protection on pages. In this system, we
+ *  know that leaf pages are only going to be data. We make this assumption
+ *  because all kernel code pages are initialized statically and assumed to
+ *  reside in memory at the time of SVA's mmu_init function, which is where
+ *  they are labled. We also know that application code pages are initialized
+ *  into secure memory regions, which enables their protection from the kernel
+ *  via secure memory checks. Thus, the only pages we must manage are data
+ *  pages, which have no restrictions on page start up state.
+ *
+ * Inputs:
+ *  pteptr - The location within the L1 page in which the new translation
+ *           should be place.
+ *  val    - The new translation to insert into the page table.
+ */
+void 
+init_leaf_page_from_mapping (page_entry_t val) {
+    /* Get the page descriptor for the new entry */
+    page_desc_t * newPg = getPageDescPtr(val); 
+
+    /* Mark the page type as either user or kernel data */
+    if(val & PG_U) {
+        newPg->type = PG_TUDATA;
+    } else {
+        newPg->type = PG_TKDATA;
+    }
+}
+
 /* 
  * Function: sva_update_l1_mapping()
  *
@@ -1373,35 +1793,15 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
  */
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
-    unsigned long rflags;
 
 #if DEBUG > 2
     printf("##### SVA: update_l1_page\n");
 #endif
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    rflags = sva_enter_critical();
-
-    /* 
-     * If the given page update is valid then store the new value to the page
-     * table entry, else raise an error.
-     */
-    if (pt_update_is_valid((page_entry_t *) pteptr, val)) {
-
-        /* Perform the pagetable mapping update */
-        page_entry_store ((page_entry_t *) pteptr, val);
-
-    } else {
-        panic("##### SVA invalid page update!!!\n");
-    }
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+    init_leaf_page_from_mapping(val);
+    __update_mapping(pteptr,val);
 }
 
-#endif /* sva_update_l1_mapping */
-
-#if UNDER_TEST
 /*
  * Updates a level2 mapping (a mapping to a l1 page).
  *
@@ -1418,26 +1818,9 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
     printf("##### SVA: update_l2_page\n");
 #endif
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    rflags = sva_enter_critical();
+    __update_mapping(pdePtr, val);
 
-    /* 
-     * If the given page update is valid then store the new value to the page
-     * table entry, else raise an error.
-     */
-    if (pt_update_is_valid((page_entry_t *) pdePtr, val)) {
-
-        /* Perform the pagetable mapping update */
-        page_entry_store ((page_entry_t *) pdePtr, val);
-
-    } else {
-        panic("##### SVA invalid page update!!!");
-    }
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
-
-#if 0
+#if OBSOLETE
     void* pagetable = get_pagetable();
 
     if (pmd_val(val)) {
@@ -1482,6 +1865,11 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
         unsigned long old_addr = pmd_page(*pmdptr);
         pte_t* old_pte = get_pte(old_addr, pagetable);
         unsigned long old_index = pte_val(*old_pte) >> PAGE_SHIFT;
+        /** NDD NOTE
+         * This effectively makes sure that this page was an l1, we ensure
+         * insertion will be correct, therefore don't need to explicitly verify
+         * this.
+         */
         if (page_desc[old_index].l1_count <= 0)
             poolcheckfail("MMU: Page in L1 was not a L1: %x!", __builtin_return_address(0));
 
@@ -1498,9 +1886,7 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
         __asm__ __volatile__ ("sti":::"memory");
 #endif
 }
-#endif
 
-#if UNDER_TEST
 /*
  * Updates a level3 mapping 
  */
@@ -1512,28 +1898,9 @@ void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
     printf("##### SVA: update_l3_page\n");
 #endif
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    rflags = sva_enter_critical();
-
-    /* 
-     * If the given page update is valid then store the new value to the page
-     * table entry, else raise an error.
-     */
-    if (pt_update_is_valid((page_entry_t *) pdptePtr, val)) {
-
-        /* Perform the pagetable mapping update */
-        page_entry_store ((page_entry_t *) pdptePtr, val);
-
-    } else {
-        panic("##### SVA invalid page update!!!");
-    }
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+    __update_mapping(pdptePtr, val);
 }
-#endif
 
-#if UNDER_TEST
 /*
  * Updates a level4 mapping 
  */
@@ -1545,26 +1912,8 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
     printf("##### SVA: update_l4_page\n");
 #endif
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    rflags = sva_enter_critical();
-
-    /* 
-     * If the given page update is valid then store the new value to the page
-     * table entry, else raise an error.
-     */
-    if (pt_update_is_valid((page_entry_t *) pml4ePtr, val)) {
-
-        /* Perform the pagetable mapping update */
-        page_entry_store ((page_entry_t *) pml4ePtr, val);
-
-    } else {
-        panic("##### SVA invalid page update!!!");
-    }
-
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+    __update_mapping(pml4ePtr, val);
 }
-#endif
 
 #if 0
 /*
@@ -1688,3 +2037,4 @@ sva_get_physical (void * virtual) {
   return ((void *)(paddr));
 }
 #endif
+

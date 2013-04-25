@@ -20,6 +20,7 @@
 #include <sva/state.h>
 #include <sva/interrupt.h>
 #include <sva/mmu.h>
+#include "sva/mmu_intrinsics.h"
 #include <sva/x86.h>
 
 /*****************************************************************************
