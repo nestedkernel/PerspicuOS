@@ -111,11 +111,19 @@ allocAndCopy (unsigned char * & framePointer, T* data) {
 
 int
 _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
+  int ret;
   unsigned char * framep;
-  struct sockaddr * newaddr = allocAndCopy (framep, addr);
-  socklen_t * newlen = allocAndCopy (framep, addrlen);
-  accept (s, newaddr, newlen);
-  return 0;
+  struct sockaddr_un * newaddr = allocate (framep, addr);
+  socklen_t * newlen = allocate (framep, addrlen);
+  ret = accept (s, newaddr, newlen);
+
+  // Copy the outputs back into secure memory
+  memcpy (addr, newaddr, *newlen);
+  memcpy (addrlen, newlen, sizeof (socklen_t));
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
 }
 
 int
@@ -123,9 +131,13 @@ _fstat(int fd, struct stat *sb) {
   int ret;
   unsigned char * framep;
   struct stat * newsb = allocate (framep, sb);
-  printf ("Calling fstat\n");
   ret = fstat (fd, newsb);
+
+  // Copy the outputs back into secure memory
   *sb = *newsb;
+
+  // Restore the stack pointer
+  tradsp = framep;
   return ret;
 }
 
