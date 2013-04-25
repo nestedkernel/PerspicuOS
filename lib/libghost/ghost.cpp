@@ -59,12 +59,34 @@ allocateTradMem (unsigned char * & framePointer) {
   // Allocate memory on the traditional memory stack.
   //
   tradsp += sizeof (T);
-  return (T)tradsp;
+  return (T *)tradsp;
+}
+
+template<typename T>
+static inline T *
+allocateTradMem (unsigned char * & framePointer, T* data) {
+  //
+  // Save the current location of the traditional memory stack pointer.
+  //
+  framePointer = tradsp;
+
+  //
+  // Allocate memory on the traditional memory stack.
+  //
+  tradsp += sizeof (T);
+
+  //
+  // Copy the data into the traditional memory.
+  //
+  T * copy = (T *)(tradsp);
+  *copy = *data;
+  return copy;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // Wrappers for system calls
 //////////////////////////////////////////////////////////////////////////////
+
 int
 accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   struct args {
@@ -72,18 +94,10 @@ accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
     socklen_t addrlen;
   };
 
-  unsigned char * tradbp = tradsp;
-  tradsp += sizeof (struct args);
+  unsigned char * framep;
+  struct sockaddr * newaddr = allocateTradMem (framep, addr);
+  socklen_t * newlen = allocateTradMem (framep, addrlen);
+  accept (s, newaddr, newlen);
   return 0;
 }
 
-#if 0
-int
-accept2 (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
-  unsigned char * tradbp = tradsp;
-  struct args {
-    socklen_t addrlen;
-    struct sockaddr_un addr;
-  };
-}
-#endif
