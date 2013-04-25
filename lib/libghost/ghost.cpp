@@ -17,7 +17,9 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 
+#include <cstdio>
 #include <cstdlib>
 
 #include "ghost.h"
@@ -49,9 +51,15 @@ ghostinit (void) {
   return;
 }
 
+//
+// Template: allocateTradMem()
+//
+// Description:
+//  Allocate traditional memory.
+//
 template<typename T>
 static inline T *
-allocateTradMem (unsigned char * & framePointer) {
+allocate (unsigned char * & framePointer, T * data) {
   //
   // Save the current location of the traditional memory stack pointer.
   //
@@ -61,12 +69,24 @@ allocateTradMem (unsigned char * & framePointer) {
   // Allocate memory on the traditional memory stack.
   //
   tradsp += sizeof (T);
-  return (T *)tradsp;
+
+  //
+  // Copy the data into the traditional memory.
+  //
+  T * copy = (T *)(tradsp);
+  return copy;
 }
 
+//
+// Template: allocateTradMem()
+//
+// Description:
+//  Allocate traditional memory and copy the contents of a memory object into
+//  it.  This is useful for setting up input data.
+//
 template<typename T>
 static inline T *
-allocateTradMem (unsigned char * & framePointer, T* data) {
+allocAndCopy (unsigned char * & framePointer, T* data) {
   //
   // Save the current location of the traditional memory stack pointer.
   //
@@ -91,15 +111,22 @@ allocateTradMem (unsigned char * & framePointer, T* data) {
 
 int
 accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
-  struct args {
-    struct sockaddr_un addr;
-    socklen_t addrlen;
-  };
-
   unsigned char * framep;
-  struct sockaddr * newaddr = allocateTradMem (framep, addr);
-  socklen_t * newlen = allocateTradMem (framep, addrlen);
+  struct sockaddr * newaddr = allocAndCopy (framep, addr);
+  socklen_t * newlen = allocAndCopy (framep, addrlen);
   accept (s, newaddr, newlen);
   return 0;
 }
+
+int
+fstat(int fd, struct stat *sb) {
+  int ret;
+  unsigned char * framep;
+  struct stat * newsb = allocate (framep, sb);
+  printf ("Calling fstat\n");
+  ret = fstat (fd, newsb);
+  *sb = *newsb;
+  return ret;
+}
+
 
