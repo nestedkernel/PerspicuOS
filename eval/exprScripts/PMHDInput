@@ -1,4 +1,4 @@
-set transactions 100
+set transactions 500000
 set location /postmark-files
 show
 run
