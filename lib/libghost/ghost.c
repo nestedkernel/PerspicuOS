@@ -38,11 +38,13 @@ ghostinit (void) {
 
 int
 accept (int s, struct sockaddr * restrict addr, socklen_t * restrict addrlen) {
-  unsigned char * tradbp = tradsp;
   struct args {
     struct sockaddr_un addr;
     socklen_t addrlen;
   };
+
+  unsigned char * tradbp = tradsp;
+  tradsp += sizeof (struct args);
 }
 
 int
