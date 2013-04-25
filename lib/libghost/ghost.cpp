@@ -110,7 +110,7 @@ allocAndCopy (unsigned char * & framePointer, T* data) {
 //////////////////////////////////////////////////////////////////////////////
 
 int
-accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
+_accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   unsigned char * framep;
   struct sockaddr * newaddr = allocAndCopy (framep, addr);
   socklen_t * newlen = allocAndCopy (framep, addrlen);
@@ -119,7 +119,7 @@ accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
 }
 
 int
-fstat(int fd, struct stat *sb) {
+_fstat(int fd, struct stat *sb) {
   int ret;
   unsigned char * framep;
   struct stat * newsb = allocate (framep, sb);
@@ -129,4 +129,4 @@ fstat(int fd, struct stat *sb) {
   return ret;
 }
 
-
+void fstat () __attribute__ ((weak, alias ("_fstat")));
