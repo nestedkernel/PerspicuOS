@@ -20,6 +20,8 @@
 
 #include <cstdlib>
 
+#include "ghost.h"
+
 /* Size of traditional memory buffer */
 static uintptr_t tradlen = 4096;
 
