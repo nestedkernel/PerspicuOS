@@ -19,8 +19,11 @@
 #include <sys/un.h>
 #include <sys/stat.h>
 
+#include <fcntl.h>
+
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include "ghost.h"
 
@@ -105,6 +108,26 @@ allocAndCopy (unsigned char * & framePointer, T* data) {
   return copy;
 }
 
+static inline char *
+allocAndCopy (unsigned char * & framePointer, char * data) {
+  //
+  // Save the current location of the traditional memory stack pointer.
+  //
+  framePointer = tradsp;
+
+  //
+  // Allocate memory on the traditional memory stack.
+  //
+  tradsp += (strlen (data) + 1);
+
+  //
+  // Copy the data into the traditional memory.
+  //
+  char * copy = (char *)(tradsp);
+  strcpy (copy, data);
+  return copy;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Wrappers for system calls
 //////////////////////////////////////////////////////////////////////////////
@@ -129,6 +152,18 @@ _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
 #endif
 
 int
+_open (char *path, int flags, mode_t mode) {
+  int fd;
+  unsigned char * framep;
+  char * newpath = allocAndCopy (framep, path);
+  fd = open (newpath, flags, mode);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return fd;
+}
+
+int
 _fstat(int fd, struct stat *sb) {
   int ret;
   unsigned char * framep;
@@ -149,3 +184,4 @@ _fstat(int fd, struct stat *sb) {
 
 void accept () __attribute__ ((weak, alias ("_accept")));
 void fstat () __attribute__ ((weak, alias ("_fstat")));
+void open () __attribute__ ((weak, alias ("_open")));
