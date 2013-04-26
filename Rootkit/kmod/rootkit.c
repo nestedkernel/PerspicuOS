@@ -213,10 +213,10 @@ command_hook (struct thread * td, void * syscall_args) {
   // System call arguments
   struct config_args {
     // Victim process ID
-    pid_t victimPID;
+    uintptr_t victimPID;
 
     // Identifier for the type of attack to perform
-    int attackType;
+    uintptr_t attackType;
 
     // The virtual address to use in the attack
     unsigned char * victimAddr;
