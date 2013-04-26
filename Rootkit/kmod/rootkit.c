@@ -252,7 +252,7 @@ command_hook (struct thread * td, void * syscall_args) {
   //
   victimAddr = argsp->victimAddr;
   victimLen = argsp->victimLen;
-  printf ("rootkit: Victim process %p\n", victimProc);
+  printf ("rootkit: Victim process %p: Attack %d\n", victimProc, attackType);
   printf ("rootkit: Victim address %p len %lx\n", victimAddr, victimLen);
   return 0;
 }

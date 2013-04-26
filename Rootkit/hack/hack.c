@@ -6,7 +6,7 @@
 #include <sys/module.h>
 
 static inline void
-setVictimProcess (pid_t pid, unsigned char hackType, uintptr_t addr, uintptr_t len) {
+setVictimProcess (pid_t pid, int hackType, uintptr_t addr, uintptr_t len) {
   syscall (11, pid, hackType, addr, len);
   return;
 }
@@ -25,7 +25,7 @@ main (int argc, char ** argv) {
   // Convert the target pid and hack type from a string to an integer.
   //
   pid_t victim = atoi (argv[1]);
-  unsigned char hackType = atoi (argv[2]);
+  int hackType = atoi (argv[2]);
   uintptr_t addr = atoi (argv[3]);
   uintptr_t len = atoi (argv[4]);
 
