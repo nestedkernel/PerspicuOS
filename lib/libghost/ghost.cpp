@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -162,6 +163,22 @@ _open (char *path, int flags, mode_t mode) {
   tradsp = framep;
   return fd;
 }
+
+#if 0
+ssize_t
+_readlink(const char * path, char * buf, size_t bufsiz) {
+  ssize_t size;
+  unsigned char * framep;
+  char * newpath = allocAndCopy (framep, path);
+
+  // Perform the system call
+  size = readlink (newpath, newbuf, bufsiz);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return size;
+}
+#endif
 
 int
 _fstat(int fd, struct stat *sb) {
