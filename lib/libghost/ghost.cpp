@@ -76,6 +76,20 @@ allocate (T * data) {
   return copy;
 }
 
+static inline
+char * allocate (uintptr_t size) {
+  //
+  // Allocate memory on the traditional memory stack.
+  //
+  tradsp += size;
+
+  //
+  // Copy the data into the traditional memory.
+  //
+  char * copy = (char *)(tradsp);
+  return copy;
+}
+
 //
 // Template: allocateTradMem()
 //
@@ -150,12 +164,25 @@ _open (char *path, int flags, mode_t mode) {
   return fd;
 }
 
-#if 0
+int
+_mkdir(char *path, mode_t mode) {
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  char * newpath = allocAndCopy (path);
+  int err = mkdir (newpath, mode);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return err;
+}
+
 ssize_t
-_readlink(const char * path, char * buf, size_t bufsiz) {
+_readlink(char * path, char * buf, size_t bufsiz) {
   ssize_t size;
   unsigned char * framep;
   char * newpath = allocAndCopy (path);
+  char * newbuf = allocate (bufsiz);
 
   // Perform the system call
   size = readlink (newpath, newbuf, bufsiz);
@@ -164,7 +191,6 @@ _readlink(const char * path, char * buf, size_t bufsiz) {
   tradsp = framep;
   return size;
 }
-#endif
 
 int
 _fstat(int fd, struct stat *sb) {
@@ -182,10 +208,30 @@ _fstat(int fd, struct stat *sb) {
   return ret;
 }
 
+int
+stat(char *path, struct stat *sb) {
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  char * newpath = allocAndCopy (path);
+  struct stat * newsb = allocate (sb);
+  int ret = stat (newpath, newsb);
+
+  // Copy the outputs back into secure memory
+  *sb = *newsb;
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Define weak aliases to make the wrappers appear as the actual system call
 //////////////////////////////////////////////////////////////////////////////
 
 void accept () __attribute__ ((weak, alias ("_accept")));
-void fstat () __attribute__ ((weak, alias ("_fstat")));
 void open () __attribute__ ((weak, alias ("_open")));
+void readlink () __attribute__ ((weak, alias ("_readlink")));
+void mkdir () __attribute__ ((weak, alias ("_mkdir")));
+void stat () __attribute__ ((weak, alias ("_stat")));
+void fstat () __attribute__ ((weak, alias ("_fstat")));
