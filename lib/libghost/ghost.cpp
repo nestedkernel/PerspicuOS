@@ -214,6 +214,7 @@ _open (char *path, int flags, mode_t mode) {
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
+  printf ("Ghost: Open!\n");
   char * newpath = allocAndCopy (path);
   int fd = open (newpath, flags, mode);
 

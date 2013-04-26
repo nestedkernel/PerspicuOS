@@ -12,10 +12,27 @@
  *===----------------------------------------------------------------------===
  */
 
-#include "ghost.h"
+#include <stdlib.h>
+
+#include <sys/types.h>
+
+/*
+ * Function: secmemalloc()
+ *
+ * Description:
+ *  Ask the SVA VM to allocate some ghost memory.
+ */
+static inline void *
+secmemalloc (uintptr_t size) {
+  void * ptr;
+  __asm__ __volatile__ ("movq %1, %%rdi\n"
+                        "int $0x7f\n" : "=a" (ptr) : "r" (size));
+  return ptr;
+}
 
 void *
 ghost_malloc(size_t size) {
+  printf ("ghost_malloc!\n");
   return secmemalloc (size);
 }
 

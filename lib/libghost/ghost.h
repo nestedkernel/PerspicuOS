@@ -16,18 +16,3 @@ extern "C" ssize_t _read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t _write(int d, void *buf, size_t nbytes);
 extern "C" int _clock_gettime(clockid_t clock_id, struct timespec *tp);
 
-/*
- * Function: secmemalloc()
- *
- * Description:
- *  Ask the SVA VM to allocate some ghost memory.
- */
-static inline void *
-secmemalloc (uintptr_t size) {
-  void * ptr;
-  __asm__ __volatile__ ("movq %1, %%rdi\n"
-                        "int $0x7f\n" : "=a" (ptr) : "r" (size));
-  return ptr;
-}
-
-
