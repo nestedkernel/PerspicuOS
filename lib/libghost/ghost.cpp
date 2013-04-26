@@ -132,24 +132,58 @@ allocAndCopy (char * data) {
 // Wrappers for system calls
 //////////////////////////////////////////////////////////////////////////////
 
-#if 0
 int
 _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   int ret;
   unsigned char * framep;
-  struct sockaddr_un * newaddr = allocate (framep, addr);
-  socklen_t * newlen = allocate (framep, addrlen);
-  ret = accept (s, newaddr, newlen);
+  struct sockaddr * newaddr = (struct sockaddr *) allocate (*addrlen);
+  socklen_t * newaddrlen = allocAndCopy (addrlen);
+
+  // Perform the system call
+  ret = accept (s, newaddr, newaddrlen);
 
   // Copy the outputs back into secure memory
-  memcpy (addr, newaddr, *newlen);
-  memcpy (addrlen, newlen, sizeof (socklen_t));
+  memcpy (addr, newaddr, *newaddrlen);
+  memcpy (addrlen, newaddrlen, sizeof (socklen_t));
 
   // Restore the stack pointer
   tradsp = framep;
   return ret;
 }
-#endif
+
+int
+_bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
+  int ret;
+  unsigned char * framep;
+  struct sockaddr * newaddr = (struct sockaddr *) allocate (addrlen);
+  memcpy (newaddr, addr, addrlen);
+
+  // Perform the system call
+  ret = bind (s, newaddr, addrlen);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
+}
+
+int
+_getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen) {
+  int ret;
+  unsigned char * framep;
+  void * newoptval = allocate (*optlen);
+  socklen_t * newoptlen = allocAndCopy (optlen);
+
+  // Perform the system call
+  ret = getsockopt (s, level, optname, newoptval, newoptlen);
+
+  // Copy the outputs back into secure memory
+  memcpy (optval, newoptval, *newoptlen);
+  memcpy (optlen, newoptlen, sizeof (socklen_t));
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
+}
 
 int
 _open (char *path, int flags, mode_t mode) {
@@ -258,6 +292,8 @@ _write(int d, const void *buf, size_t nbytes) {
 //////////////////////////////////////////////////////////////////////////////
 
 void accept () __attribute__ ((weak, alias ("_accept")));
+void bind () __attribute__ ((weak, alias ("_bind")));
+void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 void open () __attribute__ ((weak, alias ("_open")));
 void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
