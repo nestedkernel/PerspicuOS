@@ -180,7 +180,7 @@ _mkdir(char *path, mode_t mode) {
 ssize_t
 _readlink(char * path, char * buf, size_t bufsiz) {
   ssize_t size;
-  unsigned char * framep;
+  unsigned char * framep = tradsp;
   char * newpath = allocAndCopy (path);
   char * newbuf = allocate (bufsiz);
 
@@ -225,6 +225,34 @@ stat(char *path, struct stat *sb) {
   return ret;
 }
 
+ssize_t
+_read(int d, void *buf, size_t nbytes) {
+  ssize_t size;
+  unsigned char * framep = tradsp;
+  char * newbuf = allocate (nbytes);
+
+  // Perform the system call
+  size = read (d, newbuf, nbytes);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return size;
+}
+
+ssize_t
+_write(int d, const void *buf, size_t nbytes) {
+  ssize_t size;
+  unsigned char * framep = tradsp;
+  char * newbuf = allocate (nbytes);
+
+  // Perform the system call
+  size = write (d, newbuf, nbytes);
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return size;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Define weak aliases to make the wrappers appear as the actual system call
 //////////////////////////////////////////////////////////////////////////////
@@ -235,3 +263,5 @@ void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
 void stat () __attribute__ ((weak, alias ("_stat")));
 void fstat () __attribute__ ((weak, alias ("_fstat")));
+void read () __attribute__ ((weak, alias ("_read")));
+void write () __attribute__ ((weak, alias ("_write")));

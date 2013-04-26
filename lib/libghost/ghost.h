@@ -9,3 +9,5 @@ extern "C" ssize_t _readlink(char * path, char * buf, size_t bufsiz);
 extern "C" int _mkdir(char *path, mode_t mode);
 extern "C" int _stat(const char *path, struct stat *sb);
 extern "C" int _fstat(int fd, struct stat *sb);
+extern "C" ssize_t _read(int d, void *buf, size_t nbytes);
+extern "C" ssize_t _write(int d, void *buf, size_t nbytes);
