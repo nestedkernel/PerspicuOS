@@ -75,7 +75,7 @@ struct PTInfo {
 
 
 /* Memory to use for missing pages in the page table */
-struct PTInfo PTPages[64];
+struct PTInfo PTPages[1024];
 
 /* Size of the physical memory and page size in bytes */
 const unsigned int memSize = 16*1024*1024*1024;
@@ -858,7 +858,7 @@ getPhysicalAddr (void * v) {
 
 /* Cache of page table pages */
 extern unsigned char
-SVAPTPages[64][X86_PAGE_SIZE];
+SVAPTPages[1024][X86_PAGE_SIZE];
 
 /*
  * Function: allocPTPage()
@@ -883,12 +883,12 @@ allocPTPage (void) {
    * Note that we leave the first entry reserved.  This permits us to use a
    * zero index to denote an invalid index.
    */
-  for (ptindex = 1; ptindex < 64; ++ptindex) {
+  for (ptindex = 1; ptindex < 1024; ++ptindex) {
     if (__sync_bool_compare_and_swap (&(PTPages[ptindex].valid), 0, 1)) {
       break;
     }
   }
-  if (ptindex == 64)
+  if (ptindex == 1024)
     panic ("SVA: allocPTPage: No more table space!\n");
 
   /*
@@ -959,7 +959,7 @@ updateUses (uintptr_t * ptp) {
    * Look for the page table page with the specified physical address.  If we
    * find it, increment the number of uses.
    */
-  for (ptindex = 0; ptindex < 64; ++ptindex) {
+  for (ptindex = 0; ptindex < 1024; ++ptindex) {
     if (paddr == PTPages[ptindex].paddr) {
       ++PTPages[ptindex].uses;
     }
@@ -999,7 +999,7 @@ releaseUse (uintptr_t * ptp) {
    * Look for the page table page with the specified physical address.  If we
    * find it, decrement the uses.
    */
-  for (ptindex = 0; ptindex < 64; ++ptindex) {
+  for (ptindex = 0; ptindex < 1024; ++ptindex) {
     if (paddr == PTPages[ptindex].paddr) {
       if ((--(PTPages[ptindex].uses)) == 0) {
         return ptindex;
