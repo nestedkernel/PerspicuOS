@@ -63,12 +63,7 @@ ghostinit (void) {
 //
 template<typename T>
 static inline T *
-allocate (unsigned char * & framePointer, T * data) {
-  //
-  // Save the current location of the traditional memory stack pointer.
-  //
-  framePointer = tradsp;
-
+allocate (T * data) {
   //
   // Allocate memory on the traditional memory stack.
   //
@@ -90,12 +85,7 @@ allocate (unsigned char * & framePointer, T * data) {
 //
 template<typename T>
 static inline T *
-allocAndCopy (unsigned char * & framePointer, T* data) {
-  //
-  // Save the current location of the traditional memory stack pointer.
-  //
-  framePointer = tradsp;
-
+allocAndCopy (T* data) {
   //
   // Allocate memory on the traditional memory stack.
   //
@@ -110,12 +100,7 @@ allocAndCopy (unsigned char * & framePointer, T* data) {
 }
 
 static inline char *
-allocAndCopy (unsigned char * & framePointer, char * data) {
-  //
-  // Save the current location of the traditional memory stack pointer.
-  //
-  framePointer = tradsp;
-
+allocAndCopy (char * data) {
   //
   // Allocate memory on the traditional memory stack.
   //
@@ -154,10 +139,11 @@ _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
 
 int
 _open (char *path, int flags, mode_t mode) {
-  int fd;
-  unsigned char * framep;
-  char * newpath = allocAndCopy (framep, path);
-  fd = open (newpath, flags, mode);
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  char * newpath = allocAndCopy (path);
+  int fd = open (newpath, flags, mode);
 
   // Restore the stack pointer
   tradsp = framep;
@@ -169,7 +155,7 @@ ssize_t
 _readlink(const char * path, char * buf, size_t bufsiz) {
   ssize_t size;
   unsigned char * framep;
-  char * newpath = allocAndCopy (framep, path);
+  char * newpath = allocAndCopy (path);
 
   // Perform the system call
   size = readlink (newpath, newbuf, bufsiz);
@@ -182,10 +168,11 @@ _readlink(const char * path, char * buf, size_t bufsiz) {
 
 int
 _fstat(int fd, struct stat *sb) {
-  int ret;
-  unsigned char * framep;
-  struct stat * newsb = allocate (framep, sb);
-  ret = fstat (fd, newsb);
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  struct stat * newsb = allocate (sb);
+  int ret = fstat (fd, newsb);
 
   // Copy the outputs back into secure memory
   *sb = *newsb;
