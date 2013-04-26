@@ -14,3 +14,4 @@ extern "C" int _stat(const char *path, struct stat *sb);
 extern "C" int _fstat(int fd, struct stat *sb);
 extern "C" ssize_t _read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t _write(int d, void *buf, size_t nbytes);
+extern "C" int _clock_gettime(clockid_t clock_id, struct timespec *tp);

@@ -313,6 +313,23 @@ _write(int d, const void *buf, size_t nbytes) {
   return size;
 }
 
+int
+_clock_gettime(clockid_t clock_id, struct timespec *tp) {
+  int ret;
+  unsigned char * framep = tradsp;
+  struct timespec * newtp = allocate (tp);
+
+  // Perform the system call
+  ret = clock_gettime (clock_id, newtp);
+
+  // Copy the data out
+  *tp = *newtp;
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Define weak aliases to make the wrappers appear as the actual system call
 //////////////////////////////////////////////////////////////////////////////
@@ -328,3 +345,4 @@ void stat () __attribute__ ((weak, alias ("_stat")));
 void fstat () __attribute__ ((weak, alias ("_fstat")));
 void read () __attribute__ ((weak, alias ("_read")));
 void write () __attribute__ ((weak, alias ("_write")));
+void clock_gettime () __attribute__ ((weak, alias ("_clock_gettime")));
