@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
-#include <sys/un.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 
 #include <fcntl.h>
@@ -186,6 +186,30 @@ _getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen) {
 }
 
 int
+_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+        struct timeval *timeout) {
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  fd_set * newreadfds = allocAndCopy (readfds);
+  fd_set * newwritefds = allocAndCopy (writefds);
+  fd_set * newexceptfds = allocAndCopy (exceptfds);
+  struct timeval * newtimeout = allocAndCopy (timeout);
+
+  // Perform the system call
+  int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
+
+  // Copy the outputs back into ghost memory
+  *readfds = *newreadfds;
+  *writefds = *newwritefds;
+  *exceptfds = *newexceptfds;
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return err;
+}
+
+int
 _open (char *path, int flags, mode_t mode) {
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
@@ -204,6 +228,8 @@ _mkdir(char *path, mode_t mode) {
   unsigned char * framep = tradsp;
 
   char * newpath = allocAndCopy (path);
+
+  // Perform the system call
   int err = mkdir (newpath, mode);
 
   // Restore the stack pointer
@@ -294,6 +320,7 @@ _write(int d, const void *buf, size_t nbytes) {
 void accept () __attribute__ ((weak, alias ("_accept")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
+void select () __attribute__ ((weak, alias ("_select")));
 void open () __attribute__ ((weak, alias ("_open")));
 void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
