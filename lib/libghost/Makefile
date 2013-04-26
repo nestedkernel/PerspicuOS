@@ -11,5 +11,6 @@ libghost.a: $(OFILES)
 	$(AR) -r $@ $(OFILES)
 
 clean:
-	rm -f *.a *.o
+	rm -f *.a *.o test
+
 
