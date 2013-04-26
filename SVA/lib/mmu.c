@@ -1035,11 +1035,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
 
-#if UNDER_TEST
-  /* TODO: figure out if this assumption is correct */
-  SVA_ASSERT(isPresent(pml4e),
-          "SVA-MMU: pml4 page is not present... OS should alloc this"); 
-#else
   if (!isPresent (pml4e)) {
     /* Page table page index */
     unsigned int ptindex;
@@ -1055,7 +1050,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     uintptr_t paddr = PTPages[ptindex].paddr;
     *pml4e = (paddr & addrmask) | PTE_CANWRITE | PTE_CANUSER | PTE_PRESENT;
   }
-#endif
 
   /*
    * Enable writing to the virtual address space used for secure memory.
