@@ -38,6 +38,7 @@ ghost_malloc(size_t size) {
 
 void *
 ghost_calloc(size_t number, size_t size) {
+  printf ("ghost_calloc!\n");
   void * ptr = secmemalloc (number * size);
   memset (ptr, 0, number * size);
   return ptr;
