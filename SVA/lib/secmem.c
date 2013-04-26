@@ -76,7 +76,7 @@ allocSecureMemory (void) {
   /*
    * Get the size out of the interrupt context.
    */
-  uintptr_t size = icp->rdi;
+  intptr_t size = icp->rdi;
 
   /*
    * Determine if this is the first secure memory allocation.
@@ -84,15 +84,14 @@ allocSecureMemory (void) {
   unsigned char firstSecAlloc = (threadp->secmemSize == 0);
 
   /*
-   * Get the memory from the operating system.  Note that the OS provides the
-   * physical address of the allocated memory.
+   * Get a page of memory from the operating system.  Note that the OS provides
+   * the physical address of the allocated memory.
    */
-  if ((sp = provideSVAMemory (size)) != 0) {
-    /*
-     * Map each page of the memory into the part of the virtual address space
-     * used for private memory.
-     */
-    for (uintptr_t paddr = sp; paddr < (sp + size); paddr += X86_PAGE_SIZE) {
+  for (intptr_t remaining = size; remaining > 0; remaining -= X86_PAGE_SIZE) {
+    if ((sp = provideSVAMemory (X86_PAGE_SIZE)) != 0) {
+      /* Physical address of the allocated page */
+      uintptr_t paddr = sp;
+
       /* Virtual address for the current page to map */
       unsigned char * vaddr = 0;
 
@@ -125,24 +124,22 @@ allocSecureMemory (void) {
       if (firstSecAlloc) {
         threadp->secmemPML4e = pml4e;
       }
-
-      /*
-       * Increase the size of the allocated secure memory.
-       */
-      threadp->secmemSize += size;
+    } else {
+      panic ("SVA: Kernel secure memory allocation failed!\n");
     }
-
-    /*
-     * Zero out the memory.
-     */
-    memset (vaddrStart, 0, size);
   }
+
+  /*
+   * Zero out the memory.
+   */
+  memset (vaddrStart, 0, size);
 
   /*
    * Set the return value in the Interrupt Context to be a pointer to the newly
    * allocated memory.
    */
   icp->rax = (uintptr_t) vaddrStart;
+  printf ("SVA: secmemalloc: %lx %lx\n", vaddrStart, size);
   return vaddrStart;
 }
 
