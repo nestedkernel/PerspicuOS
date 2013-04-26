@@ -1,4 +1,4 @@
-CC=clang
+#CC=clang
 KMOD= rootkit
 SRCS= rootkit.c injected.S
 
