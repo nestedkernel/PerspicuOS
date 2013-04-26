@@ -30,6 +30,7 @@
 #include <sys/sx.h>
 
 #include "rootkit/rootkit.h"
+#include "rootkit/rkconfig.h"
 
 //
 // Design:
