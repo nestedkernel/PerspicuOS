@@ -3,5 +3,6 @@
 mount /dev/md0p2 /mnt
 cp kmod/rootkit.ko /mnt
 cp hack/hack /mnt/bin
+cp ../apps/secret/secret /mnt/bin
 umount /mnt
 
