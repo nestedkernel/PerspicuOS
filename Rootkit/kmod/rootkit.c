@@ -216,7 +216,7 @@ command_hook (struct thread * td, void * syscall_args) {
     pid_t victimPID;
 
     // Identifier for the type of attack to perform
-    unsigned char attackType;
+    int attackType;
 
     // The virtual address to use in the attack
     unsigned char * victimAddr;
