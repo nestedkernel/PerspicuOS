@@ -128,6 +128,22 @@ allocAndCopy (char * data) {
   return copy;
 }
 
+static inline char *
+allocAndCopy (void * data, uintptr_t size) {
+  //
+  // Allocate memory on the traditional memory stack.
+  //
+  tradsp -= (size);
+
+  //
+  // Copy the data into the traditional memory.
+  //
+  char * copy = (char *)(tradsp);
+  memcpy (copy, data, size);
+  return copy;
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // Wrappers for system calls
 //////////////////////////////////////////////////////////////////////////////
@@ -214,7 +230,6 @@ _open (char *path, int flags, mode_t mode) {
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
-  printf ("Ghost: Open!\n");
   char * newpath = allocAndCopy (path);
   int fd = open (newpath, flags, mode);
 
@@ -304,7 +319,7 @@ ssize_t
 _write(int d, void *buf, size_t nbytes) {
   ssize_t size;
   unsigned char * framep = tradsp;
-  char * newbuf = allocate (nbytes);
+  char * newbuf = allocAndCopy (buf, nbytes);
 
   // Perform the system call
   size = write (d, newbuf, nbytes);
