@@ -51,7 +51,7 @@ ghostinit (void) {
     abort ();
   }
 
-  tradsp = tradBuffer;
+  tradsp = tradBuffer + tradlen;
   return;
 }
 
@@ -67,7 +67,7 @@ allocate (T * data) {
   //
   // Allocate memory on the traditional memory stack.
   //
-  tradsp += sizeof (T);
+  tradsp -= sizeof (T);
 
   //
   // Copy the data into the traditional memory.
@@ -81,7 +81,7 @@ char * allocate (uintptr_t size) {
   //
   // Allocate memory on the traditional memory stack.
   //
-  tradsp += size;
+  tradsp -= size;
 
   //
   // Copy the data into the traditional memory.
@@ -103,7 +103,7 @@ allocAndCopy (T* data) {
   //
   // Allocate memory on the traditional memory stack.
   //
-  tradsp += sizeof (T);
+  tradsp -= sizeof (T);
 
   //
   // Copy the data into the traditional memory.
@@ -118,7 +118,7 @@ allocAndCopy (char * data) {
   //
   // Allocate memory on the traditional memory stack.
   //
-  tradsp += (strlen (data) + 1);
+  tradsp -= (strlen (data) + 1);
 
   //
   // Copy the data into the traditional memory.
@@ -301,7 +301,7 @@ _read(int d, void *buf, size_t nbytes) {
 }
 
 ssize_t
-_write(int d, const void *buf, size_t nbytes) {
+_write(int d, void *buf, size_t nbytes) {
   ssize_t size;
   unsigned char * framep = tradsp;
   char * newbuf = allocate (nbytes);
