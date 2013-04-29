@@ -29,7 +29,7 @@
 #include "ghost.h"
 
 /* Size of traditional memory buffer */
-static uintptr_t tradlen = 4096;
+static uintptr_t tradlen = 16384;
 
 /* Buffer containing the traditional memory */
 static unsigned char * tradBuffer;
@@ -100,16 +100,37 @@ char * allocate (uintptr_t size) {
 template<typename T>
 static inline T *
 allocAndCopy (T* data) {
-  //
-  // Allocate memory on the traditional memory stack.
-  //
-  tradsp -= sizeof (T);
+  T * copy = 0;
+  if (data) {
+    //
+    // Allocate memory on the traditional memory stack.
+    //
+    tradsp -= sizeof (T);
 
-  //
-  // Copy the data into the traditional memory.
-  //
-  T * copy = (T *)(tradsp);
-  *copy = *data;
+    //
+    // Copy the data into the traditional memory.
+    //
+    copy = (T *)(tradsp);
+    *copy = *data;
+  }
+  return copy;
+}
+
+static inline fd_set *
+allocAndCopy (fd_set* data) {
+  fd_set * copy = 0;
+  if (data) {
+    //
+    // Allocate memory on the traditional memory stack.
+    //
+    tradsp -= sizeof (fd_set);
+
+    //
+    // Copy the data into the traditional memory.
+    //
+    fd_set * copy = (fd_set *)(tradsp);
+    *copy = *data;
+  }
   return copy;
 }
 
@@ -124,7 +145,8 @@ allocAndCopy (char * data) {
   // Copy the data into the traditional memory.
   //
   char * copy = (char *)(tradsp);
-  strcpy (copy, data);
+  if (data)
+    strcpy (copy, data);
   return copy;
 }
 
@@ -139,7 +161,8 @@ allocAndCopy (void * data, uintptr_t size) {
   // Copy the data into the traditional memory.
   //
   char * copy = (char *)(tradsp);
-  memcpy (copy, data, size);
+  if (data)
+    memcpy (copy, data, size);
   return copy;
 }
 
@@ -213,12 +236,13 @@ _select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   struct timeval * newtimeout = allocAndCopy (timeout);
 
   // Perform the system call
+  printf ("select: %lx %lx %lx %lx\n", newreadfds, newwritefds, newexceptfds, newtimeout);
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
 
   // Copy the outputs back into ghost memory
-  *readfds = *newreadfds;
-  *writefds = *newwritefds;
-  *exceptfds = *newexceptfds;
+  if (readfds)   *readfds   = *newreadfds;
+  if (writefds)  *writefds  = *newwritefds;
+  if (exceptfds) *exceptfds = *newexceptfds;
 
   // Restore the stack pointer
   tradsp = framep;
@@ -310,6 +334,9 @@ _read(int d, void *buf, size_t nbytes) {
   // Perform the system call
   size = read (d, newbuf, nbytes);
 
+  // Copy the data back into the buffer
+  memcpy (buf, newbuf, size);
+
   // Restore the stack pointer
   tradsp = framep;
   return size;
@@ -353,7 +380,9 @@ _clock_gettime(clockid_t clock_id, struct timespec *tp) {
 void accept () __attribute__ ((weak, alias ("_accept")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
+
 void select () __attribute__ ((weak, alias ("_select")));
+
 void open () __attribute__ ((weak, alias ("_open")));
 void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
