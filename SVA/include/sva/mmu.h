@@ -91,7 +91,7 @@ static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
  */
 /* Enum representing the four page types */
 enum page_type_t {
-    PG_UNUSED,
+    PG_UNUSED = 0,
     PG_L1,          /* Defines a page being used as an L1 PTP */
     PG_L2,          /* Defines a page being used as an L2 PTP */
     PG_L3,          /* Defines a page being used as an L3 PTP */
@@ -193,7 +193,7 @@ extern void unmapSecurePage (unsigned char * v);
  *****************************************************************************
  */
 void init_mmu(void);
-void init_leaf_page_from_mapping(page_entry_t val);
+void init_leaf_page_from_mapping(page_entry_t mapping);
 
 /*
  *****************************************************************************

@@ -43,6 +43,8 @@ extern void sva_update_l1_mapping (pte_t * ptePtr, page_entry_t val);
 extern void sva_update_l2_mapping (pde_t * pdePtr, page_entry_t val);
 extern void sva_update_l3_mapping (pdpte_t * pdptePtr, page_entry_t val);
 extern void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val);
+extern void sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t
+        btext, uintptr_t etext);
 
 /*
  *****************************************************************************

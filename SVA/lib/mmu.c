@@ -101,7 +101,8 @@ const unsigned PAGESHIFT = 12;
  *  Pointer to the page_desc for this frame
  */
 page_desc_t * getPageDescPtr(unsigned long mapping) {
-    return &page_desc[ (mapping & PG_FRAME) >> pageSize ];
+    unsigned long frameIndex = (mapping & PG_FRAME) / pageSize;
+    return &page_desc[frameIndex];
 }
 
 /*
@@ -112,7 +113,6 @@ page_desc_t * getPageDescPtr(unsigned long mapping) {
  */
 void 
 init_mmu () {
-    memset(&page_desc, 0, numPageDescEntries);
 }
 
 /*
@@ -181,7 +181,7 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     /* Disable page protection so we can write to the referencing table entry */
     unprotect_paging();
     
-#if DEBUG >= 3
+#if DEBUG >= 5
     printf("##### SVA<page_entry_store>: pre-write ");
     printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
 #endif
@@ -189,7 +189,7 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     /* Write the new value to the page_entry */
     *page_entry = newVal;
 
-#if DEBUG >= 3
+#if DEBUG >= 5
     printf("##### SVA<page_entry_store>: post-write ");
     printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
 #endif
@@ -222,18 +222,18 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
 
     /* Collect associated information for the existing mapping */
     unsigned long origPA = *page_entry & PG_FRAME;
-    unsigned long origFrame = origPA >> pageSize;
+    unsigned long origFrame = origPA >> PAGESHIFT;
     uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-    page_desc_t origPG = page_desc[origFrame >> pageSize];
+    page_desc_t origPG = page_desc[origFrame];
 
     /* Get associated information for the new page being mapped */
     unsigned long newPA = newVal & PG_FRAME;
-    unsigned long newFrame = newPA >> pageSize;
+    unsigned long newFrame = newPA >> PAGESHIFT;
     uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-    page_desc_t newPG = page_desc[newFrame >> pageSize];
+    page_desc_t newPG = page_desc[newFrame];
 
     /* Get the page table page descriptor. The page_entry is the viratu */
-    uintptr_t pteFrame = getPhysicalAddr (page_entry) >> pageSize;
+    uintptr_t pteFrame = getPhysicalAddr (page_entry) >> PAGESHIFT;
     page_desc_t ptePG = page_desc[ pteFrame ];
 
 #if 0 /* This is under test and isn't ready for live use */
@@ -535,10 +535,10 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
 static inline void
 __do_mmu_update (pte_t * pteptr, page_entry_t val) {
     uintptr_t origPA = *pteptr & PG_FRAME;
-    unsigned long origFrame = origPA >> pageSize;
+    unsigned long origFrame = origPA >> PAGESHIFT;
     page_desc_t origPG = page_desc[origFrame];
     uintptr_t newPA = val & PG_FRAME;
-    unsigned long newFrame = newPA >> pageSize;
+    unsigned long newFrame = newPA >> PAGESHIFT;
     page_desc_t newPG = page_desc[newFrame];
 
 #if 0
@@ -608,7 +608,7 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
     unsigned long pageEntryVal;
 
     /* Zero page */
-    memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
+    //memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
 #if ACTIVATE_PROT
     /*
@@ -704,7 +704,7 @@ static inline void
 check_and_init_first_mapping(unsigned long newMapping){
 
     /* Get the frame number in the new mapping */
-    unsigned long frame = (newMapping & PG_FRAME) >> pageSize;
+    unsigned long frame = (newMapping & PG_FRAME) >> PAGESHIFT;
 
     /* 
      * If this is the first mapping to the frame then set the privilege on the
@@ -1278,6 +1278,12 @@ is_l1_kernel_page (pte_t* virtual) {
 
 
 /*
+ *****************************************************************************
+ * SVA MMU Intrinsic Implementations
+ *****************************************************************************
+ */
+
+/*
  * Called by the memory fault handler to check that the kernel did not try to
  * write into a pagetable directly.
  */
@@ -1359,6 +1365,219 @@ sva_mm_load_pgtable (void * pg) {
 }
 
 /*
+ * Function: declare_ptp_and_walk_pt_entries
+ *
+ * Descriptions:
+ *  This function recursively walks a page table and it's entries to initalize
+ *  the SVA data structures for the given page. This function is meant to
+ *  initialize SVA data structures so they mirror the static page table setup
+ *  by a kernel. However, it uses the paging structure itself to walk the
+ *  pages, which means it should be agnostic to the operating system being
+ *  employed upon. The function only walks into page table pages that are valid
+ *  or enabled. It also makes sure that if a given page table is already active
+ *  in SVA then it skips over initializing its entries as that could cause an
+ *  infinite loop of recursion. This is an issue in FreeBSD as they have a
+ *  recursive mapping in the pml4 top level page table page.
+ *  
+ *  If a given page entry is marked as having a larger page size, such as may
+ *  be the case with a 2MB page size for PD entries, then it doesn't traverse
+ *  the page. Therefore, if the kernel page tables are configured correctly
+ *  this won't initialize any SVA page descriptors that aren't in use.
+ *
+ * Assumptions:
+ *  - The number of entries per page assumes a amd64 paging hardware mechanism.
+ *    As such the number of entires per a 4KB page table page is 2^9 or 512
+ *    entries. 
+ *  - This page referenced in pageMapping has already been determined to be
+ *    valid and requires SVA metadata to be created.
+ *
+ * Inputs:
+ *   pageMapping: Page mapping associated with the given page being traversed.
+ *                This mapping identifies the physical address/frame of the
+ *                page table page so that SVA can initialize it's data
+ *                structures then recurse on each entry in the page table page. 
+ *  numPgEntries: The number of entries for a given level page table. 
+ *     pageLevel: The page level of the given mapping {1,2,3,4}.
+ *
+ *
+ * TODO: 
+ *  - Modify the page entry number to be dynamic in some way to accomodate
+ *    differing numbers of entries. This only impacts how we traverse the
+ *    address structures. The key issue is that we don't want to traverse an
+ *    entry that randomly has the valid bit set, but not have it point to a
+ *    real page. For example, if the kernel did not zero out the entire page
+ *    table page and only inserted a subset of entries in the page table, the
+ *    non set entries could be identified as holding valid mappings, which
+ *    would then cause this function to traverse down truly invalid page table
+ *    pages. In FreeBSD this isn't an issue given the way they initialize the
+ *    static mapping, but could be a problem given differnet intialization
+ *    methods.
+ *
+ */
+void 
+declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
+        numPgEntries, enum page_type_t pageLevel ) 
+{ 
+    int i;
+    page_entry_t *pagePtr = (page_entry_t *) (pageMapping & PG_FRAME);
+    enum page_type_t subLevelPgType;
+    unsigned long numSubLevelPgEntries;
+    page_desc_t *thisPg = getPageDescPtr(pageMapping);
+    
+    /* 
+     * There is one recursive mapping, which is the last entry in the PML4 page
+     * table page. Thus we return if the page desc has already been initialized
+     * to avoid an infinite recurse.
+     */
+    if (thisPg->type != PG_UNUSED)
+        return;
+    
+    /*
+     * For each level of page we do the following:
+     *  - Set the page descriptor type for this page table page
+     *  - Set the sub level page type and the number of entries for the
+     *    recursive call to the function.
+     */
+    switch(pageLevel){
+    case PG_L4:
+#if DEBUG >= 2
+        printf("Setting L4 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+#endif
+        thisPg->type = PG_L4;       /* Set the page type to L4 */
+        thisPg->user = 0;           /* Set the priv flag to kernel */
+        subLevelPgType = PG_L3;
+        numSubLevelPgEntries = numPgEntries;
+        break;
+    case PG_L3:
+#if DEBUG >= 2
+        printf("Setting L3 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+#endif
+        thisPg->type = PG_L3;       /* Set the page type to L3 */
+        thisPg->user = 0;           /* Set the priv flag to kernel */
+        subLevelPgType = PG_L2;
+        numSubLevelPgEntries = numPgEntries;
+        break;
+    case PG_L2:
+#if DEBUG >= 2
+        printf("Setting L2 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+#endif
+        thisPg->type = PG_L2;       /* Set the page type to L2 */
+        thisPg->user = 0;           /* Set the priv flag to kernel */
+        subLevelPgType = PG_L1;
+        numSubLevelPgEntries = numPgEntries;
+        break;
+    case PG_L1:
+#if DEBUG >= 2
+        printf("Setting L1 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+#endif
+        thisPg->type = PG_L1;       /* Set the page type to L1 */
+        thisPg->user = 0;           /* Set the priv flag to kernel */
+        subLevelPgType = PG_LEAF;
+        numSubLevelPgEntries = numPgEntries;
+        break;
+    default:
+        printf("SVA: page type %d. Frame addr: %p\n",thisPg->type, pagePtr); 
+        panic("SVA: walked an entry with invalid page type.");
+    }
+
+    /* 
+     * If we have a larger page size then this entry doesn't go deeper so return.
+     * Note that the PS flag (bit 7) represents the page size for this mapping.
+     */
+    if ((pageMapping & PG_PS) != 0)
+        return;
+
+    /* 
+     * Iterate through all the entries of this page, recursively calling the
+     * walk on all sub entries.
+     */
+    for (i = 0; i < numSubLevelPgEntries; i++){
+        page_entry_t nextEntry = pagePtr[i];
+
+        /* 
+         * If this entry is valid then recurse the page pointed to by this page
+         * table entry.
+         */
+        if ((nextEntry & PG_V) != 0) {
+#if DEBUG >= 3
+            printf("Processing entry: ptr:%p val:0x%lx\n", (nextEntry & PG_FRAME), nextEntry);
+#endif
+            /* 
+             * If we hit the level 1 pages we have hit our boundary condition for
+             * the recursive page table traversals. Now we just mark the leaf page
+             * descriptors.
+             */
+            if (pageLevel == PG_L1){
+                init_leaf_page_from_mapping(nextEntry);
+            } else {
+                declare_ptp_and_walk_pt_entries(nextEntry,
+                        numSubLevelPgEntries, subLevelPgType); 
+            }
+        }
+    }
+}
+
+/*
+ * Function declare_kernel_code_pages 
+ *
+ * Description: Mark all kernel code pages as code pages
+ *
+ * Inputs: 
+ *  - btext : marks the beginning of the text segment
+ *  - etext : marks the address of the end of the text segment
+ */
+void
+declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
+    /* Get pointers for the pages */
+    uintptr_t page;
+    uintptr_t btextPage = btext & PG_FRAME;
+    uintptr_t etextPage = etext & PG_FRAME;
+
+    for (page = btextPage; page < etextPage; ) {
+        /* Get the page frame index and get the codePg to mark */
+        unsigned long index = page / pageSize;
+        page_desc_t codePg = page_desc[index];
+
+        /* Mark the page as both a code page and kernel level */
+        codePg.type = PG_CODE; 
+        codePg.user = 0;
+
+        /* Set page to address of the next page */
+        page += pageSize;
+    }
+}
+
+/*
+ * Function: sva_mmu_init
+ *
+ * Description:
+ *  This function initializes the sva mmu unit by zeroing out the page
+ *  descriptors, capturing the statically allocated initial kernel mmu state,
+ *  and identifying all kernel code pages, and setting them in the page
+ *  descriptor array.
+ *
+ *  To initialize the sva page descriptors, this function takes the pml4 base
+ *  mapping and walks down each level of the page table tree. 
+ *
+ * Inputs:
+ *  - kpml4Mapping  : Mapping referencing the base kernel pml4 page table page
+ *  - nkpml4e       : The number of entries in the pml4
+ */
+void 
+sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
+        uintptr_t etext)
+{
+    /* Zero out the page descriptor array */
+    memset(&page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
+
+    /* Walk the kernel page tables and initialize the sva page_desc */
+    declare_ptp_and_walk_pt_entries(kpml4Mapping, nkpml4e, PG_L4);
+
+    /* Identify kernel code pages and intialize the descriptors */
+    declare_kernel_code_pages(btext, etext);
+}
+
+/*
  * Intrinsic: sva_declare_leaf_page()
  *
  * Description:
@@ -1376,12 +1595,12 @@ void
 sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
 
     unsigned long rflags;
-    unsigned long frame = frameAddr >> pageSize;
+    unsigned long frame = frameAddr >> PAGESHIFT;
     
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
 
-#if DEBUG >= 1
+#if DEBUG >= 4
     printf("##### SVA: declare_leaf_page\n");
 #endif
 
@@ -1418,12 +1637,12 @@ void
 sva_declare_l1_page (unsigned long frameAddr, pde_t *pde) {
 
     unsigned long rflags;
-    unsigned long frame = frameAddr >> pageSize;
+    unsigned long frame = frameAddr >> PAGESHIFT;
     
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
 
-#if DEBUG >= 3
+#if DEBUG >= 4
     printf("##### SVA: declare_l1_page\n");
 #endif
 
@@ -1491,7 +1710,7 @@ void llva_remove_l1_page(pte_t * pteptr) {
 void sva_declare_l2_page(unsigned long frameAddr, pdpte_t * pdpte) {
     
     unsigned long rflags;
-    unsigned long frame = frameAddr >> pageSize;
+    unsigned long frame = frameAddr >> PAGESHIFT;
 
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
@@ -1513,7 +1732,7 @@ void sva_declare_l2_page(unsigned long frameAddr, pdpte_t * pdpte) {
     unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
 #endif
 
-#if DEBUG >= 3
+#if DEBUG >= 4
     printf("##### SVA: declare_l2_page\n");
 #endif
 
@@ -1586,12 +1805,12 @@ void
 sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
 
     unsigned long rflags;
-    unsigned long frame = frameAddr >> pageSize;
+    unsigned long frame = frameAddr >> PAGESHIFT;
 
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
 
-#if DEBUG >= 3
+#if DEBUG >= 2
     printf("##### SVA: declare_l3_page\n");
 #endif
 
@@ -1629,12 +1848,12 @@ void
 sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
 
     unsigned long rflags;
-    unsigned long frame = frameAddr >> pageSize;
+    unsigned long frame = frameAddr >> PAGESHIFT;
 
     /* Disable interrupts so that we appear to execute as a single instruction. */
     rflags = sva_enter_critical();
 
-#if DEBUG >= 3
+#if DEBUG >= 2
     printf("##### SVA: declare_l4_page\n");
 #endif
 
@@ -1758,16 +1977,23 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
  *  val    - The new translation to insert into the page table.
  */
 void 
-init_leaf_page_from_mapping (page_entry_t val) {
+init_leaf_page_from_mapping (page_entry_t mapping) {
     /* Get the page descriptor for the new entry */
-    page_desc_t * newPg = getPageDescPtr(val); 
+    page_desc_t * newPg = getPageDescPtr(mapping); 
+
+#if DEBUG >= 5
+    printf("newPg ptr: %p, mapping: %lx\n",newPg, mapping);
+#endif
 
     /* Mark the page type as either user or kernel data */
-    if(val & PG_U) {
+    /* TODO debug this to see why it causes a bug when setting */
+#if 0
+    if(mapping & PG_U) {
         newPg->type = PG_TUDATA;
     } else {
         newPg->type = PG_TKDATA;
     }
+#endif
 }
 
 /* 
@@ -1788,7 +2014,7 @@ init_leaf_page_from_mapping (page_entry_t val) {
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
 
-#if DEBUG > 2
+#if DEBUG > 4
     printf("##### SVA: update_l1_page\n");
 #endif
 
@@ -1808,7 +2034,7 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 2
+#if DEBUG >= 4
     printf("##### SVA: update_l2_page\n");
 #endif
 
@@ -1888,7 +2114,7 @@ void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 2
+#if DEBUG >= 3
     printf("##### SVA: update_l3_page\n");
 #endif
 
@@ -1902,7 +2128,7 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 2
+#if DEBUG >= 3
     printf("##### SVA: update_l4_page\n");
 #endif
 
