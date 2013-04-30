@@ -574,11 +574,13 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
         SVA_ASSERT (newPG.count < ((1<<12-1)), "MMU: overflow for the mapping count");
         newPG.count++;
     }
+#endif
 
 
+#if ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
     if (readOnlyPage(newPG))
-        val &= ~PG_RW;
+        val = setMappingReadOnly(val);
 #endif
 
     /* perform the actual write to the pte entry */
@@ -594,6 +596,9 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
  *  page table entry we are modifying, because the format of the entry is the
  *  same in all cases. 
  *
+ * Assumption: This function should only be called by a declare intrinsic.
+ *      Otherwise it has side effects that may break the system.
+ *
  * Inputs:
  *  frameAddr: represents the physical address of this frame
  *
@@ -608,7 +613,7 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
     unsigned long pageEntryVal;
 
     /* Zero page */
-    //memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
+    memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
 #if ACTIVATE_PROT
     /*
@@ -617,17 +622,16 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
      * this new page. This is an update type of operation. A value of 0 in bit
      * position 2 configures for no writes.
      */
-    pageEntryVal = (frameAddr & PG_FRAME) & ~PG_RW;
+    pageEntryVal = setMappingReadOnly((page_entry_t)(frameAddr & PG_FRAME)) ;
 
 #elif TMP_TEST_CODE
     /*
-     * TODO: eliminate later:
      * Test code for the unprotect operations, will be eliminated. 
      */
     pageEntryVal = *page_entry;
 
 #endif
-
+    
     /* Perform the actual store of the value to the page_entry */
     page_entry_store(page_entry, pageEntryVal);
 }
@@ -1497,25 +1501,36 @@ declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
      * walk on all sub entries.
      */
     for (i = 0; i < numSubLevelPgEntries; i++){
-        page_entry_t nextEntry = pagePtr[i];
+        page_entry_t * nextEntry = & pagePtr[i];
 
         /* 
          * If this entry is valid then recurse the page pointed to by this page
          * table entry.
          */
-        if ((nextEntry & PG_V) != 0) {
+        if ((*nextEntry & PG_V) != 0) {
 #if DEBUG >= 3
-            printf("Processing entry: ptr:%p val:0x%lx\n", (nextEntry & PG_FRAME), nextEntry);
+            printf("Processing entry: ptr:%p val:0x%lx\n", (*nextEntry & PG_FRAME), *nextEntry);
 #endif
+
+#if ACTIVATE_PROT
+            /*
+             * Now that we know we have a valid and active entry we need to
+             * first set the read only bit for the mapping before traversing
+             * the page table page. 
+             */
+            page_entry_t romapping = setMappingReadOnly(*nextEntry);
+            page_entry_store(nextEntry, romapping);             
+#endif
+
             /* 
              * If we hit the level 1 pages we have hit our boundary condition for
              * the recursive page table traversals. Now we just mark the leaf page
              * descriptors.
              */
             if (pageLevel == PG_L1){
-                init_leaf_page_from_mapping(nextEntry);
+                init_leaf_page_from_mapping(*nextEntry);
             } else {
-                declare_ptp_and_walk_pt_entries(nextEntry,
+                declare_ptp_and_walk_pt_entries(*nextEntry,
                         numSubLevelPgEntries, subLevelPgType); 
             }
         }

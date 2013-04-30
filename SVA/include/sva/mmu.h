@@ -332,6 +332,24 @@ readOnlyPage(page_desc_t pg){
 }
 
 /*
+ * Description:
+ *  This function takes a page table mapping and set's the flag to read only. 
+ * 
+ * Inputs:
+ *  - mapping: the mapping to add read only flag to
+ *
+ * Return:
+ *  - A new mapping set to read only
+ *
+ *  Note that setting the read only flag does not necessarily mean that the
+ *  read only protection is enabled in the system. It just indicates that if
+ *  the system has the write protection enabled then the value of this bit is
+ *  considered.
+ */
+static inline page_entry_t setMappingReadOnly (page_entry_t mapping) 
+    { return mapping & ~PG_RW; }
+
+/*
  *****************************************************************************
  * Page descriptor query functions
  *****************************************************************************
