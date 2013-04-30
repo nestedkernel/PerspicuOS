@@ -30,6 +30,9 @@
 # If filename is missing, the default is
 # opt_<name-of-option-in-lower-case>.h
 
+# SVA options
+SVA_MMU         opt_sva_mmu.h
+
 AAC_DEBUG		opt_aac.h
 AHC_ALLOW_MEMIO		opt_aic7xxx.h
 AHC_TMODE_ENABLE	opt_aic7xxx.h

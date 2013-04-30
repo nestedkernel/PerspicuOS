@@ -55,6 +55,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include "opt_perfmon.h"
 #include "opt_sched.h"
 #include "opt_kdtrace.h"
+#include "opt_sva_mmu.h"
 
 #include <sys/param.h>
 #include <sys/proc.h>
@@ -142,8 +143,12 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include <isa/rtc.h>
 
 #include <sva/init.h>
-#include <sva/mmu_intrinsics.h>
 #include <sva/state.h>
+
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#define SVA_DEBUG 1
+#endif
 
 /* Sanity check for __curthread() */
 CTASSERT(offsetof(struct pcpu, pc_curthread) == 0);
@@ -1553,8 +1558,12 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			/*
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
+#if SVA_MMU
+            /* Update the mapping to the pte with SVA */
+            sva_update_l1_mapping(pte, (unsigned long) (pa | PG_V | PG_RW | PG_N));
+#else
 			*pte = pa | PG_V | PG_RW | PG_N;
-            //sva_update_l1_mapping()
+#endif
 			invltlb();
 
 			tmp = *(int *)ptr;
@@ -1636,7 +1645,12 @@ do_next:
 				break;
 		}
 	}
+#if SVA_MMU
+    /* Update the mapping to the pte with SVA */
+    sva_update_l1_mapping(pte, 0);
+#else
 	*pte = 0;
+#endif
 	invltlb();
 
 	/*

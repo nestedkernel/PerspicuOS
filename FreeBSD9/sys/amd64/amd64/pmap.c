@@ -107,8 +107,12 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #include "opt_pmap.h"
 #include "opt_vm.h"
+#include "opt_sva_mmu.h"
 
+#ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
+#define SVA_DEBUG 0
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -173,9 +177,6 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #define	pa_index(pa)	((pa) >> PDRSHIFT)
 #define	pa_to_pvh(pa)	(&pv_table[pa_index(pa)])
-
-#define SVA_ENA 1
-#define SVA_ENA_DEBUG 0
 
 struct pmap kernel_pmap_store;
 
@@ -646,7 +647,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	create_pagetables(firstaddr);
 
-#if SVA_ENA
+#ifdef SVA_MMU
     /* 
      * Set the static address locations in the struct here to aid in kernel MMU
      * initialization. Note that we pass in the page mapping for the pml4 page. 
@@ -1106,7 +1107,7 @@ pmap_update_pde_action(void *arg)
 	struct pde_action *act = arg;
 
     if (act->store == PCPU_GET(cpuid)){
-#if SVA_ENA
+#ifdef SVA_MMU
         /* SVA update the mapping to the newly created pde */
         sva_update_l2_mapping(act->pde, act->newpde);
 #else
@@ -1158,7 +1159,7 @@ pmap_update_pde(pmap_t pmap, vm_offset_t va, pd_entry_t *pde, pd_entry_t newpde)
 		    smp_no_rendevous_barrier, pmap_update_pde_action,
 		    pmap_update_pde_teardown, &act);
 	} else {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* SVA update the mapping to the newly created pde */
         sva_update_l2_mapping(pde, newpde);
 #else
@@ -1211,7 +1212,7 @@ static void
 pmap_update_pde(pmap_t pmap, vm_offset_t va, pd_entry_t *pde, pd_entry_t newpde)
 {
 
-#if SVA_ENA
+#ifdef SVA_MMU
     /* SVA update the mapping to the newly created pde */
     sva_update_l2_mapping(pde, newpde);
 #else
@@ -1424,7 +1425,7 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pt_entry_t *pte;
 
     pte = vtopte(va);
-#if SVA_ENA
+#ifdef SVA_MMU
     /* Update the initial mapping of the leaf page */
     sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_RW | PG_V | PG_G));
 #else
@@ -1438,7 +1439,7 @@ pmap_kenter_attr(vm_offset_t va, vm_paddr_t pa, int mode)
 	pt_entry_t *pte;
 
 	pte = vtopte(va);
-#if SVA_ENA
+#ifdef SVA_MMU
     /* Update the initial mapping of the leaf page */
     sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_RW | PG_V | PG_G |
                 pmap_cache_bits(mode, 0))); 
@@ -1502,7 +1503,7 @@ pmap_qenter(vm_offset_t sva, vm_page_t *ma, int count)
 		pa = VM_PAGE_TO_PHYS(m) | pmap_cache_bits(m->md.pat_mode, 0);
 		if ((*pte & (PG_FRAME | PG_PTE_CACHE)) != pa) {
 			oldpte |= *pte;
-#if SVA_ENA
+#ifdef SVA_MMU
             /* Update the initial mapping of the leaf page */
             sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_G | PG_RW | PG_V));
 #else
@@ -1767,7 +1768,7 @@ pmap_pinit(pmap_t pmap)
 	vm_page_t pml4pg;
 	static vm_pindex_t color;
 	int i;
-#if SVA_ENA
+#ifdef SVA_MMU
     pml4_entry_t * pml4e_self;
 #endif
 
@@ -1785,7 +1786,7 @@ pmap_pinit(pmap_t pmap)
 	if ((pml4pg->flags & PG_ZERO) == 0)
 		pagezero(pmap->pm_pml4);
 
-#if SVA_ENA
+#ifdef SVA_MMU
     /* 
      * SVA self referential entry, which is used when declaring this particular
      * page.
@@ -1809,7 +1810,7 @@ pmap_pinit(pmap_t pmap)
 #endif
 
 	/* Wire in kernel global address entries. */
-#if SVA_ENA
+#ifdef SVA_MMU
     sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
                 | PG_V | PG_U)); 
 #else
@@ -1818,7 +1819,7 @@ pmap_pinit(pmap_t pmap)
 
     for (i = 0; i < NDMPML4E; i++) {
         /* Wire in kernel global address entries. */
-#if SVA_ENA
+#ifdef SVA_MMU
         sva_update_l4_mapping( &pmap->pm_pml4[DMPML4I + i],
                 (pd_entry_t)((DMPDPphys + (i << PAGE_SHIFT)) | PG_RW | PG_V |
                     PG_U));
@@ -1828,7 +1829,7 @@ pmap_pinit(pmap_t pmap)
 #endif
     }
 
-#if SVA_ENA
+#ifdef SVA_MMU
     /*
      * Update the l4 self-referential address mapping to the newly created
      * page table page. Note that we place a self reference here, so we are
@@ -1905,7 +1906,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		pml4index = ptepindex - (NUPDE + NUPDPE);
 		pml4 = &pmap->pm_pml4[pml4index];
 
-#if SVA_ENA
+#ifdef SVA_MMU
         /* 
          * Declare the l3 page to SVA. This will initialize paging structures
          * and make the page table page as read only
@@ -1951,12 +1952,12 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 
-#if SVA_ENA_DEBUG
+#if SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
         printf(" %p, contents: 0x%lx\n", pdp, *pdp); 
 #endif
 
-#if SVA_ENA
+#ifdef SVA_MMU
         /* 
          * Declare the l2 page to SVA. This will initialize paging structures
          * and make the page table page as read only
@@ -1969,11 +1970,11 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
         sva_update_l3_mapping(pdp, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U |
                     PG_RW | PG_V | PG_A | PG_M));
 
-#else  /* !SVA_ENA_DEBUG */
+#else  /* !SVA_DEBUG */
 		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
-#if SVA_ENA_DEBUG
+#if SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: post l2_update: ");
         printf("%p, contents: 0x%lx\n", pdp, *pdp); 
 #endif
@@ -2031,12 +2032,12 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
 
-#if SVA_ENA_DEBUG
+#if SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
         printf("%p, contents: 0x%lx\n", pd, *pd); 
 #endif
 
-#if SVA_ENA
+#ifdef SVA_MMU
         /* 
          * Declare the l1 page to SVA. This will initialize paging structures
          * and make the page table entry referencing the new page as read only.
@@ -2047,11 +2048,11 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
         sva_update_l2_mapping(pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U |
                     PG_RW | PG_V | PG_A | PG_M));
 
-#else  /* !SVA_ENA_DEBUG */
+#else  /* !SVA_DEBUG */
 		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
-#if SVA_ENA_DEBUG
+#if SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: post l2_update: ");
         printf("%p, contents: 0x%lx\n", pd, *pd); 
 #endif
@@ -2269,7 +2270,7 @@ pmap_growkernel(vm_offset_t addr)
 				pmap_zero_page(nkpg);
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 
-#if SVA_ENA
+#ifdef SVA_MMU
             /* 
              * Declare the l2 page to SVA. This will initialize paging
              * structures and make the page table page as read only
@@ -2312,7 +2313,7 @@ pmap_growkernel(vm_offset_t addr)
          * TODO:FIXME: This function traps in the kernel somewhere in the declare
          * function. 
          */
-#if SVA_ENA
+#ifdef SVA_MMU
         /* 
          * Declare the l1 page to SVA. This will initialize paging structures
          * and make the page table page as read only
@@ -2768,7 +2769,7 @@ pmap_fill_ptp(pt_entry_t *firstpte, pt_entry_t newpte)
 	pt_entry_t *pte;
 
 	for (pte = firstpte; pte < firstpte + NPTEPG; pte++) {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* Update the pte with the new page mapping */
         sva_update_l1_mapping(pte, newpte);
 #else
@@ -2870,7 +2871,7 @@ pmap_demote_pde(pmap_t pmap, pd_entry_t *pde, vm_offset_t va)
 	if (workaround_erratum383)
         pmap_update_pde(pmap, va, pde, newpde);
     else {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* SVA update the mapping to the newly created pde */
         /* TODO this is a 2MB pde, we need to handle this in the update function */
         sva_update_l2_mapping(pde, newpde);
@@ -3481,7 +3482,7 @@ setpte:
 	if (workaround_erratum383)
 		pmap_update_pde(pmap, va, pde, PG_PS | newpde);
     else{
-#if SVA_ENA
+#ifdef SVA_MMU
         /* SVA update the mapping to the newly created pde */
         sva_update_l2_mapping(pde, PG_PS | newpde);
 #else
@@ -3561,7 +3562,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_prot_t access, vm_page_t m,
 	origpte = *pte;
 	opa = origpte & PG_FRAME;
 
-#if SVA_ENA
+#ifdef SVA_MMU
     newMapping = pa == opa;
 #endif
 
@@ -3686,7 +3687,7 @@ validate:
 			if (invlva)
 				pmap_invalidate_page(pmap, va);
 		} else {
-#if SVA_ENA
+#ifdef SVA_MMU
             /* Insert new l1 mapping */
             sva_update_l1_mapping(pte, newpte);
 #else
@@ -3768,7 +3769,7 @@ pmap_enter_pde(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot)
 	/*
 	 * Map the superpage.
 	 */
-#if SVA_ENA
+#ifdef SVA_MMU
     /* SVA update the mapping to the newly created pde */
     /* TODO this is a 2MB pde, we need to handle this in the update function */
     sva_update_l2_mapping(pde, newpde);
@@ -3816,7 +3817,7 @@ pmap_enter_object(pmap_t pmap, vm_offset_t start, vm_offset_t end,
 		    pmap_enter_pde(pmap, va, m, prot))
         {
 			m = &m[NBPDR / PAGE_SIZE - 1];
-#if SVA_ENA
+#ifdef SVA_MMU
             printf("\n\n Got a 2mb page!!");
 #endif
         }
@@ -3942,7 +3943,7 @@ pmap_enter_quick_locked(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * Now validate mapping with RO protection
 	 */
 	if ((m->oflags & VPO_UNMANAGED) != 0) {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* Update the initial mapping of the leaf page */
         sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_V | PG_U));
 
@@ -3950,7 +3951,7 @@ pmap_enter_quick_locked(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		pte_store(pte, pa | PG_V | PG_U);
 #endif
     } else {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* Update the initial mapping of the leaf page */
         sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_V | PG_U | PG_MANAGED));
 
@@ -4049,7 +4050,7 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_object_t object,
 			pde = (pd_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pdpg));
 			pde = &pde[pmap_pde_index(addr)];
             if ((*pde & PG_V) == 0) {
-#if SVA_ENA
+#ifdef SVA_MMU
                 /* SVA update the mapping to the newly created pde */
                 /* TODO this is a 2MB pde, we need to handle this in the update function */
                 sva_update_l2_mapping(pde, (pa | PG_PS | PG_M | PG_A | PG_U |
@@ -4198,7 +4199,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr, vm_size_t len,
 			if (*pde == 0 && ((srcptepaddr & PG_MANAGED) == 0 ||
 			    pmap_pv_insert_pde(dst_pmap, addr, srcptepaddr &
 			    PG_PS_FRAME))) {
-#if SVA_ENA
+#ifdef SVA_MMU
                 /* Update the pde to include the new mapping */
                 sva_update_l2_mapping(pde, srcptepaddr & ~PG_W);
 #else
@@ -5114,7 +5115,7 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 	 * Initialize the page directory page.
 	 */
 	for (pde = firstpde; pde < firstpde + NPDEPG; pde++) {
-#if SVA_ENA
+#ifdef SVA_MMU
         /* SVA update the mapping to the newly created pde */
         sva_update_l2_mapping(pde, newpde);
 #else
@@ -5126,7 +5127,7 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 	/*
 	 * Demote the mapping.
 	 */
-#if SVA_ENA
+#ifdef SVA_MMU
     /* Update the l3 mappings to the newly created page table page */
     sva_update_l3_mapping(pdpe, newpdpe);
 #else
