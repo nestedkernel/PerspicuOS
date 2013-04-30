@@ -230,6 +230,9 @@ _select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
+  printf ("ghost select!\n");
+  fflush (stdout);
+  abort();
   fd_set * newreadfds = allocAndCopy (readfds);
   fd_set * newwritefds = allocAndCopy (writefds);
   fd_set * newexceptfds = allocAndCopy (exceptfds);
@@ -237,7 +240,38 @@ _select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 
   // Perform the system call
   printf ("select: %lx %lx %lx %lx\n", newreadfds, newwritefds, newexceptfds, newtimeout);
+  fflush (stdout);
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
+
+  // Copy the outputs back into ghost memory
+  if (readfds)   *readfds   = *newreadfds;
+  if (writefds)  *writefds  = *newwritefds;
+  if (exceptfds) *exceptfds = *newexceptfds;
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return err;
+}
+
+int
+_pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+        struct timespec *timeout, sigset_t * sigmask) {
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  printf ("ghost pselect!\n");
+  fflush (stdout);
+  abort();
+  fd_set * newreadfds = allocAndCopy (readfds);
+  fd_set * newwritefds = allocAndCopy (writefds);
+  fd_set * newexceptfds = allocAndCopy (exceptfds);
+  struct timespec * newtimeout = allocAndCopy (timeout);
+  sigset_t * newsigmask = allocAndCopy (sigmask);
+
+  // Perform the system call
+  printf ("select: %lx %lx %lx %lx\n", newreadfds, newwritefds, newexceptfds, newtimeout);
+  fflush (stdout);
+  int err = pselect (nfds, newreadfds, newwritefds, newexceptfds, newtimeout, newsigmask);
 
   // Copy the outputs back into ghost memory
   if (readfds)   *readfds   = *newreadfds;
@@ -254,6 +288,8 @@ _open (char *path, int flags, mode_t mode) {
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
+  printf ("ghost open!\n");
+  fflush (stdout);
   char * newpath = allocAndCopy (path);
   int fd = open (newpath, flags, mode);
 
@@ -382,6 +418,7 @@ void bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 
 void select () __attribute__ ((weak, alias ("_select")));
+void pselect () __attribute__ ((weak, alias ("_pselect")));
 
 void open () __attribute__ ((weak, alias ("_open")));
 void readlink () __attribute__ ((weak, alias ("_readlink")));
