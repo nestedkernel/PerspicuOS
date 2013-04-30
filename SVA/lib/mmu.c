@@ -1054,7 +1054,12 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   /*
    * Enable writing to the virtual address space used for secure memory.
    */
-  pml4eVal = (*pml4e |= PTE_CANUSER);
+  *pml4e |= PTE_CANUSER;
+
+  /*
+   * Record the value of the PML4E so that we can return it to the caller.
+   */
+  pml4eVal = *pml4e;
 
   /*
    * Get the PDPTE entry (or add it if it is not present).
@@ -1353,7 +1358,7 @@ sva_mm_load_pgtable (void * pg) {
     /*
      * Get a pointer into the page tables for the secure memory region.
      */
-    pml4e_t * secmemp = (pml4e_t *) getVirtual ((uintptr_t) get_pagetable() + secmemOffset);
+    pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
 
     /*
      * Restore the PML4E entry for the secure memory region.
