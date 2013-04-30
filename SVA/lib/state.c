@@ -845,6 +845,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
       /*
        * Restore the PML4E entry for the secure memory region.
        */
+      uintptr_t mask = PTE_PRESENT | PTE_CANWRITE | PTE_CANUSER;
+      if ((oldThread->secmemPML4e & mask) != mask)
+        panic ("SVA: Not Present: %lx %lx\n", oldThread->secmemPML4e, mask);
       *secmemp = oldThread->secmemPML4e;
     }
 
@@ -1378,12 +1381,44 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /*
    * Get the most recent interrupt context.
    */
+  struct SVAThread * threadp = getCPUState()->currentThread;
   sva_icontext_t * ep = getCPUState()->newCurrentIC;
 
   /*
    * Check the memory.
    */
   sva_check_memory_write (ep, sizeof (sva_icontext_t));
+
+  /*
+   * Remove mappings to the secure memory for this thread.
+   */
+  if (threadp->secmemSize) {
+    /*
+     * Get a pointer into the page tables for the secure memory region.
+     */
+    pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
+
+    /*
+     * Mark the secure memory is unmapped in the page tables.
+     */
+    *secmemp = 0;
+
+    /*
+     * Delete the secure memory mappings from the SVA thread structure.
+     */
+    threadp->secmemSize = 0;
+    threadp->secmemPML4e = 0;
+
+    /*
+     * Flush the secure memory page mappings.
+     */
+    flushSecureMemory (threadp);
+
+    /*
+     * Flush the caches.
+     */
+    __asm__ __volatile__ ("wbinvd\n");
+  }
 
   /*
    * Setup the call to the new function.
@@ -1509,6 +1544,13 @@ sva_init_stack (unsigned char * start_stackp,
    */
   sva_check_memory_read  (oldThread, sizeof (struct SVAThread));
   sva_check_memory_write (newThread, sizeof (struct SVAThread));
+
+  /*
+   * Copy over the secure memory mappings from the old thread to the new
+   * thread.
+   */
+  newThread->secmemSize = oldThread->secmemSize;
+  newThread->secmemPML4e = oldThread->secmemPML4e;
 
   /*
    * Allocate the call frame for the call to the system call.
