@@ -254,7 +254,6 @@ _pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
-  abort();
   fd_set * newreadfds = allocAndCopy (readfds);
   fd_set * newwritefds = allocAndCopy (writefds);
   fd_set * newexceptfds = allocAndCopy (exceptfds);
@@ -406,7 +405,7 @@ void accept () __attribute__ ((weak, alias ("_accept")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 
-int select () __attribute__ ((weak, alias ("_select")));
+int select () __attribute__ ((weak, alias ("ghost_select")));
 int pselect () __attribute__ ((weak, alias ("_pselect")));
 
 void open () __attribute__ ((weak, alias ("_open")));
