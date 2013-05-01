@@ -19,7 +19,7 @@
 #include <sys/types.h>
 
 #include "sva/x86.h"
-#include "sva/mmu.h"
+#include "sva/mmu_types.h"
 
 /* Processor privilege level */
 typedef unsigned char priv_level_t;

@@ -77,18 +77,6 @@ struct PTInfo {
 /* Memory to use for missing pages in the page table */
 struct PTInfo PTPages[1024];
 
-/* Size of the physical memory and page size in bytes */
-const unsigned int memSize = 16*1024*1024*1024;
-const unsigned int pageSize = 4096;
-const unsigned int numPageDescEntries = memSize / pageSize;
-
-/* Array describing the physical pages */
-/* The index is the physical page number */
-static page_desc_t page_desc[numPageDescEntries];
-
-/* Number of bits to shift to get the page number out of a PTE entry */
-const unsigned PAGESHIFT = 12;
-
 /*
  * Description:
  *  Given a page table entry value, return the page description associate with
@@ -174,12 +162,19 @@ unprotect_paging(void) {
  *                 valid VA for accessing the page_entry.
  *  newVal      -: The new value to store, including the address of the
  *                 referenced page.
+ *
+ * Side Effect:
+ *  If the activate protection flag is set then this function enables write
+ *  protection on pages. 
+ *
  */
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     
+#if 0//ACTIVATE_PROT
     /* Disable page protection so we can write to the referencing table entry */
     unprotect_paging();
+#endif
     
 #if DEBUG >= 5
     printf("##### SVA<page_entry_store>: pre-write ");
@@ -194,8 +189,10 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
 #endif
 
+#if 0//ACTIVATE_PROT
     /* Reenable page protection */
     protect_paging();
+#endif
 
 }
 
@@ -577,7 +574,7 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
 #endif
 
 
-#if ACTIVATE_PROT
+#if 0//ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
     if (readOnlyPage(newPG))
         val = setMappingReadOnly(val);
@@ -615,7 +612,7 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
-#if ACTIVATE_PROT
+#if 0//ACTIVATE_PROT
     /*
      * Mask out non-address portions of frame because this input comes from the
      * kernel and must be sanitized. Then add the RO flag of the pde referencing
@@ -1558,6 +1555,16 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
         unsigned long index = page / pageSize;
         page_desc_t codePg = page_desc[index];
 
+#if 0//ACTIVATE_PROT
+            /* Set the code page to read only */
+            page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
+            printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
+                    page, *(page_entry_t *)page, romapping);
+            panic("");
+            /* SVA-TODO Get the pte for this kernel page */
+            //page_entry_store((page_entry_t *)page, romapping);             
+#endif
+
         /* Mark the page as both a code page and kernel level */
         codePg.type = PG_CODE; 
         codePg.user = 0;
@@ -1595,6 +1602,15 @@ sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
 
     /* Identify kernel code pages and intialize the descriptors */
     declare_kernel_code_pages(btext, etext);
+
+    /* Now load the initial value of the cr3 to complete kernel init */
+    sva_mm_load_cr3(kpml4Mapping & PG_FRAME);
+
+#if 0//ACTIVATE_PROT
+    /* Enable page protection */
+    protect_paging();
+#endif
+
 }
 
 /*

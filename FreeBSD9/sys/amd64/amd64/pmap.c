@@ -647,24 +647,36 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	create_pagetables(firstaddr);
 
-#ifdef SVA_MMU
-    /* 
-     * Set the static address locations in the struct here to aid in kernel MMU
-     * initialization. Note that we pass in the page mapping for the pml4 page. 
-     */
-    sva_mmu_init( ((pdp_entry_t *)KPML4phys)[PML4PML4I], NPDEPG, btext, etext);
-#endif
-
 	virtual_avail = (vm_offset_t) KERNBASE + *firstaddr;
 	virtual_avail = pmap_kmem_choose(virtual_avail);
-
 	virtual_end = VM_MAX_KERNEL_ADDRESS;
 
-
 	/* XXX do %cr0 as well */
-    /* SVA-TODO: this needs to use the sva intrinsic */
 	load_cr4(rcr4() | CR4_PGE | CR4_PSE);
-	load_cr3(KPML4phys);
+
+#ifdef SVA_MMU
+
+#if SVA_DEBUG
+    printf("Pre CR3 Value: 0x%lx\n",rcr3());
+#endif
+
+    /* 
+     * Set the static address locations in the struct here to aid in kernel MMU
+     * initialization. Note that we pass in the page mapping for the pml4 page.
+     * This function will also initialize the cr3.
+     */
+    sva_mmu_init( ((pdp_entry_t *)KPML4phys)[PML4PML4I], NPDEPG,
+            (uintptr_t)btext, (uintptr_t)etext); 
+
+#if SVA_DEBUG
+    printf("CR0 Value: 0x%lx\n",rcr0());
+    printf("CR4 Value: 0x%lx\n",rcr4());
+    printf("Post CR3 Value: 0x%lx\n",rcr3());
+#endif
+
+#else /* !SVA_MMU */
+    load_cr3(KPML4phys);
+#endif
 
 	/*
 	 * Initialize the kernel pmap (which is statically allocated).
@@ -2042,14 +2054,34 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
          * Declare the l1 page to SVA. This will initialize paging structures
          * and make the page table entry referencing the new page as read only.
          */
+#if 0
+        printf("Pre dec l1: pde: %p, old mapping: 0x%lx\n", 
+                pd, *pd);
+#endif
+
         sva_declare_l1_page(VM_PAGE_TO_PHYS(m), pd);
+
+#if 0
+        printf("Post dec l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n", 
+                pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
+                    | PG_A | PG_M));
+#endif
 
         /* Update the l2 mapping to the requested value */
         sva_update_l2_mapping(pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U |
                     PG_RW | PG_V | PG_A | PG_M));
 
+#if 0
+        printf("Post up l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n",
+                pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
+                    | PG_A | PG_M));
+        *pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+        printf("Post pde: %p, new mapping: 0x%lx\n", pd, *pd);
+        panic ("");
+#endif
+
 #else  /* !SVA_DEBUG */
-		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+        *pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
 #if SVA_DEBUG
