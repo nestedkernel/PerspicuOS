@@ -1441,7 +1441,7 @@ nogo:
       if (PCPU_GET(curpcb)->pcb_onfault == 1) {
         sva_iunwind();
       } else {
-        sva_icontext_setrip ((long)PCPU_GET(curpcb)->pcb_onfault);
+        panic ("SVA: Attempt to set RIP in Interrupt Context!\n");
       }
 #endif
 			return (0);
