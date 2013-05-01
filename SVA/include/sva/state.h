@@ -346,11 +346,12 @@ sva_icontext_getpc (void) {
 /*
  * FIXME: This is a hack because we don't have invokememcpy() implemented yet.
  */
-static inline void
-sva_icontext_setrip (uintptr_t pc) {
-  struct CPUState * cpuState = getCPUState();
-  cpuState->newCurrentIC->rip = pc;
-  return;
+static inline unsigned char
+hasGhostMemory (void) {
+  struct CPUState * cpup = getCPUState();
+  if (cpup->currentThread && cpup->currentThread->secmemSize)
+    return 1;
+  return 0;
 }
 
 #if 0
