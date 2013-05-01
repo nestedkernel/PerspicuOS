@@ -51,6 +51,9 @@ ghostinit (void) {
     abort ();
   }
 
+  static char buffer[128];
+  snprintf (buffer, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
+  write (1, buffer, strlen (buffer));
   tradsp = tradBuffer + tradlen;
   return;
 }
@@ -193,6 +196,10 @@ _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   } else {
     ret = accept (s, addr, addrlen);
   }
+
+  // Restore the stack pointer
+  tradsp = framep;
+
   return ret;
 }
 
