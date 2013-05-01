@@ -119,26 +119,6 @@ allocAndCopy (T* data) {
   return copy;
 }
 
-#if 0
-static inline fd_set *
-allocAndCopy (fd_set* data) {
-  fd_set * copy = 0;
-  if (data) {
-    //
-    // Allocate memory on the traditional memory stack.
-    //
-    tradsp -= sizeof (fd_set);
-
-    //
-    // Copy the data into the traditional memory.
-    //
-    fd_set * copy = (fd_set *)(tradsp);
-    *copy = *data;
-  }
-  return copy;
-}
-#endif
-
 static inline char *
 allocAndCopy (char * data) {
   //
