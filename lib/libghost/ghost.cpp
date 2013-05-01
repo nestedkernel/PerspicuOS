@@ -166,8 +166,9 @@ allocAndCopy (void * data, uintptr_t size) {
   // Copy the data into the traditional memory.
   //
   char * copy = (char *)(tradsp);
-  if (data)
+  if (data) {
     memcpy (copy, data, size);
+  }
   return copy;
 }
 
@@ -381,7 +382,9 @@ _read(int d, void *buf, size_t nbytes) {
   size = read (d, newbuf, nbytes);
 
   // Copy the data back into the buffer
-  memcpy (buf, newbuf, size);
+  if (size != -1) {
+    memcpy (buf, newbuf, size);
+  }
 
   // Restore the stack pointer
   tradsp = framep;
