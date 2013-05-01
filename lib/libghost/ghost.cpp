@@ -174,26 +174,30 @@ allocAndCopy (void * data, uintptr_t size) {
 int
 _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   int ret;
-  unsigned char * framep;
-  struct sockaddr * newaddr = (struct sockaddr *) allocate (*addrlen);
-  socklen_t * newaddrlen = allocAndCopy (addrlen);
+  unsigned char * framep = tradsp;
+  if (addr && addrlen) {
+    struct sockaddr * newaddr = (struct sockaddr *) allocate (*addrlen);
+    socklen_t * newaddrlen = allocAndCopy (addrlen);
 
-  // Perform the system call
-  ret = accept (s, newaddr, newaddrlen);
+    // Perform the system call
+    ret = accept (s, newaddr, newaddrlen);
 
-  // Copy the outputs back into secure memory
-  memcpy (addr, newaddr, *newaddrlen);
-  memcpy (addrlen, newaddrlen, sizeof (socklen_t));
+    // Copy the outputs back into secure memory
+    memcpy (addr, newaddr, *newaddrlen);
+    memcpy (addrlen, newaddrlen, sizeof (socklen_t));
 
-  // Restore the stack pointer
-  tradsp = framep;
+    // Restore the stack pointer
+    tradsp = framep;
+  } else {
+    ret = accept (s, addr, addrlen);
+  }
   return ret;
 }
 
 int
 _bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
   int ret;
-  unsigned char * framep;
+  unsigned char * framep = tradsp;
   struct sockaddr * newaddr = (struct sockaddr *) allocate (addrlen);
   memcpy (newaddr, addr, addrlen);
 
@@ -208,7 +212,7 @@ _bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
 int
 _getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen) {
   int ret;
-  unsigned char * framep;
+  unsigned char * framep = tradsp;
   void * newoptval = allocate (*optlen);
   socklen_t * newoptlen = allocAndCopy (optlen);
 
@@ -237,6 +241,9 @@ ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
 
   // Perform the system call
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
+
+  static char * output = "select done!\n";
+  write (1, output, strlen (output));
 
   // Copy the outputs back into ghost memory
   if (readfds)   *readfds   = *newreadfds;
