@@ -116,6 +116,7 @@ allocAndCopy (T* data) {
   return copy;
 }
 
+#if 0
 static inline fd_set *
 allocAndCopy (fd_set* data) {
   fd_set * copy = 0;
@@ -133,6 +134,7 @@ allocAndCopy (fd_set* data) {
   }
   return copy;
 }
+#endif
 
 static inline char *
 allocAndCopy (char * data) {
@@ -239,11 +241,17 @@ ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   fd_set * newexceptfds = allocAndCopy (exceptfds);
   struct timeval * newtimeout = allocAndCopy (timeout);
 
+#if 0
+  printf ("# select: %d %p %p %p %p\n", nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
+  fflush (stdout);
+#endif
   // Perform the system call
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
 
-  static char * output = "select done!\n";
+#if 0
+  static char * output = "#select done!\n";
   write (1, output, strlen (output));
+#endif
 
   // Copy the outputs back into ghost memory
   if (readfds)   *readfds   = *newreadfds;
