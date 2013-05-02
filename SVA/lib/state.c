@@ -830,28 +830,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
 #endif
 
     /*
-     * If the new state uses secure memory, we need to map it into the page
-     * table.  Note that we refetch the state information from the CPUState
-     * to ensure that we're not accessing stale local variables.
-     */
-    cpup = getCPUState();
-    oldThread = cpup->currentThread;
-    if (oldThread->secmemSize) {
-      /*
-       * Get a pointer into the page tables for the secure memory region.
-       */
-      pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
-
-      /*
-       * Restore the PML4E entry for the secure memory region.
-       */
-      uintptr_t mask = PTE_PRESENT | PTE_CANWRITE | PTE_CANUSER;
-      if ((oldThread->secmemPML4e & mask) != mask)
-        panic ("SVA: Not Present: %lx %lx\n", oldThread->secmemPML4e, mask);
-      *secmemp = oldThread->secmemPML4e;
-    }
-
-    /*
      * Re-enable interrupts.
      */
     sva_exit_critical (rflags);
@@ -923,6 +901,26 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     cpup->tssp->ist3    = new->ist3;
     cpup->newCurrentIC  = new->currentIC;
     cpup->gip           = new->ifp;
+
+    /*
+     * If the new state uses secure memory, we need to map it into the page
+     * table.  Note that we refetch the state information from the CPUState
+     * to ensure that we're not accessing stale local variables.
+     */
+    if (newThread->secmemSize) {
+      /*
+       * Get a pointer into the page tables for the secure memory region.
+       */
+      pml4e_t * secmemp = getVirtual (get_pagetable() + secmemOffset);
+
+      /*
+       * Restore the PML4E entry for the secure memory region.
+       */
+      uintptr_t mask = PTE_PRESENT | PTE_CANWRITE | PTE_CANUSER;
+      if ((newThread->secmemPML4e & mask) != mask)
+        panic ("SVA: Not Present: %lx %lx\n", newThread->secmemPML4e, mask);
+      *secmemp = newThread->secmemPML4e;
+    }
 
     /*
      * Invalidate the state that we're about to load.
