@@ -21,6 +21,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -37,6 +38,9 @@ static unsigned char * tradBuffer;
 /* Pointer into the traditional memory buffer stack */
 static unsigned char * tradsp;
 
+static int logfd = 0;
+static char logbuf[128];
+
 //
 // Function: ghostinit()
 //
@@ -51,10 +55,14 @@ ghostinit (void) {
     abort ();
   }
 
-  static char buffer[128];
-  snprintf (buffer, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
-  write (1, buffer, strlen (buffer));
   tradsp = tradBuffer + tradlen;
+
+  /*
+   * Open a log file.
+   */
+  logfd = open ("/tmp/ghostlog", O_CREAT | O_TRUNC | O_WRONLY, 0777);
+  snprintf (logbuf, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
+  write (logfd, logbuf, strlen (logbuf));
   return;
 }
 
@@ -121,32 +129,37 @@ allocAndCopy (T* data) {
 
 static inline char *
 allocAndCopy (char * data) {
-  //
-  // Allocate memory on the traditional memory stack.
-  //
-  tradsp -= (strlen (data) + 1);
+  char * copy = 0;
+  if (data) {
+    //
+    // Allocate memory on the traditional memory stack.
+    //
+    tradsp -= (strlen (data) + 1);
 
-  //
-  // Copy the data into the traditional memory.
-  //
-  char * copy = (char *)(tradsp);
-  if (data)
+    //
+    // Copy the data into the traditional memory.
+    //
+    copy = (char *)(tradsp);
     strcpy (copy, data);
+  }
   return copy;
 }
 
 static inline char *
 allocAndCopy (void * data, uintptr_t size) {
-  //
-  // Allocate memory on the traditional memory stack.
-  //
-  tradsp -= (size);
+  // Pointer to the new copy we will create
+  char * copy = 0;
 
-  //
-  // Copy the data into the traditional memory.
-  //
-  char * copy = (char *)(tradsp);
   if (data) {
+    //
+    // Allocate memory on the traditional memory stack.
+    //
+    tradsp -= (size);
+
+    //
+    // Copy the data into the traditional memory.
+    //
+    copy = (char *)(tradsp);
     memcpy (copy, data, size);
   }
   return copy;
@@ -158,7 +171,7 @@ allocAndCopy (void * data, uintptr_t size) {
 //////////////////////////////////////////////////////////////////////////////
 
 int
-_accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
+ghost_accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
   int ret;
   unsigned char * framep = tradsp;
   if (addr && addrlen) {
@@ -171,16 +184,35 @@ _accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
     // Copy the outputs back into secure memory
     memcpy (addr, newaddr, *newaddrlen);
     memcpy (addrlen, newaddrlen, sizeof (socklen_t));
-
-    // Restore the stack pointer
-    tradsp = framep;
   } else {
     ret = accept (s, addr, addrlen);
   }
 
+  snprintf (logbuf, 128, "#accept: %d %d\n", ret, errno);
+  write (logfd, logbuf, strlen (logbuf));
+
   // Restore the stack pointer
   tradsp = framep;
 
+  return ret;
+}
+
+int
+ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
+  // Save the current location of the traditional memory stack pointer.
+  unsigned char * framep = tradsp;
+
+  uid_t * newuid = allocAndCopy (euid);
+  gid_t * newgid = allocAndCopy (egid);
+
+  // Do the call
+  int ret = getpeereid (s, newuid, newgid);
+
+  snprintf (logbuf, 128, "#getpeereid: %d: %d %d\n", ret, s, errno);
+  write (logfd, logbuf, strlen (logbuf));
+
+  // Restore the stack pointer
+  tradsp = framep;
   return ret;
 }
 
@@ -193,6 +225,9 @@ _bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
 
   // Perform the system call
   ret = bind (s, newaddr, addrlen);
+
+  snprintf (logbuf, 128, "#bind: %d %d\n", ret, errno);
+  write (logfd, logbuf, strlen (logbuf));
 
   // Restore the stack pointer
   tradsp = framep;
@@ -208,6 +243,9 @@ _getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen) {
 
   // Perform the system call
   ret = getsockopt (s, level, optname, newoptval, newoptlen);
+
+  snprintf (logbuf, 128, "#getsockopt: %d %d\n", ret, errno);
+  write (logfd, logbuf, strlen (logbuf));
 
   // Copy the outputs back into secure memory
   memcpy (optval, newoptval, *newoptlen);
@@ -229,17 +267,11 @@ ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   fd_set * newexceptfds = allocAndCopy (exceptfds);
   struct timeval * newtimeout = allocAndCopy (timeout);
 
-#if 0
-  printf ("# select: %d %p %p %p %p\n", nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
-  fflush (stdout);
-#endif
   // Perform the system call
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
 
-#if 0
-  static char * output = "#select done!\n";
-  write (1, output, strlen (output));
-#endif
+  snprintf (logbuf, 128, "#select: %d: %d %d\n", nfds, err, errno);
+  write (logfd, logbuf, strlen (logbuf));
 
   // Copy the outputs back into ghost memory
   if (readfds)   *readfds   = *newreadfds;
@@ -284,9 +316,21 @@ _open (char *path, int flags, mode_t mode) {
   char * newpath = allocAndCopy (path);
   int fd = open (newpath, flags, mode);
 
+  snprintf (logbuf, 128, "#open: %s: %d %d\n", newpath, fd, errno);
+  write (logfd, logbuf, strlen (logbuf));
+
   // Restore the stack pointer
   tradsp = framep;
   return fd;
+}
+
+int
+_close (int fd) {
+  int err;
+  err = close (fd);
+  snprintf (logbuf, 128, "#close: %d %d\n", fd, errno);
+  write (logfd, logbuf, strlen (logbuf));
+  return err;
 }
 
 int
@@ -336,7 +380,7 @@ _fstat(int fd, struct stat *sb) {
 }
 
 int
-stat(char *path, struct stat *sb) {
+_stat(char *path, struct stat *sb) {
   // Save the current location of the traditional memory stack pointer.
   unsigned char * framep = tradsp;
 
@@ -366,6 +410,9 @@ _read(int d, void *buf, size_t nbytes) {
     memcpy (buf, newbuf, size);
   }
 
+  snprintf (logbuf, 128, "#read: %d: %d %d\n", d, size, errno);
+  write (logfd, logbuf, strlen (logbuf));
+
   // Restore the stack pointer
   tradsp = framep;
   return size;
@@ -379,6 +426,9 @@ _write(int d, void *buf, size_t nbytes) {
 
   // Perform the system call
   size = write (d, newbuf, nbytes);
+
+  snprintf (logbuf, 128, "#write: %d: %d %d\n", d, size, errno);
+  write (logfd, logbuf, strlen (logbuf));
 
   // Restore the stack pointer
   tradsp = framep;
@@ -414,6 +464,7 @@ int select () __attribute__ ((weak, alias ("ghost_select")));
 int pselect () __attribute__ ((weak, alias ("_pselect")));
 
 void open () __attribute__ ((weak, alias ("_open")));
+void close () __attribute__ ((weak, alias ("_close")));
 void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
 void stat () __attribute__ ((weak, alias ("_stat")));
