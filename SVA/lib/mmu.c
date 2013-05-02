@@ -41,7 +41,7 @@
 /* Denotes whether or not we are activating read only protection */
 #define ACTIVATE_PROT       0
 /* Define whether to enable DEBUG blocks #if statements */
-#define DEBUG               1
+#define DEBUG               0
 
 /*
  *****************************************************************************
@@ -1368,6 +1368,13 @@ sva_mm_load_pgtable (void * pg) {
   return;
 }
 
+static inline u_long
+_rcr0(void) {
+    u_long  data;
+    __asm __volatile("movq %%cr0,%0" : "=r" (data));
+    return (data);
+}
+
 /*
  * Function: declare_ptp_and_walk_pt_entries
  *
@@ -1419,10 +1426,11 @@ sva_mm_load_pgtable (void * pg) {
  *
  */
 void 
-declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
+declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         numPgEntries, enum page_type_t pageLevel ) 
 { 
     int i;
+    page_entry_t pageMapping = *pageEntry;
     page_entry_t *pagePtr = (page_entry_t *) (pageMapping & PG_FRAME);
     enum page_type_t subLevelPgType;
     unsigned long numSubLevelPgEntries;
@@ -1484,6 +1492,18 @@ declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
         panic("SVA: walked an entry with invalid page type.");
     }
 
+#if ACTIVATE_PROT
+            /*
+             * Given a valid and active entry set the read only bit for the
+             * mapping before traversing the page table page. 
+             */
+            page_entry_t romapping = setMappingReadOnly(*pageEntry);
+            page_entry_store(pageEntry, romapping);             
+            //protect_paging();
+            //printf("==== cr0: 0x%lx\n", _rcr0());
+            //unprotect_paging();
+#endif
+
     /* 
      * If we have a larger page size then this entry doesn't go deeper so return.
      * Note that the PS flag (bit 7) represents the page size for this mapping.
@@ -1503,23 +1523,13 @@ declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
          * table entry.
          */
         if ((*nextEntry & PG_V) != 0) {
-#if DEBUG >= 3
+#if DEBUG >= 2
             printf("Processing entry: ptr:%p val:0x%lx\n", (*nextEntry & PG_FRAME), *nextEntry);
             int shiftme = 24;
             if(( (*nextEntry & PG_FRAME) >> shiftme) == (0xfffff890fe000 >> shiftme)){
                 printf("Capturing stack page as write only: ptr:%p val:0x%lx\n", 
                         (*nextEntry & PG_FRAME), *nextEntry);
             }
-#endif
-
-#if ACTIVATE_PROT
-            /*
-             * Now that we know we have a valid and active entry we need to
-             * first set the read only bit for the mapping before traversing
-             * the page table page. 
-             */
-            page_entry_t romapping = setMappingReadOnly(*nextEntry);
-            page_entry_store(nextEntry, romapping);             
 #endif
 
             /* 
@@ -1530,7 +1540,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
             if (pageLevel == PG_L1){
                 init_leaf_page_from_mapping(*nextEntry);
             } else {
-                declare_ptp_and_walk_pt_entries(*nextEntry,
+                declare_ptp_and_walk_pt_entries(nextEntry,
                         numSubLevelPgEntries, subLevelPgType); 
             }
         }
@@ -1594,7 +1604,7 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
  *  - nkpml4e       : The number of entries in the pml4
  */
 void 
-sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
+sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
         uintptr_t etext)
 {
     /* Zero out the page descriptor array */
@@ -1607,11 +1617,24 @@ sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     declare_kernel_code_pages(btext, etext);
 
     /* Now load the initial value of the cr3 to complete kernel init */
-    load_cr3(kpml4Mapping & PG_FRAME);
+    load_cr3(*kpml4Mapping & PG_FRAME);
 
 #if 0//ACTIVATE_PROT
+    u_long sp;
+    __asm __volatile("movq %%rsp,%0" : "=r" (sp));
+    printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);
+
+    __asm __volatile("movq %%rbp,%0" : "=r" (sp));
+    printf("<<<< cpu_setregs: the base pointer: %p\n",sp);
+
     /* Enable page protection */
+    printf("==== cr0: 0x%lx\n", _rcr0());
     protect_paging();
+    printf("==== cr0: 0x%lx\n", _rcr0());
+    __asm __volatile("int $3");
+    __asm __volatile("push %rsp");
+    printf("==== cr0: 0x%lx\n", _rcr0());
+    printf("Do we make it here?");
 #endif
 
 }
