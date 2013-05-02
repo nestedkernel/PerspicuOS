@@ -18,6 +18,7 @@
 #include <sva/config.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
+#include <sva/mmu.h>
 #include <sva/util.h>
 #include <machine/frame.h>
 
@@ -315,11 +316,14 @@ print_icontext (char * s, sva_icontext_t * p) {
 int
 sva_print_icontext (char * s) {
   struct CPUState * cpup = getCPUState();
+  struct SVAThread * threadp = cpup->currentThread;
   sva_icontext_t * p = cpup->newCurrentIC;
   printf ("SVA: %s: (%p): %p: %p\n\n", s, cpup,
                                        cpup->newCurrentIC,
                                        cpup->currentThread->interruptContexts + maxIC - 1);
   print_icontext (s, p);
+  pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
+  printf ("SVA: secmem: %lx %lx\n", threadp->secmemPML4e, *secmemp);
   return 0;
 }
 
