@@ -84,6 +84,17 @@ static const uintptr_t vmask = 0x0000000000000fffu;
 static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 
 /*
+ * Function: load_cr3
+ *
+ * Description: 
+ *  Load the cr3 with the given value passed in.
+ */
+static inline void load_cr3(unsigned long data)
+{ 
+    __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
+}
+
+/*
  * Assert macro for SVA
  */
 #define SVA_ASSERT(res,string) if(!res) panic(string)

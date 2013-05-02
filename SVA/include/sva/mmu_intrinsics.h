@@ -53,17 +53,6 @@ extern void sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t
  */
 
 /*
- * Function: sva_load_cr3
- *
- * Description: 
- *  Load the cr3 with the given value passed in.
- */
-static inline void sva_mm_load_cr3(unsigned long data)
-{ 
-    __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
-}
-
-/*
  * Function: sva_mm_save_pgtable()
  *
  * Description:

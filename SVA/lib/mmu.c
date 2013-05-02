@@ -25,8 +25,6 @@
 #include "sva/state.h"
 #include "sva/util.h"
 
-/* TODO:FIXME Why can't these be put into the .h file? */
-
 /* 
  * Defines for #if #endif blocks for commenting out lines of code
  */
@@ -1507,6 +1505,11 @@ declare_ptp_and_walk_pt_entries(page_entry_t pageMapping, unsigned long
         if ((*nextEntry & PG_V) != 0) {
 #if DEBUG >= 3
             printf("Processing entry: ptr:%p val:0x%lx\n", (*nextEntry & PG_FRAME), *nextEntry);
+            int shiftme = 24;
+            if(( (*nextEntry & PG_FRAME) >> shiftme) == (0xfffff890fe000 >> shiftme)){
+                printf("Capturing stack page as write only: ptr:%p val:0x%lx\n", 
+                        (*nextEntry & PG_FRAME), *nextEntry);
+            }
 #endif
 
 #if ACTIVATE_PROT
@@ -1604,7 +1607,7 @@ sva_mmu_init(pml4e_t kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     declare_kernel_code_pages(btext, etext);
 
     /* Now load the initial value of the cr3 to complete kernel init */
-    sva_mm_load_cr3(kpml4Mapping & PG_FRAME);
+    load_cr3(kpml4Mapping & PG_FRAME);
 
 #if 0//ACTIVATE_PROT
     /* Enable page protection */
