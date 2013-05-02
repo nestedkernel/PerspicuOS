@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <sys/types.h>
+#include <unistd.h>
 
 /*
  * Function: secmemalloc()
@@ -51,10 +53,19 @@ main (int argc, char ** argv) {
    */
   unsigned char counter = argv[0][0];
   while (1) {
-    ptr1[0] = counter++;
-    ptr2[0] = ptr1;
-    printf ("%p %p %d\n", ptr1, ptr2, counter);
-    fflush (stdout);
+    switch (fork()) {
+      default:
+      case -1:
+        return 1;
+        break;
+      
+      case 0:
+        ptr1[0] = counter++;
+        ptr2[0] = ptr1;
+        printf ("%d: %p %p %d\n", getpid(), ptr1, ptr2, counter);
+        fflush (stdout);
+        break;
+    }
   }
   return 0;
 }
