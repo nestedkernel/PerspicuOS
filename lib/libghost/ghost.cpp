@@ -211,6 +211,10 @@ ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
   snprintf (logbuf, 128, "#getpeereid: %d: %d %d\n", ret, s, errno);
   write (logfd, logbuf, strlen (logbuf));
 
+  // Copy the data back into the ghost memory
+  *euid = *newuid;
+  *egid = *newgid;
+
   // Restore the stack pointer
   tradsp = framep;
   return ret;
@@ -277,6 +281,9 @@ ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   if (readfds)   *readfds   = *newreadfds;
   if (writefds)  *writefds  = *newwritefds;
   if (exceptfds) *exceptfds = *newexceptfds;
+
+  snprintf (logbuf, 128, "#select isset: %d\n", FD_ISSET (5, readfds));
+  write (logfd, logbuf, strlen (logbuf));
 
   // Restore the stack pointer
   tradsp = framep;
@@ -419,6 +426,11 @@ _read(int d, void *buf, size_t nbytes) {
 }
 
 ssize_t
+ghost_read(int d, void *buf, size_t nbytes) {
+  return _read (d, buf, nbytes);
+}
+
+ssize_t
 _write(int d, void *buf, size_t nbytes) {
   ssize_t size;
   unsigned char * framep = tradsp;
@@ -433,6 +445,11 @@ _write(int d, void *buf, size_t nbytes) {
   // Restore the stack pointer
   tradsp = framep;
   return size;
+}
+
+ssize_t
+ghost_write(int d, void *buf, size_t nbytes) {
+  return _write (d, buf, nbytes);
 }
 
 int
