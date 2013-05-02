@@ -63,12 +63,12 @@
 static const uintptr_t X86_PAGE_SIZE = 4096u;
 
 /* Number of bits to shift to get the page number out of a PTE entry */
-const unsigned PAGESHIFT = 12;
+static const unsigned PAGESHIFT = 12;
 
 /* Size of the physical memory and page size in bytes */
-const unsigned int memSize = 16*1024*1024*1024;
-const unsigned int pageSize = 4096;
-const unsigned int numPageDescEntries = memSize / pageSize;
+static const unsigned int memSize = 16*1024*1024*1024;
+static const unsigned int pageSize = 4096;
+static const unsigned int numPageDescEntries = memSize / pageSize;
 
 /* Start and end addresses of the secure memory */
 #define SECMEMSTART 0xffffff0000000000u
