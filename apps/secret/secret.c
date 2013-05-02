@@ -10,6 +10,11 @@ main (int argc, char ** argv) {
   int fds[2];
 
   /*
+   * Inform SVA that we don't have any signal handlers.
+   */
+  __asm__ __volatile__ ("movq $0, %rdi\nint $0x7d\n");
+
+  /*
    * Create a pipe.
    */
   if (pipe (fds) == -1) {
