@@ -1395,6 +1395,10 @@ _rcr0(void) {
  *  the page. Therefore, if the kernel page tables are configured correctly
  *  this won't initialize any SVA page descriptors that aren't in use.
  *
+ *  The primary objective of this code is to for each valid page table page:
+ *      [1] Initialize the page_desc for the given page
+ *      [2] Set the page permissions as read only
+ *
  * Assumptions:
  *  - The number of entries per page assumes a amd64 paging hardware mechanism.
  *    As such the number of entires per a 4KB page table page is 2^9 or 512
@@ -1430,20 +1434,87 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         numPgEntries, enum page_type_t pageLevel ) 
 { 
     int i;
-    page_entry_t pageMapping = *pageEntry;
-    page_entry_t *pagePtr = (page_entry_t *) (pageMapping & PG_FRAME);
     enum page_type_t subLevelPgType;
     unsigned long numSubLevelPgEntries;
-    page_desc_t *thisPg = getPageDescPtr(pageMapping);
+    page_desc_t *thisPg;
+    page_entry_t pageMapping; 
+    page_entry_t *pagePtr;
+    
+    /* Store the pte value for the page being traversed */
+    pageMapping = *pageEntry;
+
+    /* Set the page pointer for the given page */
+    pagePtr = (uintptr_t)(pageMapping & PG_FRAME);
+
+    /* Get the page_desc for this page */
+    thisPg = getPageDescPtr(pageMapping);
+
+#if DEBUG >= 1
+    /* Character inputs to make the printing pretty for debugging */
+    char * indent = "";
+    char * l4s = "L4:";
+    char * l3s = "\tL3:";
+    char * l2s = "\t\tL2:";
+    char * l1s = "\t\t\tL1:";
+
+    switch (pageLevel){
+        case PG_L4:
+            indent = l4s;
+            printf("%sSetting L4 Page: mapping:0x%lx\n", indent, pageMapping);
+            break;
+        case PG_L3:
+            indent = l3s;
+            printf("%sSetting L3 Page: mapping:0x%lx\n", indent, pageMapping);
+            break;
+        case PG_L2:
+            indent = l2s;
+            printf("%sSetting L2 Page: mapping:0x%lx\n", indent, pageMapping);
+            break;
+        case PG_L1:
+            indent = l1s;
+            printf("%sSetting L1 Page: mapping:0x%lx\n", indent, pageMapping);
+            break;
+        default:
+            break;
+    }
+#endif
+
+#if ACTIVATE_PROT
+
+#if DEBUG
+    printf("%sPre-WP :\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
+            pageEntry, *pageEntry);
+#endif
+
+    /*
+     * Given a valid and active entry set the read only bit for the
+     * mapping before traversing the page table page. 
+     */
+    page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
+    page_entry_store(pageEntry, readOnlyMapping);             
+
+#if DEBUG
+    protect_paging();
+    //printf("==== cr0: 0x%lx\n", _rcr0());
+    printf("%sPost-WP:\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
+            pageEntry, *pageEntry);
+    unprotect_paging();
+#endif
+
+#endif /* ACTIVATE_PROT */
     
     /* 
      * There is one recursive mapping, which is the last entry in the PML4 page
      * table page. Thus we return if the page desc has already been initialized
      * to avoid an infinite recurse.
      */
-    if (thisPg->type != PG_UNUSED)
+    if (thisPg->type != PG_UNUSED){
+#if DEGUB >= 1
+        printf("%sRecursed on already initialized page_desc\n", indent);
+#endif
         return;
-    
+    }
+
     /*
      * For each level of page we do the following:
      *  - Set the page descriptor type for this page table page
@@ -1451,86 +1522,101 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
      *    recursive call to the function.
      */
     switch(pageLevel){
+
     case PG_L4:
-#if DEBUG >= 2
-        printf("Setting L4 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
-#endif
+
         thisPg->type = PG_L4;       /* Set the page type to L4 */
         thisPg->user = 0;           /* Set the priv flag to kernel */
         subLevelPgType = PG_L3;
-        numSubLevelPgEntries = numPgEntries;
+        numSubLevelPgEntries = NPML4EPG;//    numPgEntries;
         break;
+
     case PG_L3:
-#if DEBUG >= 2
-        printf("Setting L3 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
-#endif
+        
         thisPg->type = PG_L3;       /* Set the page type to L3 */
         thisPg->user = 0;           /* Set the priv flag to kernel */
         subLevelPgType = PG_L2;
-        numSubLevelPgEntries = numPgEntries;
+        numSubLevelPgEntries = NPDPEPG; //numPgEntries;
         break;
+
     case PG_L2:
-#if DEBUG >= 2
-        printf("Setting L2 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+        
+        /* 
+         * If my L2 page mapping signifies that this mapping references a 1GB
+         * page frame, then get the frame address using the correct page mask
+         * for a L3 page entry and initialize the page_desc for this entry.
+         * Then return as we don't need to traverse frame pages.
+         */
+        if ((pageMapping & PG_PS) != 0) {
+#if DEBUG >= 1
+            printf("%sIdentified 1GB page...\n",indent);
 #endif
-        thisPg->type = PG_L2;       /* Set the page type to L2 */
-        thisPg->user = 0;           /* Set the priv flag to kernel */
-        subLevelPgType = PG_L1;
-        numSubLevelPgEntries = numPgEntries;
+            unsigned long index = (pageMapping & ~PDPMASK) / pageSize;
+            page_desc[index].type = PG_TKDATA;
+            page_desc[index].user = 0;           /* Set the priv flag to kernel */
+            return;
+        } else {
+            thisPg->type = PG_L2;       /* Set the page type to L2 */
+            thisPg->user = 0;           /* Set the priv flag to kernel */
+            subLevelPgType = PG_L1;
+            numSubLevelPgEntries = NPDEPG; // numPgEntries;
+        }
         break;
+
     case PG_L1:
-#if DEBUG >= 2
-        printf("Setting L1 Page: ptr:%p mapping:0x%lx\n", pagePtr, pageMapping);
+        /* 
+         * If my L1 page mapping signifies that this mapping references a 2MB
+         * page frame, then get the frame address using the correct page mask
+         * for a L2 page entry and initialize the page_desc for this entry. 
+         * Then return as we don't need to traverse frame pages.
+         */
+        if ((pageMapping & PG_PS) != 0){
+#if DEBUG >= 1
+            printf("%sIdentified 2MB page...\n",indent);
 #endif
-        thisPg->type = PG_L1;       /* Set the page type to L1 */
-        thisPg->user = 0;           /* Set the priv flag to kernel */
-        subLevelPgType = PG_LEAF;
-        numSubLevelPgEntries = numPgEntries;
+            /* The frame address referencing the page obtained */
+            unsigned long index = (pageMapping & ~PDRMASK) / pageSize;
+            page_desc[index].type = PG_TKDATA;
+            page_desc[index].user = 0;           /* Set the priv flag to kernel */
+            return;
+        } else {
+            thisPg->type = PG_L1;       /* Set the page type to L1 */
+            thisPg->user = 0;           /* Set the priv flag to kernel */
+            subLevelPgType = PG_TKDATA;
+            numSubLevelPgEntries = NPTEPG;//      numPgEntries;
+        }
         break;
+
     default:
         printf("SVA: page type %d. Frame addr: %p\n",thisPg->type, pagePtr); 
         panic("SVA: walked an entry with invalid page type.");
     }
 
-#if ACTIVATE_PROT
-            /*
-             * Given a valid and active entry set the read only bit for the
-             * mapping before traversing the page table page. 
-             */
-            page_entry_t romapping = setMappingReadOnly(*pageEntry);
-            page_entry_store(pageEntry, romapping);             
-            //protect_paging();
-            //printf("==== cr0: 0x%lx\n", _rcr0());
-            //unprotect_paging();
+#if DEBUG >= 1
+    u_long nNonValPgs=0;
+    u_long nValPgs=0;
 #endif
-
-    /* 
-     * If we have a larger page size then this entry doesn't go deeper so return.
-     * Note that the PS flag (bit 7) represents the page size for this mapping.
-     */
-    if ((pageMapping & PG_PS) != 0)
-        return;
-
     /* 
      * Iterate through all the entries of this page, recursively calling the
      * walk on all sub entries.
      */
     for (i = 0; i < numSubLevelPgEntries; i++){
+        //pagePtr += (sizeof(page_entry_t) * i);
+        //page_entry_t *nextEntry = pagePtr;
         page_entry_t * nextEntry = & pagePtr[i];
+
+#if DEBUG >= 3
+        printf("%sPagePtr in loop: %p, val: 0x%lx\n", indent, nextEntry, *nextEntry);
+#endif
 
         /* 
          * If this entry is valid then recurse the page pointed to by this page
          * table entry.
          */
-        if ((*nextEntry & PG_V) != 0) {
-#if DEBUG >= 2
-            printf("Processing entry: ptr:%p val:0x%lx\n", (*nextEntry & PG_FRAME), *nextEntry);
-            int shiftme = 24;
-            if(( (*nextEntry & PG_FRAME) >> shiftme) == (0xfffff890fe000 >> shiftme)){
-                printf("Capturing stack page as write only: ptr:%p val:0x%lx\n", 
-                        (*nextEntry & PG_FRAME), *nextEntry);
-            }
-#endif
+        if (*nextEntry & PG_V) {
+#if DEBUG >= 1
+            nValPgs++;
+#endif 
 
             /* 
              * If we hit the level 1 pages we have hit our boundary condition for
@@ -1538,13 +1624,34 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
              * descriptors.
              */
             if (pageLevel == PG_L1){
+#if DEBUG >= 2
+                printf("%sInitializing leaf entry: pteaddr: %p, mapping: 0x%lx\n",
+                        indent, nextEntry, *nextEntry);
+#endif
                 init_leaf_page_from_mapping(*nextEntry);
             } else {
+#if DEBUG >= 2
+            printf("%sProcessing:pte addr: %p, newPgAddr: %p, mapping: 0x%lx\n",
+                    indent, nextEntry, (*nextEntry & PG_FRAME), *nextEntry ); 
+#endif
                 declare_ptp_and_walk_pt_entries(nextEntry,
                         numSubLevelPgEntries, subLevelPgType); 
             }
+        } 
+#if DEBUG >= 1
+        else {
+            nNonValPgs++;
         }
+#endif
     }
+
+#if DEBUG >= 1
+    SVA_ASSERT((nNonValPgs + nValPgs) == 512, "Wrong number of entries traversed");
+
+    printf("%sThe number of || non valid pages: %lu || valid pages: %lu\n",
+            indent, nNonValPgs, nValPgs);
+#endif
+
 }
 
 /*
@@ -1619,7 +1726,7 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     /* Now load the initial value of the cr3 to complete kernel init */
     load_cr3(*kpml4Mapping & PG_FRAME);
 
-#if 0//ACTIVATE_PROT
+#if ACTIVATE_PROT
     u_long sp;
     __asm __volatile("movq %%rsp,%0" : "=r" (sp));
     printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);

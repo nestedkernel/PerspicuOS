@@ -199,6 +199,31 @@ static page_desc_t page_desc[numPageDescEntries];
 #define PG_PROT     (PG_RW|PG_U)    /* all protection bits . */
 #define PG_N        (PG_NC_PWT|PG_NC_PCD)   /* Non-cacheable */
 
+/* Size of the level 1 page table units */
+#define PAGE_SHIFT  12      /* LOG2(PAGE_SIZE) */
+#define PAGE_SIZE   (1<<PAGE_SHIFT) /* bytes/page */
+#define NPTEPG      (PAGE_SIZE/(sizeof (pte_t)))
+#define NPTEPGSHIFT 9       /* LOG2(NPTEPG) */
+#define PAGE_MASK   (PAGE_SIZE-1)
+/* Size of the level 2 page directory units */
+#define NPDEPG      (PAGE_SIZE/(sizeof (pde_t)))
+#define NPDEPGSHIFT 9       /* LOG2(NPDEPG) */
+#define PDRSHIFT    21              /* LOG2(NBPDR) */
+#define NBPDR       (1<<PDRSHIFT)   /* bytes/page dir */
+#define PDRMASK     (NBPDR-1)
+/* Size of the level 3 page directory pointer table units */
+#define NPDPEPG     (PAGE_SIZE/(sizeof (pdpte_t)))
+#define NPDPEPGSHIFT    9       /* LOG2(NPDPEPG) */
+#define PDPSHIFT    30      /* LOG2(NBPDP) */
+#define NBPDP       (1<<PDPSHIFT)   /* bytes/page dir ptr table */
+#define PDPMASK     (NBPDP-1)
+/* Size of the level 4 page-map level-4 table units */
+#define NPML4EPG    (PAGE_SIZE/(sizeof (pml4e_t)))
+#define NPML4EPGSHIFT   9       /* LOG2(NPML4EPG) */
+#define PML4SHIFT   39      /* LOG2(NBPML4) */
+#define NBPML4      (1UL<<PML4SHIFT)/* bytes/page map lev4 table */
+#define PML4MASK    (NBPML4-1)
+
 /*
  * ===========================================================================
  * END FreeBSD CODE BLOCK
