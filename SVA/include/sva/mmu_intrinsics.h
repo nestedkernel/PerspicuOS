@@ -39,6 +39,7 @@ extern void sva_declare_l1_page (unsigned long frame, pde_t *pde);
 extern void sva_declare_l2_page (unsigned long frame, pdpte_t *pdpte);
 extern void sva_declare_l3_page (unsigned long frame, pml4e_t *pml4e);
 extern void sva_declare_l4_page (unsigned long frame, pml4e_t *pml4e);
+extern void sva_update_mapping (page_entry_t * ptePtr, page_entry_t val);
 extern void sva_update_l1_mapping (pte_t * ptePtr, page_entry_t val);
 extern void sva_update_l2_mapping (pde_t * pdePtr, page_entry_t val);
 extern void sva_update_l3_mapping (pdpte_t * pdptePtr, page_entry_t val);

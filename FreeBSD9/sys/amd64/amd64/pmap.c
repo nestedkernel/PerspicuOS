@@ -461,11 +461,6 @@ allocpages(vm_paddr_t *firstaddr, int n)
 
 CTASSERT(powerof2(NDMPML4E));
 
-/* 
- * SVA TODO: Assess this function to figure out for what address space these
- * pages apply. They appear to be kernel pages, but the permissions are being
- * set to PG_U, which implies user page. 
- */
 static void
 create_pagetables(vm_paddr_t *firstaddr)
 {
@@ -708,7 +703,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	SYSMAP(caddr_t, unused, crashdumpmap, MAXDUMPPGS)
 
 	virtual_avail = va;
-
+    
 	/* Initialize the PAT MSR. */
 	pmap_init_pat();
 }
@@ -1804,7 +1799,7 @@ pmap_pinit(pmap_t pmap)
      * page.
      */
     pml4e_self = (pml4_entry_t *) &pmap->pm_pml4[PML4PML4I];
-    
+
     /* 
      * Declare the l4 page to SVA. This will initialize paging structures
      * and make the page table page as read only. 
@@ -1827,7 +1822,7 @@ pmap_pinit(pmap_t pmap)
                 | PG_V | PG_U)); 
 #else
 	pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
-#endif
+#endif /* !SVA_MMU */
 
     for (i = 0; i < NDMPML4E; i++) {
         /* Wire in kernel global address entries. */
@@ -1964,7 +1959,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		/* Now find the pdp page */
 		pdp = &pdp[pdpindex & ((1ul << NPDPEPGSHIFT) - 1)];
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
         printf(" %p, contents: 0x%lx\n", pdp, *pdp); 
 #endif
@@ -1986,7 +1981,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		*pdp = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: post l2_update: ");
         printf("%p, contents: 0x%lx\n", pdp, *pdp); 
 #endif
@@ -2044,7 +2039,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		/* Now we know where the page directory page is */
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
         printf("%p, contents: 0x%lx\n", pd, *pd); 
 #endif
@@ -2084,7 +2079,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
         *pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
         printf("<<< FBSD __pmap_allocatepte: post l2_update: ");
         printf("%p, contents: 0x%lx\n", pd, *pd); 
 #endif

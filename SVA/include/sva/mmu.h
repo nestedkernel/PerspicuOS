@@ -368,13 +368,15 @@ pageVA(page_desc_t pg){
  *  - 1 denotes a read only page
  */
 static inline int
-readOnlyPage(page_desc_t pg){
-    return  pg.type == PG_L4    ||
-            pg.type == PG_L3    ||
-            pg.type == PG_L2    ||
-            pg.type == PG_L1    ||
-            pg.type == PG_CODE  ||
-            pg.type == PG_SVA 
+readOnlyPage(page_desc_t *pg){
+    return  pg->type == PG_L4    
+#if 0
+            || pg->type == PG_L3    
+            || pg->type == PG_L2    
+            || pg->type == PG_L1    
+            || pg->type == PG_CODE  
+            || pg->type == PG_SVA 
+#endif
             ;
 }
 
@@ -394,7 +396,7 @@ readOnlyPage(page_desc_t pg){
  *  considered.
  */
 static inline page_entry_t setMappingReadOnly (page_entry_t mapping) 
-    { return mapping & ~PG_RW; }
+    { return (mapping & ~PG_RW); }
 
 /*
  *****************************************************************************

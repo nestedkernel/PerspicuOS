@@ -39,9 +39,11 @@
 /* Denotes code that is in for some type of testing but is only temporary */
 #define TMP_TEST_CODE       1
 /* Denotes whether or not we are activating read only protection */
-#define ACTIVATE_PROT       0
+#define ACTIVATE_PROT       1
 /* Define whether to enable DEBUG blocks #if statements */
 #define DEBUG               0
+/* Define whether or not the mmu_init code assumes virtual addresses */
+#define USE_VIRT            0
 
 /*
  *****************************************************************************
@@ -155,6 +157,10 @@ unprotect_paging(void) {
  *  This function takes a pointer to a page table entry and updates its value
  *  to the new value provided.
  *
+ * Assumptions: 
+ *  - This function assumes that write protection is enabled in CR0 (WP bit set
+ *    to 1). 
+ *
  * Inputs:
  *  *page_entry -: A pointer to the page entry to store the new value to, a
  *                 valid VA for accessing the page_entry.
@@ -162,14 +168,14 @@ unprotect_paging(void) {
  *                 referenced page.
  *
  * Side Effect:
- *  If the activate protection flag is set then this function enables write
- *  protection on pages. 
+ *  - This function enables system wide write protection in CR0. 
+ *    
  *
  */
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     
-#if 0//ACTIVATE_PROT
+#if ACTIVATE_PROT
     /* Disable page protection so we can write to the referencing table entry */
     unprotect_paging();
 #endif
@@ -187,7 +193,7 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
 #endif
 
-#if 0//ACTIVATE_PROT
+#if ACTIVATE_PROT
     /* Reenable page protection */
     protect_paging();
 #endif
@@ -534,7 +540,8 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
     page_desc_t origPG = page_desc[origFrame];
     uintptr_t newPA = val & PG_FRAME;
     unsigned long newFrame = newPA >> PAGESHIFT;
-    page_desc_t newPG = page_desc[newFrame];
+    page_desc_t *newPG = getPageDescPtr(val);
+    page_entry_t newMapping = val;
 
 #if 0
     /*
@@ -566,13 +573,13 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
          * count for the new page mapping. First check that we aren't
          * overflowing the counter.
          */
-        SVA_ASSERT (newPG.count < ((1<<12-1)), "MMU: overflow for the mapping count");
-        newPG.count++;
+        SVA_ASSERT (newPG->count < ((1<<12-1)), "MMU: overflow for the mapping count");
+        newPG->count++;
     }
 #endif
 
 
-#if 0//ACTIVATE_PROT
+#if ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
     if (readOnlyPage(newPG))
         val = setMappingReadOnly(val);
@@ -604,31 +611,25 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
  */
 static inline void 
 init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
-
-    unsigned long pageEntryVal;
+    unsigned long newMapping;
+    page_desc_t *pg = getPageDescPtr(frameAddr);
+    page_entry_t curMapping = *page_entry;
 
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
-#if 0//ACTIVATE_PROT
     /*
-     * Mask out non-address portions of frame because this input comes from the
-     * kernel and must be sanitized. Then add the RO flag of the pde referencing
-     * this new page. This is an update type of operation. A value of 0 in bit
-     * position 2 configures for no writes.
+     * If this should be marked as a read only page, set the RO flag of the pde
+     * referencing this new page. This is an update type operation. A value of
+     * 0 in bit position 2 configures for no writes.
      */
-    pageEntryVal = setMappingReadOnly((page_entry_t)(frameAddr & PG_FRAME)) ;
-
-#elif TMP_TEST_CODE
-    /*
-     * Test code for the unprotect operations, will be eliminated. 
-     */
-    pageEntryVal = *page_entry;
-
-#endif
+    if (readOnlyPage(pg))
+        newMapping = setMappingReadOnly(curMapping);
+    else
+        newMapping = curMapping;
     
     /* Perform the actual store of the value to the page_entry */
-    page_entry_store(page_entry, pageEntryVal);
+    page_entry_store(page_entry, newMapping);
 }
 
 /*
@@ -1429,6 +1430,7 @@ _rcr0(void) {
  *    methods.
  *
  */
+#define DEBUG_INIT 0
 void 
 declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         numPgEntries, enum page_type_t pageLevel ) 
@@ -1439,17 +1441,22 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
     page_desc_t *thisPg;
     page_entry_t pageMapping; 
     page_entry_t *pagePtr;
-    
+
     /* Store the pte value for the page being traversed */
     pageMapping = *pageEntry;
 
     /* Set the page pointer for the given page */
+#if USE_VIRT
+    uintptr_t pagePhysAddr = pageMapping & PG_FRAME;
+    pagePtr = (page_entry_t *) getVirtual(pagePhysAddr);
+#else
     pagePtr = (uintptr_t)(pageMapping & PG_FRAME);
+#endif
 
     /* Get the page_desc for this page */
     thisPg = getPageDescPtr(pageMapping);
 
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
     /* Character inputs to make the printing pretty for debugging */
     char * indent = "";
     char * l4s = "L4:";
@@ -1479,37 +1486,13 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
     }
 #endif
 
-#if ACTIVATE_PROT
-
-#if DEBUG
-    printf("%sPre-WP :\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
-            pageEntry, *pageEntry);
-#endif
-
-    /*
-     * Given a valid and active entry set the read only bit for the
-     * mapping before traversing the page table page. 
-     */
-    page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
-    page_entry_store(pageEntry, readOnlyMapping);             
-
-#if DEBUG
-    protect_paging();
-    //printf("==== cr0: 0x%lx\n", _rcr0());
-    printf("%sPost-WP:\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
-            pageEntry, *pageEntry);
-    unprotect_paging();
-#endif
-
-#endif /* ACTIVATE_PROT */
-    
     /* 
      * There is one recursive mapping, which is the last entry in the PML4 page
      * table page. Thus we return if the page desc has already been initialized
      * to avoid an infinite recurse.
      */
     if (thisPg->type != PG_UNUSED){
-#if DEGUB >= 1
+#if DEBUG_INIT >= 1
         printf("%sRecursed on already initialized page_desc\n", indent);
 #endif
         return;
@@ -1548,7 +1531,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
          * Then return as we don't need to traverse frame pages.
          */
         if ((pageMapping & PG_PS) != 0) {
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
             printf("%sIdentified 1GB page...\n",indent);
 #endif
             unsigned long index = (pageMapping & ~PDPMASK) / pageSize;
@@ -1571,7 +1554,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
          * Then return as we don't need to traverse frame pages.
          */
         if ((pageMapping & PG_PS) != 0){
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
             printf("%sIdentified 2MB page...\n",indent);
 #endif
             /* The frame address referencing the page obtained */
@@ -1592,7 +1575,36 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         panic("SVA: walked an entry with invalid page type.");
     }
 
-#if DEBUG >= 1
+#if 0//ACTIVATE_PROT
+
+#if DEBUG_INIT
+    printf("%sPre-WP :\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
+            pageEntry, *pageEntry);
+#endif
+
+    /*
+     * Given a valid and active entry set the read only bit for the
+     * mapping before traversing the page table page. 
+     */
+#if 0
+    unprotect_paging();
+#endif
+    page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
+    page_entry_store(pageEntry, readOnlyMapping);             
+#if 0
+    printf("==== cr0: 0x%lx\n", _rcr0());
+    protect_paging();
+    printf("==== cr0: 0x%lx\n", _rcr0());
+#endif
+
+#if DEBUG_INIT
+    printf("%sPost-WP:\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
+            pageEntry, *pageEntry);
+#endif
+
+#endif /* ACTIVATE_PROT */
+    
+#if DEBUG_INIT >= 1
     u_long nNonValPgs=0;
     u_long nValPgs=0;
 #endif
@@ -1601,11 +1613,13 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
      * walk on all sub entries.
      */
     for (i = 0; i < numSubLevelPgEntries; i++){
+#if OBSOLETE
         //pagePtr += (sizeof(page_entry_t) * i);
         //page_entry_t *nextEntry = pagePtr;
+#endif
         page_entry_t * nextEntry = & pagePtr[i];
 
-#if DEBUG >= 3
+#if DEBUG_INIT >= 5
         printf("%sPagePtr in loop: %p, val: 0x%lx\n", indent, nextEntry, *nextEntry);
 #endif
 
@@ -1614,7 +1628,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
          * table entry.
          */
         if (*nextEntry & PG_V) {
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
             nValPgs++;
 #endif 
 
@@ -1624,13 +1638,13 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
              * descriptors.
              */
             if (pageLevel == PG_L1){
-#if DEBUG >= 2
+#if DEBUG_INIT >= 2
                 printf("%sInitializing leaf entry: pteaddr: %p, mapping: 0x%lx\n",
                         indent, nextEntry, *nextEntry);
 #endif
                 init_leaf_page_from_mapping(*nextEntry);
             } else {
-#if DEBUG >= 2
+#if DEBUG_INIT >= 2
             printf("%sProcessing:pte addr: %p, newPgAddr: %p, mapping: 0x%lx\n",
                     indent, nextEntry, (*nextEntry & PG_FRAME), *nextEntry ); 
 #endif
@@ -1638,14 +1652,14 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
                         numSubLevelPgEntries, subLevelPgType); 
             }
         } 
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
         else {
             nNonValPgs++;
         }
 #endif
     }
 
-#if DEBUG >= 1
+#if DEBUG_INIT >= 1
     SVA_ASSERT((nNonValPgs + nValPgs) == 512, "Wrong number of entries traversed");
 
     printf("%sThe number of || non valid pages: %lu || valid pages: %lu\n",
@@ -1706,6 +1720,11 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
  *  To initialize the sva page descriptors, this function takes the pml4 base
  *  mapping and walks down each level of the page table tree. 
  *
+ *  NOTE: In this function we assume that he page mapping for the kpml4 has
+ *  physical addresses in it. We then dereference by obtaining the virtual
+ *  address mapping of this page. This works whether or not the processor is in
+ *  a virtually addressed or physically addressed mode. 
+ *
  * Inputs:
  *  - kpml4Mapping  : Mapping referencing the base kernel pml4 page table page
  *  - nkpml4e       : The number of entries in the pml4
@@ -1714,19 +1733,32 @@ void
 sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
         uintptr_t etext)
 {
+    /* Get the virtual address of the pml4e mapping */
+#if USE_VIRT
+    pml4e_t * kpml4eVA = (pml4e_t *) getVirtual( (uintptr_t) kpml4Mapping);
+#else
+    pml4e_t * kpml4eVA = kpml4Mapping;
+#endif
+
     /* Zero out the page descriptor array */
     memset(&page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
 
     /* Walk the kernel page tables and initialize the sva page_desc */
-    declare_ptp_and_walk_pt_entries(kpml4Mapping, nkpml4e, PG_L4);
+    declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
+    
+    /* TODO: Set page_desc pages as SVA pages */
 
+    /* TODO: Set the SVA pages as read only */
+    
     /* Identify kernel code pages and intialize the descriptors */
     declare_kernel_code_pages(btext, etext);
-
+    
     /* Now load the initial value of the cr3 to complete kernel init */
+    printf("Writing cr3\n");
     load_cr3(*kpml4Mapping & PG_FRAME);
+    printf("Finished writing cr3\n");
 
-#if ACTIVATE_PROT
+#if 0//ACTIVATE_PROT
     u_long sp;
     __asm __volatile("movq %%rsp,%0" : "=r" (sp));
     printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);
@@ -2023,7 +2055,8 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
     rflags = sva_enter_critical();
 
 #if DEBUG >= 2
-    printf("##### SVA: declare_l4_page\n");
+    printf("##### SVA: declare_l4_page: frameAddr: %p, pml4e PTR: %p, pml4e: 0x%lx\n", 
+            frameAddr, pml4e, *pml4e);
 #endif
 
     /*
@@ -2037,6 +2070,11 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
      * entry declaration functions. 
      */
     init_page_entry(frameAddr, (page_entry_t *) pml4e);
+
+#if DEBUG >= 2
+    printf("##### SVA: post declare_l4_page: frameAddr: %p, pml4e PTR: %p, pml4e: 0x%lx\n", 
+            frameAddr, pml4e, *pml4e);
+#endif
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -2163,6 +2201,24 @@ init_leaf_page_from_mapping (page_entry_t mapping) {
         newPg->type = PG_TKDATA;
     }
 #endif
+}
+
+/* 
+ * Function: sva_update_mapping()
+ *
+ * Description:
+ *  This function updates the entry to the page table page, and is agnostic to
+ *  the level of page table. The particular needs for each page table level are
+ *  handled in the __update_mapping function.
+ *
+ * Inputs:
+ *  pteptr - The location within the page tabel page in which the new
+ *           translation should be placed.
+ *  val    - The new translation to insert into the page table.
+ */
+void
+sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
+    __update_mapping(pteptr,val);
 }
 
 /* 
@@ -2297,11 +2353,23 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 3
-    printf("##### SVA: update_l4_page\n");
+#if DEBUG >= 2
+    printf("##### SVA: pre-update_l4_page: pml4e: %p, *pml4e: 0x%lx, newMapping: 0x%lx\n",
+            pml4ePtr, *pml4ePtr, val);
+    
+    printf("\tFrame Type: %d, Frame Address: %p, index: 0x%lx\n", 
+            page_desc[(  (val & PG_FRAME)/ pageSize)],
+            (val & PG_FRAME), (  (val & PG_FRAME)/ pageSize)); 
 #endif
 
+    //val = (val & ~PG_RW);
+
     __update_mapping(pml4ePtr, val);
+
+#if DEBUG >= 2
+    printf("##### SVA: post-update_l4_page: pml4e: %p, *pml4e: 0x%lx\n",
+            pml4ePtr, *pml4ePtr);
+#endif
 }
 
 #if 0
