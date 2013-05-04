@@ -454,7 +454,9 @@ sva_init_primary () {
   init_idt (0);
   init_dispatcher ();
 
+#if 0
   init_mmu ();
+#endif
   init_fpu ();
 #if 0
   llva_reset_counters();
