@@ -282,6 +282,115 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
                                             Len,
                                             "lastsrc",
                                             &MCI);
+
+  //
+  // Get the high bits of these four values.
+  //
+  Value * ThirtyTwo = ConstantInt::get (IntPtrTy, 32u);
+  Value * DstStartHigh = BinaryOperator::Create (Instruction::LShr,
+                                                 DstInt,
+                                                 ThirtyTwo,
+                                                 "highbits",
+                                                 &MCI);
+  Value * SrcStartHigh = BinaryOperator::Create (Instruction::LShr,
+                                                 SrcInt,
+                                                 ThirtyTwo,
+                                                 "highbits",
+                                                 &MCI);
+  Value * DstEndHigh = BinaryOperator::Create (Instruction::LShr,
+                                               LastDst,
+                                               ThirtyTwo,
+                                               "highbits",
+                                               &MCI);
+  Value * SrcEndHigh = BinaryOperator::Create (Instruction::LShr,
+                                               LastSrc,
+                                               ThirtyTwo,
+                                               "highbits",
+                                               &MCI);
+
+  //
+  // Mask off the proper bits to see if the pointer is within the ghost
+  // memory range.
+  //
+  Value * CheckMask = ConstantInt::get (IntPtrTy, checkMask);
+  Value * DstStartMask = BinaryOperator::Create (Instruction::And,
+                                                DstStartHigh,
+                                                CheckMask,
+                                                "checkMask",
+                                                &MCI);
+  Value * SrcStartMask = BinaryOperator::Create (Instruction::And,
+                                                SrcStartHigh,
+                                                CheckMask,
+                                                "checkMask",
+                                                &MCI);
+  Value * DstEndMask = BinaryOperator::Create (Instruction::And,
+                                               DstEndHigh,
+                                               CheckMask,
+                                               "checkMask",
+                                               &MCI);
+  Value * SrcEndMask = BinaryOperator::Create (Instruction::And,
+                                               SrcEndHigh,
+                                               CheckMask,
+                                               "checkMask",
+                                               &MCI);
+
+  //
+  // Compare each value to the mask.  This will determine if either the source
+  // or destination buffer overlaps with the ghost virtual address region.
+  //
+  Value * DstStartCmp = new ICmpInst (&MCI,
+                                      CmpInst::ICMP_EQ,
+                                      DstStartMask,
+                                      CheckMask,
+                                      "cmp");
+  Value * SrcStartCmp = new ICmpInst (&MCI,
+                                      CmpInst::ICMP_EQ,
+                                      SrcStartMask,
+                                      CheckMask,
+                                      "cmp");
+  Value * DstEndCmp = new ICmpInst (&MCI,
+                                    CmpInst::ICMP_EQ,
+                                    DstEndMask,
+                                    CheckMask,
+                                    "cmp");
+  Value * SrcEndCmp = new ICmpInst (&MCI,
+                                    CmpInst::ICMP_EQ,
+                                    SrcEndMask,
+                                    CheckMask,
+                                    "cmp");
+
+  //
+  // The check fails if any of the comparisons return true.
+  //
+  Value * FinalCmp = BinaryOperator::Create (Instruction::Or,
+                                             DstStartCmp,
+                                             SrcStartCmp,
+                                             "final",
+                                             &MCI);
+  FinalCmp = BinaryOperator::Create (Instruction::Or,
+                                     FinalCmp,
+                                     DstEndCmp,
+                                     "final",
+                                     &MCI);
+  FinalCmp = BinaryOperator::Create (Instruction::Or,
+                                     FinalCmp,
+                                     SrcEndCmp,
+                                     "final",
+                                     &MCI);
+
+  //
+  // Use a select instruction to change the memory address to store into to
+  // an address that will fault if any of these memory accesses will access
+  // ghost memory.
+  //
+  Value * Boo = ConstantInt::get (IntPtrTy, 0xb00u);
+  Value * newDest = SelectInst::Create (FinalCmp, DstInt, Boo, "ptr", &MCI);
+
+  //
+  // Cast the result back into a pointer.
+  //
+  Value * newPtr = new IntToPtrInst (newDest, Dst->getType(), "ptr", &MCI);
+  MCI.setDest (newPtr);
 #endif
   return;
 }
@@ -294,11 +403,10 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
 //
 void
 SFI::visitCallInst (CallInst & CI) {
-#if 0
   if (MemCpyInst * MCI = dyn_cast<MemCpyInst>(&CI)) {
     visitMemCpyInst (*MCI);
   }
-#endif
+
   return;
 }
 
