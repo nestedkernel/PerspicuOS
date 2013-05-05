@@ -12,8 +12,9 @@ CXX=${LLVMTOOLS}/Release+Asserts/bin/clang++
 CPP=${LLVMTOOLS}/Release+Asserts/bin/clang-cpp
 
 CFLAGS := -g -I../include -O2 -fno-omit-frame-pointer -mno-aes -mno-avx -mcmodel=kernel -mno-red-zone -mno-mmx -msoft-float  -fno-asynchronous-unwind-tables -ffreestanding
-OFILES = checks.o init.o secmem.o handlers.o mmu.o mmuasm.o interrupt.o state.o debug.o \
-         stateasm.o invoke.o invokeasm.o
+
+OFILES = init.o secmem.o handlers.o mmu.o mmuasm.o interrupt.o state.o debug.o \
+         stateasm.o invoke.o invokeasm.o checks.o
 
 libsva.a: $(OFILES)
 	$(AR) -r $@ $(OFILES)
