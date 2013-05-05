@@ -28,7 +28,6 @@ main (int argc, char ** argv) {
   int hackType = atoi (argv[2]);
   uintptr_t addr;
   sscanf (argv[3], "%lx", &addr);
-  //uintptr_t addr = strtol (argv[3], NULL, 0);
   uintptr_t len = atoi (argv[4]);
 
   //
