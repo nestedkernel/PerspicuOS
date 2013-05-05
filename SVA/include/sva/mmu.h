@@ -86,9 +86,12 @@ static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 /*
  * Assert macro for SVA
  */
-unsigned long fails = 0;
+extern unsigned long fails;
 #if 1
-static inline void SVA_ASSERT(int res, char * st) { if(!res) fails++; };
+static inline void
+SVA_ASSERT (int res, char * st) {
+  if (!res) fails++;
+}
 #else
 #define SVA_ASSERT(res,string) if(!res) panic(string)
 #endif

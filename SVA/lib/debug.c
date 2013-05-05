@@ -22,6 +22,9 @@
 #include <sva/util.h>
 #include <machine/frame.h>
 
+/* Counter for number of failed run-time checks */
+unsigned long fails = 0;
+
 /*****************************************************************************
  * Assertion Code
  ****************************************************************************/
