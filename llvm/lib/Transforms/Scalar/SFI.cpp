@@ -397,51 +397,28 @@ SFI::visitAtomicCmpXchgInst (AtomicCmpXchgInst & AI) {
 
 void
 SFI::visitAtomicRMWInst (AtomicRMWInst & AI) {
-#if 0
   //
-  // If the check will always succeed, skip it.
+  // Don't instrument trivially safe memory accesses.
   //
-  if (isTriviallySafe (AI.getPointerOperand(), AI.getType()))
+  Value * Pointer = AI.getPointerOperand();
+  if (isTriviallySafe (Pointer, AI.getValOperand()->getType())) {
     return;
+  }
 
   //
-  // Create a value representing the amount of memory, in bytes, that will be
-  // modified.
+  // Add the bit masking for the pointer.
   //
-  TargetData & TD = getAnalysis<TargetData>();
-  LLVMContext & Context = AI.getContext();
-  uint64_t TypeSize=TD.getTypeStoreSize(AI.getType());
-  IntegerType * IntType = IntegerType::getInt32Ty (Context);
-  Value * AccessSize = ConstantInt::get (IntType, TypeSize);
+  Value * newPtr = addBitMasking (Pointer, AI);
 
   //
-  // Create an STL container with the arguments.
-  // The first argument is the pool handle (which is a NULL pointer).
-  // The second argument is the pointer to check.
+  // Update the operand of the store so that it uses the bit-masked pointer.
   //
-  std::vector<Value *> args;
-  args.push_back(ConstantPointerNull::get (getVoidPtrType(Context)));
-  args.push_back(castTo (AI.getPointerOperand(), getVoidPtrType(Context), &AI));
-  args.push_back (AccessSize);
-
-  //
-  // Create the call to the run-time check.  Place it *before* the compare and
-  // exchange instruction.
-  //
-  CallInst * CI = CallInst::Create (PoolCheckUI, args, "", &AI);
-
-  //
-  // If there's debug information on the load instruction, add it to the
-  // run-time check.
-  //
-  if (MDNode * MD = AI.getMetadata ("dbg"))
-    CI->setMetadata ("dbg", MD);
+  AI.setOperand (0, newPtr);
 
   //
   // Update the statistics.
   //
   ++LSChecks;
-#endif
   return;
 }
 
