@@ -96,6 +96,13 @@ SVA_ASSERT (int res, char * st) {
 #define SVA_ASSERT(res,string) if(!res) panic(string)
 #endif
 
+static inline void
+SVARealAssert (int condition, char * str) {
+  if (!condition)
+    panic ("%s\n", str);
+  return;
+}
+
 /*
  *****************************************************************************
  * Define structures used in the SVA MMU interface.

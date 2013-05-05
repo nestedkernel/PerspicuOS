@@ -327,13 +327,13 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
 
 
     /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
+    SVARealAssert (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
     
     /* 
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
      */
-    SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
+    SVARealAssert (!isGhostVA((uintptr_t) page_entry), 
             "MMU: Kernel attempted to map into a secure page table page");
 
     /* If the mapping is to an SVA page then fail */
