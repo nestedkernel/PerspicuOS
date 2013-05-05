@@ -879,6 +879,34 @@ get_pteVaddr (pde_t * pde, uintptr_t vaddr) {
   return (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
 }
 
+/*
+ * Functions for returing the physical address of page table pages.
+ */
+static inline uintptr_t
+get_pml4ePaddr (unsigned char * cr3, uintptr_t vaddr) {
+  /* Offset into the page table */
+  uintptr_t offset = ((vaddr >> 39) << 3) & vmask;
+  return (((uintptr_t)cr3) + offset);
+}
+
+static inline uintptr_t
+get_pdptePaddr (pml4e_t * pml4e, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
+  return ((*pml4e & 0x000ffffffffff000u) + offset);
+}
+
+static inline uintptr_t
+get_pdePaddr (pdpte_t * pdpte, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
+  return ((*pdpte & 0x000ffffffffff000u) + offset);
+}
+
+static inline uintptr_t
+get_ptePaddr (pde_t * pde, uintptr_t vaddr) {
+  uintptr_t offset = ((vaddr >> 12) << 3) & vmask;
+  return ((*pde & 0x000ffffffffff000u) + offset);
+}
+
 /* Functions for querying information about a page table entry */
 static inline unsigned char
 isPresent (uintptr_t * pte) {
@@ -1233,6 +1261,21 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * Note that we've added another translation to the pde.
    */
   updateUses (pte);
+
+  /*
+   * Mark the physical page frame as a ghost memory page frame.
+   */
+  getPageDescPtr (paddr)->type = PG_GHOST;
+
+
+  /*
+   * Mark the physical page frames used to map the entry as Ghost Page Table
+   * Pages.
+   */
+  getPageDescPtr (get_pml4ePaddr (get_pagetable(), vaddr))->ghostPTP = 1;
+  getPageDescPtr (get_pdptePaddr (pml4e, vaddr))->ghostPTP = 1;
+  getPageDescPtr (get_pdePaddr (pdpte, vaddr))->ghostPTP = 1;
+  getPageDescPtr (get_ptePaddr (pde, vaddr))->ghostPTP = 1;
   return pml4eVal;
 }
 
