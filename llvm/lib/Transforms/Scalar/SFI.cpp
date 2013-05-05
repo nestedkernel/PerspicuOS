@@ -19,6 +19,7 @@
 #include "llvm/Constants.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/InstVisitor.h"
+#include "llvm/IntrinsicInst.h"
 #include "llvm/Target/TargetData.h"
 
 // Pass Statistics
@@ -70,6 +71,8 @@ namespace llvm {
      void visitStoreInst (StoreInst & SI);
      void visitAtomicCmpXchgInst (AtomicCmpXchgInst &I);
      void visitAtomicRMWInst (AtomicRMWInst &I);
+     void visitCallInst (CallInst & CI);
+     void visitMemCpyInst (MemCpyInst & MCI);
 
    private:
      bool isTriviallySafe (Value * Ptr, Type * Type);
@@ -252,6 +255,53 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
 #endif
 }
 
+void
+SFI::visitMemCpyInst (MemCpyInst & MCI) {
+#if 0
+  //
+  // Fetch the arguments to the memcpy.
+  //
+  Value * Dst = MCI.getDest();
+  Value * Src = MCI.getSource();
+  Value * Len = MCI.getLength();
+
+  //
+  // Calculate the last byte accessed in the destination and source buffers.
+  //
+  TargetData & TD = getAnalysis<TargetData>();
+  Type * IntPtrTy = TD.getIntPtrType(MCI.getContext());
+  Value * DstInt = new PtrToIntInst (Dst, IntPtrTy, "dst", &MCI);
+  Value * SrcInt = new PtrToIntInst (Src, IntPtrTy, "src", &MCI);
+  Value * LastDst = BinaryOperator::Create (Instruction::Add,
+                                            DstInt,
+                                            Len,
+                                            "lastdst",
+                                            &MCI);
+  Value * LastSrc = BinaryOperator::Create (Instruction::Add,
+                                            SrcInt,
+                                            Len,
+                                            "lastsrc",
+                                            &MCI);
+#endif
+  return;
+}
+
+//
+// Method: visitCallInst()
+//
+// Description:
+//  Place a run-time check on certain intrinsic functions.
+//
+void
+SFI::visitCallInst (CallInst & CI) {
+#if 0
+  if (MemCpyInst * MCI = dyn_cast<MemCpyInst>(&CI)) {
+    visitMemCpyInst (*MCI);
+  }
+#endif
+  return;
+}
+
 //
 // Method: visitLoadInst()
 //
@@ -320,25 +370,45 @@ SFI::visitStoreInst (StoreInst & SI) {
 
 void
 SFI::visitAtomicCmpXchgInst (AtomicCmpXchgInst & AI) {
-  // Kernel fails to boot: Problems with IDT
 #if 0
   //
-  // Don't instrument trivially safe memory accesses.
+  // If the check will always succeed, skip it.
   //
-  Value * Pointer = AI.getPointerOperand();
-  if (isTriviallySafe (Pointer, AI.getNewValOperand()->getType())) {
+  if (isTriviallySafe (AI.getPointerOperand(), AI.getType()))
     return;
-  }
 
   //
-  // Add the bit masking for the pointer.
+  // Create a value representing the amount of memory, in bytes, that will be
+  // modified.
   //
-  Value * newPtr = addBitMasking (Pointer, AI);
+  TargetData & TD = getAnalysis<TargetData>();
+  LLVMContext & Context = AI.getContext();
+  uint64_t TypeSize=TD.getTypeStoreSize(AI.getType());
+  IntegerType * IntType = IntegerType::getInt32Ty (Context);
+  Value * AccessSize = ConstantInt::get (IntType, TypeSize);
 
   //
-  // Update the operand of the store so that it uses the bit-masked pointer.
+  // Create an STL container with the arguments.
+  // The first argument is the pool handle (which is a NULL pointer).
+  // The second argument is the pointer to check.
   //
-  AI.setOperand (0, newPtr);
+  std::vector<Value *> args;
+  args.push_back(ConstantPointerNull::get (getVoidPtrType(Context)));
+  args.push_back(castTo (AI.getPointerOperand(), getVoidPtrType(Context), &AI));
+  args.push_back (AccessSize);
+
+  //
+  // Create the call to the run-time check.  Place it *before* the compare and
+  // exchange instruction.
+  //
+  CallInst * CI = CallInst::Create (PoolCheckUI, args, "", &AI);
+
+  //
+  // If there's debug information on the load instruction, add it to the
+  // run-time check.
+  //
+  if (MDNode * MD = AI.getMetadata ("dbg"))
+    CI->setMetadata ("dbg", MD);
 
   //
   // Update the statistics.
@@ -350,25 +420,45 @@ SFI::visitAtomicCmpXchgInst (AtomicCmpXchgInst & AI) {
 
 void
 SFI::visitAtomicRMWInst (AtomicRMWInst & AI) {
-  // Kernel fails to boot: Problems with IDT
 #if 0
   //
-  // Don't instrument trivially safe memory accesses.
+  // If the check will always succeed, skip it.
   //
-  Value * Pointer = AI.getPointerOperand();
-  if (isTriviallySafe (Pointer, AI.getValOperand()->getType())) {
+  if (isTriviallySafe (AI.getPointerOperand(), AI.getType()))
     return;
-  }
 
   //
-  // Add the bit masking for the pointer.
+  // Create a value representing the amount of memory, in bytes, that will be
+  // modified.
   //
-  Value * newPtr = addBitMasking (Pointer, AI);
+  TargetData & TD = getAnalysis<TargetData>();
+  LLVMContext & Context = AI.getContext();
+  uint64_t TypeSize=TD.getTypeStoreSize(AI.getType());
+  IntegerType * IntType = IntegerType::getInt32Ty (Context);
+  Value * AccessSize = ConstantInt::get (IntType, TypeSize);
 
   //
-  // Update the operand of the store so that it uses the bit-masked pointer.
+  // Create an STL container with the arguments.
+  // The first argument is the pool handle (which is a NULL pointer).
+  // The second argument is the pointer to check.
   //
-  AI.setOperand (0, newPtr);
+  std::vector<Value *> args;
+  args.push_back(ConstantPointerNull::get (getVoidPtrType(Context)));
+  args.push_back(castTo (AI.getPointerOperand(), getVoidPtrType(Context), &AI));
+  args.push_back (AccessSize);
+
+  //
+  // Create the call to the run-time check.  Place it *before* the compare and
+  // exchange instruction.
+  //
+  CallInst * CI = CallInst::Create (PoolCheckUI, args, "", &AI);
+
+  //
+  // If there's debug information on the load instruction, add it to the
+  // run-time check.
+  //
+  if (MDNode * MD = AI.getMetadata ("dbg"))
+    CI->setMetadata ("dbg", MD);
 
   //
   // Update the statistics.
