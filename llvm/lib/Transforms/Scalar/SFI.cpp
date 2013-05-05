@@ -77,6 +77,7 @@ namespace llvm {
    private:
      bool isTriviallySafe (Value * Ptr, Type * Type);
      Value * addBitMasking (Value * Pointer, Instruction & I);
+     Value * instrumentMemcpy(Value * D, Value * S, Value * L, Instruction * I);
   };
 }
 
@@ -255,33 +256,25 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
 #endif
 }
 
-void
-SFI::visitMemCpyInst (MemCpyInst & MCI) {
-#if 0
-  //
-  // Fetch the arguments to the memcpy.
-  //
-  Value * Dst = MCI.getDest();
-  Value * Src = MCI.getSource();
-  Value * Len = MCI.getLength();
-
+Value *
+SFI::instrumentMemcpy (Value * Dst, Value * Src, Value * Len, Instruction * I) {
   //
   // Calculate the last byte accessed in the destination and source buffers.
   //
   TargetData & TD = getAnalysis<TargetData>();
-  Type * IntPtrTy = TD.getIntPtrType(MCI.getContext());
-  Value * DstInt = new PtrToIntInst (Dst, IntPtrTy, "dst", &MCI);
-  Value * SrcInt = new PtrToIntInst (Src, IntPtrTy, "src", &MCI);
+  Type * IntPtrTy = TD.getIntPtrType(I->getContext());
+  Value * DstInt = new PtrToIntInst (Dst, IntPtrTy, "dst", I);
+  Value * SrcInt = new PtrToIntInst (Src, IntPtrTy, "src", I);
   Value * LastDst = BinaryOperator::Create (Instruction::Add,
                                             DstInt,
                                             Len,
                                             "lastdst",
-                                            &MCI);
+                                            I);
   Value * LastSrc = BinaryOperator::Create (Instruction::Add,
                                             SrcInt,
                                             Len,
                                             "lastsrc",
-                                            &MCI);
+                                            I);
 
   //
   // Get the high bits of these four values.
@@ -291,22 +284,22 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
                                                  DstInt,
                                                  ThirtyTwo,
                                                  "highbits",
-                                                 &MCI);
+                                                 I);
   Value * SrcStartHigh = BinaryOperator::Create (Instruction::LShr,
                                                  SrcInt,
                                                  ThirtyTwo,
                                                  "highbits",
-                                                 &MCI);
+                                                 I);
   Value * DstEndHigh = BinaryOperator::Create (Instruction::LShr,
                                                LastDst,
                                                ThirtyTwo,
                                                "highbits",
-                                               &MCI);
+                                               I);
   Value * SrcEndHigh = BinaryOperator::Create (Instruction::LShr,
                                                LastSrc,
                                                ThirtyTwo,
                                                "highbits",
-                                               &MCI);
+                                               I);
 
   //
   // Mask off the proper bits to see if the pointer is within the ghost
@@ -317,43 +310,43 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
                                                 DstStartHigh,
                                                 CheckMask,
                                                 "checkMask",
-                                                &MCI);
+                                                I);
   Value * SrcStartMask = BinaryOperator::Create (Instruction::And,
                                                 SrcStartHigh,
                                                 CheckMask,
                                                 "checkMask",
-                                                &MCI);
+                                                I);
   Value * DstEndMask = BinaryOperator::Create (Instruction::And,
                                                DstEndHigh,
                                                CheckMask,
                                                "checkMask",
-                                               &MCI);
+                                               I);
   Value * SrcEndMask = BinaryOperator::Create (Instruction::And,
                                                SrcEndHigh,
                                                CheckMask,
                                                "checkMask",
-                                               &MCI);
+                                               I);
 
   //
   // Compare each value to the mask.  This will determine if either the source
   // or destination buffer overlaps with the ghost virtual address region.
   //
-  Value * DstStartCmp = new ICmpInst (&MCI,
+  Value * DstStartCmp = new ICmpInst (I,
                                       CmpInst::ICMP_EQ,
                                       DstStartMask,
                                       CheckMask,
                                       "cmp");
-  Value * SrcStartCmp = new ICmpInst (&MCI,
+  Value * SrcStartCmp = new ICmpInst (I,
                                       CmpInst::ICMP_EQ,
                                       SrcStartMask,
                                       CheckMask,
                                       "cmp");
-  Value * DstEndCmp = new ICmpInst (&MCI,
+  Value * DstEndCmp = new ICmpInst (I,
                                     CmpInst::ICMP_EQ,
                                     DstEndMask,
                                     CheckMask,
                                     "cmp");
-  Value * SrcEndCmp = new ICmpInst (&MCI,
+  Value * SrcEndCmp = new ICmpInst (I,
                                     CmpInst::ICMP_EQ,
                                     SrcEndMask,
                                     CheckMask,
@@ -366,17 +359,17 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
                                              DstStartCmp,
                                              SrcStartCmp,
                                              "final",
-                                             &MCI);
+                                             I);
   FinalCmp = BinaryOperator::Create (Instruction::Or,
                                      FinalCmp,
                                      DstEndCmp,
                                      "final",
-                                     &MCI);
+                                     I);
   FinalCmp = BinaryOperator::Create (Instruction::Or,
                                      FinalCmp,
                                      SrcEndCmp,
                                      "final",
-                                     &MCI);
+                                     I);
 
   //
   // Use a select instruction to change the memory address to store into to
@@ -384,14 +377,26 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
   // ghost memory.
   //
   Value * Boo = ConstantInt::get (IntPtrTy, 0xb00u);
-  Value * newDest = SelectInst::Create (FinalCmp, DstInt, Boo, "ptr", &MCI);
+  Value * newDest = SelectInst::Create (FinalCmp, DstInt, Boo, "ptr", I);
 
   //
   // Cast the result back into a pointer.
   //
-  Value * newPtr = new IntToPtrInst (newDest, Dst->getType(), "ptr", &MCI);
+  Value * newPtr = new IntToPtrInst (newDest, Dst->getType(), "ptr", I);
+  return newPtr;
+}
+
+void
+SFI::visitMemCpyInst (MemCpyInst & MCI) {
+  //
+  // Fetch the arguments to the memcpy.
+  //
+  Value * Dst = MCI.getDest();
+  Value * Src = MCI.getSource();
+  Value * Len = MCI.getLength();
+
+  Value * newPtr = instrumentMemcpy (Dst, Src, Len, &MCI);
   MCI.setDest (newPtr);
-#endif
   return;
 }
 
@@ -403,10 +408,22 @@ SFI::visitMemCpyInst (MemCpyInst & MCI) {
 //
 void
 SFI::visitCallInst (CallInst & CI) {
+#if 0
   if (MemCpyInst * MCI = dyn_cast<MemCpyInst>(&CI)) {
     visitMemCpyInst (*MCI);
   }
 
+  if (Function * F = CI.getCalledFunction()) {
+    if (F->hasName() && F->getName().equals("memcpy")) {
+      CallSite CS(&CI);
+      Value * newPtr = instrumentMemcpy (CS.getArgument(0),
+                                         CS.getArgument(1),
+                                         CS.getArgument(2),
+                                         &CI);
+      CS.setArgument (0, newPtr);
+    }
+  }
+#endif
   return;
 }
 
