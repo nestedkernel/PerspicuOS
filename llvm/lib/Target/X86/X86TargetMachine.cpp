@@ -180,7 +180,7 @@ bool X86PassConfig::addPreEmitPass() {
     ShouldPrint = true;
   }
 
-#if 0
+#if 1
   PM->add(createX86CFIOptPass(getX86TargetMachine()));
 #endif
   return ShouldPrint;
