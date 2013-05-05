@@ -84,20 +84,14 @@ static const uintptr_t vmask = 0x0000000000000fffu;
 static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 
 /*
- * Function: load_cr3
- *
- * Description: 
- *  Load the cr3 with the given value passed in.
- */
-static inline void load_cr3(unsigned long data)
-{ 
-    __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
-}
-
-/*
  * Assert macro for SVA
  */
+unsigned long fails = 0;
+#if 1
+static inline void SVA_ASSERT(int res, char * st) { if(!res) fails++; };
+#else
 #define SVA_ASSERT(res,string) if(!res) panic(string)
+#endif
 
 /*
  *****************************************************************************
@@ -122,7 +116,7 @@ enum page_type_t {
     PG_STACK,   /* TODO don't care about */
     PG_IO,      /* TODO don't care about */
     PG_SVA,         /* Defines an SVA system page */
-    PG_SECMEM,      /* Defines a secure page */
+    PG_GHOST,      /* Defines a secure page */
 };
 
 /* Mask to get the address bits out of a PTE, PDE, etc. */
@@ -140,6 +134,12 @@ typedef struct page_desc_t {
     /* Type of frame */
     enum page_type_t type;
 
+    /* Flag to denote whether the page is a Ghost page table page */
+    unsigned ghostPTP : 1;
+
+    /* Flag denoting whether or not this frame is a stack frame */
+    unsigned stack : 1;
+    
     /* State of page: value of != 0 is active and 0 is inactive */
     unsigned active : 1;
 
@@ -299,6 +299,18 @@ _load_cr0(unsigned long val) {
     __asm __volatile("movq %0,%%cr0" : : "r" (val));
 }
 
+/*
+ * Function: load_cr3
+ *
+ * Description: 
+ *  Load the cr3 with the given value passed in.
+ */
+static inline void load_cr3(unsigned long data)
+{ 
+    __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
+}
+
+
 static inline u_long
 _rcr0(void) {
     u_long  data;
@@ -331,44 +343,9 @@ _rcr3(void) {
  */
 page_desc_t * getPageDescPtr(unsigned long mapping);
 
-
-#if 0
-/*
- * Function: isInvalidMappingOrder
- *
- * Description: This function verifies that the mapping being inserted is
- *      correct by checking that the va address being mapped into this
- *      particular page table entry should be in that address location.
- *
- *      To prove that we have a valid ordering we can just verify that the
- *      update is being applied to the correct page table (at any level) and
- *      that the particuler page table entry (at any level) is at the index
- *      defined by the virtual address.
- *
- * Inputs:
- *  
- */
-static inline int 
-isInvalidMappingOrder (page_desc_t pgDesc) {
-    /* 
-     * Check that we have the correct page table for the given VA and teh
-     * active set of MMU mappings.
-     */
-    if (updatePageFrame != expectedPageFrameForVA(va)) {
-        return false;
-    }
-
-    /*
-     * Check that we have the correct index into the given page table from the
-     * virtual address
-     */
-    else if (pteIndex != expectedPTEIndex(va)) {
-        return false;
-    } else {
-        return true;
-    }
-}
-#endif
+/* See implementation in c file for details */
+static inline page_entry_t * va_to_pte (uintptr_t va, enum page_type_t level);
+static inline int isValidMappingOrder (page_desc_t *pgDesc, uintptr_t newVA);
 
 #if 0
 static inline uintptr_t
@@ -431,29 +408,34 @@ static inline page_entry_t setMappingReadOnly (page_entry_t mapping)
  */
 
 /* State whether this kernel virtual address is in the secure memory range */
-static inline int isSecureMemVA(uintptr_t va)
+static inline int isGhostVA(uintptr_t va)
     { return va > SECMEMSTART && va < SECMEMEND; }
-
-/* Description: Return whether the page is active or not */
-static inline int pgIsActive (page_desc_t page) { return page.type != PG_UNUSED ; } 
 
 /* 
  * The following functions query the given page descriptor for type attributes.
  */
-static inline int isFramePg (page_desc_t page) { 
-    return page.type == PG_TKDATA   ||       /* Defines a kernel data page */
-           page.type == PG_TUDATA   ||       /* Defines a user data page */
-           page.type == PG_FRAME             /* Defines a code page */
+static inline int isFramePg (page_desc_t *page) { 
+    return page->type == PG_TKDATA   ||       /* Defines a kernel data page */
+           page->type == PG_TUDATA   ||       /* Defines a user data page */
+           page->type == PG_FRAME             /* Defines a code page */
         ;
 }
 
-static inline int isL1Pg (page_desc_t page) { return page.type == PG_L1; }
-static inline int isL2Pg (page_desc_t page) { return page.type == PG_L2; }
-static inline int isL3Pg (page_desc_t page) { return page.type == PG_L3; }
-static inline int isL4Pg (page_desc_t page) { return page.type == PG_L4; }
-static inline int isSVAPg (page_desc_t page) { return page.type == PG_SVA; }
-static inline int isSecureMemPG(page_desc_t page)
-    { return page.type == PG_SECMEM; }
+/* Description: Return whether the page is active or not */
+static inline int pgIsActive (page_desc_t *page) 
+    { return page->type != PG_UNUSED ; } 
+
+/* Page type queries */
+static inline int isL1Pg (page_desc_t *page) { return page->type == PG_L1; }
+static inline int isL2Pg (page_desc_t *page) { return page->type == PG_L2; }
+static inline int isL3Pg (page_desc_t *page) { return page->type == PG_L3; }
+static inline int isL4Pg (page_desc_t *page) { return page->type == PG_L4; }
+static inline int isSVAPg (page_desc_t *page) { return page->type == PG_SVA; }
+static inline int isGhostPG (page_desc_t *page) 
+    { return page->type == PG_GHOST; }
+static inline int isGhostPTP (page_desc_t *page) { return page->ghostPTP; }
+static inline int isKernelStackPG(page_desc_t *page) 
+    { return !page->user && page->stack; }
 
 #endif
 

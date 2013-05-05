@@ -201,6 +201,90 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
 }
 
 /*
+ *****************************************************************************
+ * Page table page index and entry lookups 
+ *****************************************************************************
+ */
+#if 0
+static inline va_to_pml4e_index(){ return va & PML4MASK; }
+static inline va_to_pdpte_index(){
+}
+static inline va_to_pde_index(){
+}
+static inline va_to_pte_index(){
+}
+static inline va_to_pml4e(uintptr_t va){
+    pml4_t * pml4 = get_pagetable();
+    return &pml4[va_to_pml4e_index]; 
+}
+static inline va_to_pdpte(){
+}
+static inline va_to_pde(){
+}
+static inline va_to_pte(){
+}
+
+/*
+ *
+ */
+static inline page_entry_t * va_to_pte (uintptr_t va, page_type_t level){
+    switch(level){
+    case PG_L4:
+        return va_to_pml4e();
+        break;
+    case PG_L3:
+        return va_to_pdpte();
+        break;
+    case PG_L2:
+        return va_to_pde();
+        break;
+    case PG_L1:
+        return va_to_pte();
+        break;
+    default:
+        panic("MMU: attempted to map into a non-page table page");
+    }
+}
+
+/*
+ * Function: isValidMappingOrder
+ *
+ * Description: This function verifies that the mapping being inserted is
+ *      correct by checking that the va address being mapped into this
+ *      particular page table entry should be in that address location.
+ *
+ *      To prove that we have a valid ordering we can just verify that the
+ *      update is being applied to the correct page table (at any level) and
+ *      that the particuler page table entry (at any level) is at the index
+ *      defined by the virtual address.
+ *
+ * Inputs:
+ *  
+ */
+static inline int 
+isValidMappingOrder (page_desc_t *pgDesc, uintptr_t newVA) {
+    /* 
+     * Check that we have the correct page table for the given VA and the
+     * active set of MMU mappings.
+     */
+    page_entry_t ptePhysAddr = va_to_pa_pte(newVA);
+    if (updatePageFrame != expectedPageFrameForVA(va)) {
+        return false;
+    }
+
+    /*
+     * Check that we have the correct index into the given page table from the
+     * virtual address
+     */
+    else if (pteIndex != expectedPTEIndex(va)) {
+        return false;
+    } else {
+        return true;
+    }
+}
+#endif
+
+/*
  * Function: pt_update_is_valid()
  *
  * Description:
@@ -225,55 +309,55 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     unsigned long origPA = *page_entry & PG_FRAME;
     unsigned long origFrame = origPA >> PAGESHIFT;
     uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-    page_desc_t origPG = page_desc[origFrame];
+    page_desc_t *origPG = &page_desc[origFrame];
 
     /* Get associated information for the new page being mapped */
     unsigned long newPA = newVal & PG_FRAME;
     unsigned long newFrame = newPA >> PAGESHIFT;
     uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-    page_desc_t newPG = page_desc[newFrame];
+    page_desc_t *newPG = &page_desc[newFrame];
 
     /* Get the page table page descriptor. The page_entry is the viratu */
     uintptr_t pteFrame = getPhysicalAddr (page_entry) >> PAGESHIFT;
-    page_desc_t ptePG = page_desc[ pteFrame ];
+    page_desc_t *ptePG = &page_desc[pteFrame];
 
-#if 0 /* This is under test and isn't ready for live use */
+    /* If we aren't mapping a new page then we can skip several checks */
+    /* TODO figure out if we can optimize with this check */
+    //if(newVal != 0 && newPA != 0){
 
-    /* Make sure we have a new mapping */
-    SVA_ASSERT (newPA != 0, "MMU: new mapping is empty");
-    /* 
-     * TODO -- make sure we handle specific checks that need to only deal with
-     * a mapping of zero. So I put the above check in and assumed for the rest
-     * of the checks that there would never be a zero mapping... 
-     */
-
-    /* If the new page hasn't been registered then fail */
-    SVA_ASSERT (!pgIsActive(newPG), "Kernel attempted to map an inactive frame");
 
     /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isSecureMemPG(newPG), "Kernel attempted to map a secure page");
+    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
     
-    /* If the pte is in a secure page table page, a secure VA region, then fail */
-    SVA_ASSERT (!isSecureMemVA((uintptr_t) page_entry), 
-            "Kernel attempted to map into a secure page table page");
+    /* 
+     * If the virtual address of the page_entry is in secure memory then fail,
+     * as the kernel will never be allowed to map any VA mapping that region. 
+     */
+    SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
+            "MMU: Kernel attempted to map into a secure page table page");
 
-    /* If the new page is an SVA page then fail */
+    /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
     
-    /* If the pt entry resides in an SVA page table page then fail */
-    SVA_ASSERT (!isSVAPTPage(ptePG), 
-            "Kernel attempt to map into an SVA page table page");
+    /* If the pt entry resides in a ghost page table page then fail */
+    SVA_ASSERT (!isGhostPTP(ptePG), 
+            "MMU: Kernel attempted to map into an SVA page table page");
 
+#if 0 /* This is under test and isn't ready for live use */
+    
+#if NOT_YET_IMPLEMENTED
     /* Verify that we have the correct PTE for the given VA */
-    SVA_ASSERT ( !isInvalidMappingOrder (page_desc_t pgDesc) , 
+    SVA_ASSERT (!isValidMappingOrder(page_entry, newVA) , 
             "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
+#endif
+
 
     /*
      * If new mapping is to a physical page that is used in a kernel stack, flag
      * an error.
      */
     SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
-    
+
     /*
      * If the new mapping is set for user access, but the VA being used is to
      * kernel space, fail. Also capture in this check is if the new mapping is
@@ -348,7 +432,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * Verify that for each page update that the mapping matches the correct
      * type of page allowed to be mapped into this page table. 
      */
-    switch(ptePG.type) {
+    switch(ptePG->type) {
         case PG_L1:
             SVA_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
             break;
@@ -1730,13 +1814,13 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
         page_desc_t codePg = page_desc[index];
 
 #if 0//ACTIVATE_PROT
-            /* Set the code page to read only */
-            page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
-            printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
-                    page, *(page_entry_t *)page, romapping);
-            panic("");
-            /* SVA-TODO Get the pte for this kernel page */
-            //page_entry_store((page_entry_t *)page, romapping);             
+        /* Set the code page to read only */
+        page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
+        printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
+                page, *(page_entry_t *)page, romapping);
+        panic("");
+        /* SVA-TODO Get the pte for this kernel page */
+        //page_entry_store((page_entry_t *)page, romapping);             
 #endif
 
         /* Mark the page as both a code page and kernel level */
@@ -1794,9 +1878,7 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     declare_kernel_code_pages(btext, etext);
     
     /* Now load the initial value of the cr3 to complete kernel init */
-    printf("Writing cr3\n");
     load_cr3(*kpml4Mapping & PG_FRAME);
-    printf("Finished writing cr3\n");
 
 #if 0//ACTIVATE_PROT
     u_long sp;
