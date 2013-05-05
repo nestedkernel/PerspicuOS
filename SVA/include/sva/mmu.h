@@ -86,11 +86,15 @@ static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 /*
  * Assert macro for SVA
  */
-extern unsigned long fails;
 #if 1
+/* 
+ * TODO: this will be removed. It is only used for temporarily obtaining
+ * performance numbers.
+ */
+static unsigned long f;
 static inline void
 SVA_ASSERT (int res, char * st) {
-  if (!res) fails++;
+  if (!res) f++;
 }
 #else
 #define SVA_ASSERT(res,string) if(!res) panic(string)
