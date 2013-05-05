@@ -34,6 +34,7 @@
  *****************************************************************************
  */
 extern void sva_mm_load_pgtable (void * pg);
+extern void sva_load_cr0 (unsigned long val);
 extern void sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte);
 extern void sva_declare_l1_page (unsigned long frame, pde_t *pde);
 extern void sva_declare_l2_page (unsigned long frame, pdpte_t *pdpte);

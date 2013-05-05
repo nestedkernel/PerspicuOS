@@ -39,7 +39,7 @@
 /* Denotes code that is in for some type of testing but is only temporary */
 #define TMP_TEST_CODE       1
 /* Denotes whether or not we are activating read only protection */
-#define ACTIVATE_PROT       1
+#define ACTIVATE_PROT       0
 /* Define whether to enable DEBUG blocks #if statements */
 #define DEBUG               0
 /* Define whether or not the mmu_init code assumes virtual addresses */
@@ -241,6 +241,11 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
 
     /* Make sure we have a new mapping */
     SVA_ASSERT (newPA != 0, "MMU: new mapping is empty");
+    /* 
+     * TODO -- make sure we handle specific checks that need to only deal with
+     * a mapping of zero. So I put the above check in and assumed for the rest
+     * of the checks that there would never be a zero mapping... 
+     */
 
     /* If the new page hasn't been registered then fail */
     SVA_ASSERT (!pgIsActive(newPG), "Kernel attempted to map an inactive frame");
@@ -258,6 +263,10 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     /* If the pt entry resides in an SVA page table page then fail */
     SVA_ASSERT (!isSVAPTPage(ptePG), 
             "Kernel attempt to map into an SVA page table page");
+
+    /* Verify that we have the correct PTE for the given VA */
+    SVA_ASSERT ( !isInvalidMappingOrder (page_desc_t pgDesc) , 
+            "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 
     /*
      * If new mapping is to a physical page that is used in a kernel stack, flag
@@ -611,22 +620,24 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
  */
 static inline void 
 init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
-    unsigned long newMapping;
     page_desc_t *pg = getPageDescPtr(frameAddr);
-    page_entry_t curMapping = *page_entry;
+    page_entry_t newMapping = *page_entry;
 
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
+#if ACTIVATE_PROT
     /*
      * If this should be marked as a read only page, set the RO flag of the pde
      * referencing this new page. This is an update type operation. A value of
      * 0 in bit position 2 configures for no writes.
      */
-    if (readOnlyPage(pg))
-        newMapping = setMappingReadOnly(curMapping);
-    else
-        newMapping = curMapping;
+    if (readOnlyPage(pg)) {
+        newMapping = setMappingReadOnly(newMapping);
+        printf("==== SVA<init_page_entry>: Setting readonly L%d, mapping: 0x%lx\n",
+                getPageDescPtr(frameAddr)->type, newMapping);
+    }
+#endif
     
     /* Perform the actual store of the value to the page_entry */
     page_entry_store(page_entry, newMapping);
@@ -1336,44 +1347,73 @@ void llva_check_pagetable(pgd_t* pgd) {
  */
 void
 sva_mm_load_pgtable (void * pg) {
-  /* Control Register 0 value (which is used to enable paging) */
-  unsigned int cr0;
+    /* Control Register 0 value (which is used to enable paging) */
+    unsigned int cr0;
 
-  /*
-   * Load the new page table and enable paging in the CR0 register.
-   */
-  __asm__ __volatile__ ("movq %1, %%cr3\n"
-                        "movl %%cr0, %0\n"
-                        "orl  $0x80000000, %0\n"
-                        "movl %0, %%cr0\n"
-                        : "=r" (cr0)
-                        : "r" (pg) : "memory");
-
-  /*
-   * Make sure that the secure memory region is still mapped within the current
-   * set of page tables.
-   */
-  struct SVAThread * threadp = getCPUState()->currentThread;
-  if (threadp->secmemSize) {
-    /*
-     * Get a pointer into the page tables for the secure memory region.
+#if 0
+    printf("##### SVA<sva_mm_load_pgtable> current cr0: 0x%lx,", _rcr0());
+    printf("\n\tcurrent cr3: 0x%lx, new cr3 value: 0x%lx\n", _rcr3(), pg);
+    /* 
+     * Unset page protection so that we can write to cr3
      */
-    pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
+    unprotect_paging();
+#endif 
 
     /*
-     * Restore the PML4E entry for the secure memory region.
-     */
-    *secmemp = threadp->secmemPML4e;
-  }
+     * Load the new page table and enable paging in the CR0 register.
+    */
+    __asm__ __volatile__ ("movq %1, %%cr3\n"
+            "movl %%cr0, %0\n"
+            "orl  $0x80000000, %0\n"
+            "movl %0, %%cr0\n"
+            : "=r" (cr0)
+            : "r" (pg) : "memory");
 
-  return;
+#if 0
+    printf("secmem2\n");
+    printf("##### SVA<sva_mm_load_pgtable> current cr0: 0x%lx,", _rcr0());
+    printf("\n\tcurrent cr3: 0x%lx, new cr3 value: 0x%lx\n", _rcr3(), pg);
+#endif
+
+    /*
+     * Make sure that the secure memory region is still mapped within the current
+     * set of page tables.
+     */
+    struct SVAThread * threadp = getCPUState()->currentThread;
+    if (threadp->secmemSize) {
+        /*
+         * Get a pointer into the page tables for the secure memory region.
+         */
+        pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
+
+        /*
+         * Restore the PML4E entry for the secure memory region.
+         */
+        *secmemp = threadp->secmemPML4e;
+    }
+
+#if 0
+    printf("secmem2.1\n");
+    //protect_paging();
+    printf("secmem2.2\n");
+#endif
+
+    return;
 }
 
-static inline u_long
-_rcr0(void) {
-    u_long  data;
-    __asm __volatile("movq %%cr0,%0" : "=r" (data));
-    return (data);
+/*
+ * Function: sva_load_cr0
+ *
+ * Description:
+ *  SVA Intrinsic to load the cr0 value. We need to make sure write protection
+ *  is enabled. 
+ */
+void 
+sva_load_cr0 (unsigned long val) {
+#if ACTIVATE_PROT
+    val |= CR0_WP;
+#endif 
+    _load_cr0(val);
 }
 
 /*
@@ -2063,13 +2103,16 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
      * Mark this page frame as an L1 page frame.
      */
     page_desc[frame].type = PG_L4;
+    //*pml4e = frameAddr;
     
+    //printf("==== SVA<decl_l4_pre>: CR0: 0x%lx, CR3: 0x%lx\n",_rcr0(), _rcr3());
     /* 
      * Initialize the page data and page entry. Note that we pass a general
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
     init_page_entry(frameAddr, (page_entry_t *) pml4e);
+    //printf("==== SVA<decl_l4_post>: CR0: 0x%lx\n",_rcr0());
 
 #if DEBUG >= 2
     printf("##### SVA: post declare_l4_page: frameAddr: %p, pml4e PTR: %p, pml4e: 0x%lx\n", 
@@ -2239,7 +2282,7 @@ sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
 
-#if DEBUG > 4
+#if DEBUG > 2
     printf("##### SVA: update_l1_page\n");
 #endif
 
@@ -2361,8 +2404,6 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
             page_desc[(  (val & PG_FRAME)/ pageSize)],
             (val & PG_FRAME), (  (val & PG_FRAME)/ pageSize)); 
 #endif
-
-    //val = (val & ~PG_RW);
 
     __update_mapping(pml4ePtr, val);
 

@@ -147,7 +147,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
-#define SVA_DEBUG 1
+#define SVA_DEBUG 0
 #endif
 
 /* Sanity check for __curthread() */
@@ -1029,7 +1029,14 @@ cpu_setregs(void)
 	 * BSP.  See the comments there about why we set them.
 	 */
 	cr0 |= CR0_MP | CR0_NE | CR0_TS | CR0_WP | CR0_AM;
-	load_cr0(cr0);
+	
+    /* Store the new value to cr0 */
+#ifdef SVA_MMU
+	sva_load_cr0(cr0);
+#else
+    load_cr0(cr0);
+#endif
+
 }
 
 /*
@@ -1521,7 +1528,7 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 	if (getenv_quad("dcons.addr", &dcons_addr) == 0 ||
 	    getenv_quad("dcons.size", &dcons_size) == 0)
 		dcons_addr = 0;
-
+    
 	/*
 	 * physmap is in bytes, so when converting to page boundaries,
 	 * round up the start address and round down the end address.
@@ -1558,7 +1565,8 @@ getmemsize(caddr_t kmdp, u_int64_t first)
 			/*
 			 * map page into kernel: valid, read/write,non-cacheable
 			 */
-#if SVA_MMU
+            /* SVA-TODO: enabled this after initialization is figured out */
+#if 0//def SVA_MMU
             /* Update the mapping to the pte with SVA */
             sva_update_l1_mapping(pte, (unsigned long) (pa | PG_V | PG_RW | PG_N));
 #else
@@ -1645,7 +1653,9 @@ do_next:
 				break;
 		}
 	}
-#if SVA_MMU
+
+    /* SVA-TODO: enabled this after initialization is figured out */
+#if 0//def SVA_MMU
     /* Update the mapping to the pte with SVA */
     sva_update_l1_mapping(pte, 0);
 #else
@@ -1954,9 +1964,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	getmemsize(kmdp, physfree);
 	init_param2(physmem);
-
+    
 	/* now running on new page tables, configured,and u/iom is accessible */
-
+    
 	msgbufinit(msgbufp, msgbufsize);
 	fpuinit();
 
@@ -2651,10 +2661,17 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
       /* Release the old thread */
       mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
     } else {
+#if SVA_DEBUG
+      printf("-- Calling sva load pagetable...\n");
+#endif
       /*
        * Switch to the new page table.
        */
       sva_mm_load_pgtable (new->td_pcb->pcb_cr3);
+
+#if SVA_DEBUG
+      printf("-- Finished sva load pagetable...\n");
+#endif
 
       /*
        * Fetch the pmap (physical page mapping) structure from the per-CPU

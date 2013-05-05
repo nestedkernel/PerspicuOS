@@ -248,18 +248,8 @@ void init_leaf_page_from_mapping(page_entry_t mapping);
  *****************************************************************************
  */
 
-/*
- * Description:
- *  Given a page table entry value, return the page description associate with
- *  the frame being addressed in the mapping.
- *
- * Inputs:
- *  mapping: the mapping with the physical address of the referenced frame
- *
- * Return:
- *  Pointer to the page_desc for this frame
- */
-page_desc_t * getPageDescPtr(unsigned long mapping);
+/* CR0 Flags */
+#define     CR0_WP      0x00010000      /* Write protect enable */
 
 /*
  * Function: getVirtual()
@@ -301,11 +291,46 @@ get_pagetable (void) {
   return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
 }
 
+/* 
+ * Return the current value in cr0
+ */
+static void
+_load_cr0(unsigned long val) {
+    __asm __volatile("movq %0,%%cr0" : : "r" (val));
+}
+
+static inline u_long
+_rcr0(void) {
+    u_long  data;
+    __asm __volatile("movq %%cr0,%0" : "=r" (data));
+    return (data);
+}
+
+static inline u_long
+_rcr3(void) {
+    u_long  data;
+    __asm __volatile("movq %%cr3,%0" : "=r" (data));
+    return (data);
+}
+
 /*
  *****************************************************************************
  * MMU declare, update, and verification helper routines
  *****************************************************************************
  */
+/*
+ * Description:
+ *  Given a page table entry value, return the page description associate with
+ *  the frame being addressed in the mapping.
+ *
+ * Inputs:
+ *  mapping: the mapping with the physical address of the referenced frame
+ *
+ * Return:
+ *  Pointer to the page_desc for this frame
+ */
+page_desc_t * getPageDescPtr(unsigned long mapping);
+
 
 #if 0
 /*
@@ -369,13 +394,14 @@ pageVA(page_desc_t pg){
  */
 static inline int
 readOnlyPage(page_desc_t *pg){
-    return  pg->type == PG_L4    
+    return  0    
 #if 0
-            || pg->type == PG_L3    
-            || pg->type == PG_L2    
-            || pg->type == PG_L1    
-            || pg->type == PG_CODE  
-            || pg->type == PG_SVA 
+            pg->type == PG_L4    ||  
+            pg->type == PG_L3    ||  
+            pg->type == PG_L2    ||  
+            pg->type == PG_L1    ||  
+            pg->type == PG_CODE  ||  
+            pg->type == PG_SVA 
 #endif
             ;
 }

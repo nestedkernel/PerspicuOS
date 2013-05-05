@@ -31,6 +31,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/mp_machdep.c 223758 2011-07-04
 #include "opt_kstack_pages.h"
 #include "opt_sched.h"
 #include "opt_smp.h"
+#include "opt_sva_mmu.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,6 +72,11 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/mp_machdep.c 223758 2011-07-04
 
 #if 1
 #include <sva/init.h>
+#endif
+
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#define SVA_DEBUG 0
 #endif
 
 #define WARMBOOT_TARGET		0
@@ -697,7 +703,11 @@ init_secondary(void)
 	 */
 	cr0 = rcr0();
 	cr0 &= ~(CR0_CD | CR0_NW | CR0_EM);
+#ifdef SVA_MMU
+	sva_load_cr0(cr0);
+#else
 	load_cr0(cr0);
+#endif
 
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;

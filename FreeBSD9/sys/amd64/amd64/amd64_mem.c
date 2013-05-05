@@ -27,6 +27,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/amd64_mem.c 217506 2011-01-17 17:30:35Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
@@ -319,7 +324,11 @@ amd64_mrstoreone(void *arg)
 
 	/* Disable caches (CD = 1, NW = 0). */
 	cr0 = rcr0();
+#ifdef SVA_MMU
+	sva_load_cr0((cr0 & ~CR0_NW) | CR0_CD);
+#else
 	load_cr0((cr0 & ~CR0_NW) | CR0_CD);
+#endif
 
 	/* Flushes caches and TLBs. */
 	wbinvd();
@@ -399,7 +408,11 @@ amd64_mrstoreone(void *arg)
 	wrmsr(MSR_MTRRdefType, rdmsr(MSR_MTRRdefType) | MTRR_DEF_ENABLE);
 
 	/* Restore caches and PGE. */
+#ifdef SVA_MMU
+	sva_load_cr0(cr0);
+#else
 	load_cr0(cr0);
+#endif
 	load_cr4(cr4);
 
 	critical_exit();

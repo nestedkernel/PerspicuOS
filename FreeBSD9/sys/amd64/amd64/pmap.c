@@ -111,8 +111,8 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
-#define SVA_DEBUG 0
 #endif
+#define SVA_DEBUG 0
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -491,7 +491,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pt_entry_t *)KPTphys)[i] |= PG_RW | PG_V | PG_G;
 	}
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("KPTphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPTphys)[0],
             ((pdp_entry_t *)KPTphys)[0]);
     printf("KPTphys[1]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPTphys)[1],
@@ -511,7 +511,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
     
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("Map the pts at location in ptmap");
     printf("KPDphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDphys)[0],
             ((pdp_entry_t *)KPDphys)[0]);
@@ -532,7 +532,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V | PG_PS | PG_G;
 	}
     
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("Now doing zero to end of alloc under 2M pages\n");
     printf("KPDphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDphys)[0],
             ((pdp_entry_t *)KPDphys)[0]);
@@ -553,7 +553,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPDPphys)[i + KPDPI] |= PG_RW | PG_V | PG_U;
 	}
     
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("PDP entry connect to pds\n");
     printf("KPDPphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDPphys)[0],
             ((pdp_entry_t *)KPDPphys)[0]);
@@ -596,7 +596,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] |= PG_RW | PG_V | PG_U;
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("KVA self reflecting spot:\t\t\t %p, %lx\n",&((pdp_entry_t *)KPML4phys)[PML4PML4I],
             ((pdp_entry_t *)KPML4phys)[PML4PML4I]);
 #endif
@@ -612,7 +612,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
 	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
 
-#if SVA_DEBUG
+#if 0//SVA_DEBUG
     printf("pml4[0]:\t\t\t %p: 0x%lx\n", &((pdp_entry_t *)KPML4phys)[0], 
             ((pdp_entry_t *)KPML4phys)[0]);
     printf("KVA slot to the pml4:\t\t\t %p: 0x%lx\n", &((pdp_entry_t *)KPML4phys)[KPML4I], 
@@ -770,7 +770,11 @@ pmap_init_pat(void)
 
 	/* Disable caches (CD = 1, NW = 0). */
 	cr0 = rcr0();
+#ifdef SVA_MMU
+	sva_load_cr0((cr0 & ~CR0_NW) | CR0_CD);
+#else
 	load_cr0((cr0 & ~CR0_NW) | CR0_CD);
+#endif
 
 	/* Flushes caches and TLBs. */
 	wbinvd();
@@ -786,7 +790,11 @@ pmap_init_pat(void)
 	invltlb();
 
 	/* Restore caches and PGE. */
+#ifdef SVA_MMU
+	sva_load_cr0(cr0);
+#else
 	load_cr0(cr0);
+#endif
 	load_cr4(cr4);
 }
 
@@ -1511,6 +1519,20 @@ pmap_qenter(vm_offset_t sva, vm_page_t *ma, int count)
 		if ((*pte & (PG_FRAME | PG_PTE_CACHE)) != pa) {
 			oldpte |= *pte;
 #ifdef SVA_MMU
+            /* Print out the pml4e, pdpe, and pde, address */
+            /* 
+             * FIXME:XXX for some reason the act of obtaining the pde and
+             * dereferencing it causes a bug to disappear. Dereffing the pte is
+             * required for it to work.
+             */
+#if 0//SVA_DEBUG
+            pd_entry_t *pde = vtopde(sva);
+            pde = pde;
+            printf(">---- FBSD<pmap_qenter> VA: %p \n", sva);
+            printf("\tpde: %p, *pde: 0x%lx\n", pde, *pde);
+            printf("\tpte: %p, *pte: 0x%lx, physAddr: %p\n", pte, *pte, pa);
+#endif
+
             /* Update the initial mapping of the leaf page */
             sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_G | PG_RW | PG_V));
 #else
@@ -1682,23 +1704,32 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		/* PDP page */
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
-		*pml4 = 0;
         /*
          * Update the pml4 pdp page
          */
-#if 0
-        sva_update_l4_pointer_entry
+#ifdef SVA_MMU 
+        sva_update_l4_mapping(pml4, 0);
+#else
+		*pml4 = 0;
 #endif
 	} else if (m->pindex >= NUPDE) {
 		/* PD page */
 		pdp_entry_t *pdp;
 		pdp = pmap_pdpe(pmap, va);
+#ifdef SVA_MMU 
+        sva_update_l3_mapping(pdp, 0);
+#else
 		*pdp = 0;
+#endif
 	} else {
 		/* PTE page */
 		pd_entry_t *pd;
 		pd = pmap_pde(pmap, va);
+#ifdef SVA_MMU 
+        sva_update_l2_mapping(pd, 0);
+#else
 		*pd = 0;
+#endif
 	}
 	pmap_resident_count_dec(pmap, 1);
 	if (m->pindex < NUPDE) {
@@ -1812,12 +1843,16 @@ pmap_pinit(pmap_t pmap)
      * here for correct execution. So if the attacker changes then it will
      * automatically break the system. 
      */
-    sva_declare_l4_page( VM_PAGE_TO_PHYS(pml4pg), pml4e_self);
+    sva_declare_l4_page( VM_PAGE_TO_PHYS(pml4pg), &pmap->pm_pml4[PML4PML4I]);
 
 #endif
 
 	/* Wire in kernel global address entries. */
 #ifdef SVA_MMU
+#if 0 /* There is a bug in the way we declare here due to the fact that these
+         pages are preinitialized kernel pages and cannot be zeroed */
+    sva_declare_l3_page(KPDPphys, &pmap->pm_pml4[KPML4I]);
+#endif
     sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
                 | PG_V | PG_U)); 
 #else
@@ -1827,6 +1862,10 @@ pmap_pinit(pmap_t pmap)
     for (i = 0; i < NDMPML4E; i++) {
         /* Wire in kernel global address entries. */
 #ifdef SVA_MMU
+#if 0 /* There is a bug in the way we declare here due to the fact that these
+         pages are preinitialized kernel pages and cannot be zeroed */
+        sva_declare_l3_page(DMPDPphys, &pmap->pm_pml4[DMPML4I + i]);
+#endif
         sva_update_l4_mapping( &pmap->pm_pml4[DMPML4I + i],
                 (pd_entry_t)((DMPDPphys + (i << PAGE_SHIFT)) | PG_RW | PG_V |
                     PG_U));
@@ -1843,7 +1882,7 @@ pmap_pinit(pmap_t pmap)
      * doing the update on the newly created l4 page table page we just
      * declared.
      */
-    sva_update_l4_mapping(pml4e_self , (pd_entry_t) (VM_PAGE_TO_PHYS(pml4pg) | PG_V |
+    sva_update_l4_mapping(&pmap->pm_pml4[PML4PML4I], (pd_entry_t) (VM_PAGE_TO_PHYS(pml4pg) | PG_V |
                 PG_RW | PG_A | PG_M));
 #else
     /* install self-referential address mapping entry(s) */
