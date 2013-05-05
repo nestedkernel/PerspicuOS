@@ -26,7 +26,9 @@ main (int argc, char ** argv) {
   //
   pid_t victim = atoi (argv[1]);
   int hackType = atoi (argv[2]);
-  uintptr_t addr = atoi (argv[3]);
+  uintptr_t addr;
+  sscanf (argv[3], "%lx", &addr);
+  //uintptr_t addr = strtol (argv[3], NULL, 0);
   uintptr_t len = atoi (argv[4]);
 
   //
@@ -34,6 +36,7 @@ main (int argc, char ** argv) {
   //
   setVictimProcess (victim, hackType, addr, len);
   printf ("Victim set to %d: Hack with %d\n", victim, hackType);
+  printf ("Address is %lx: Length is %d\n", addr, len);
   return 0;
 }
 
