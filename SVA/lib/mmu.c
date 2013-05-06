@@ -329,18 +329,18 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     if(newVal & PG_V){
 
         /* If the new mapping references a secure memory page fail */
-        SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
+        SVA_NOOP_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
 
 
         /* If the mapping is to an SVA page then fail */
-        SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+        SVA_NOOP_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
 
 #if OBSOLETE
         /*
          * If new mapping is to a physical page that is used in a kernel stack, flag
          * an error.
          */
-        SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
+        SVA_NOOP_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
 #endif
     
         /*
@@ -349,13 +349,13 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          */
         switch(ptePG->type) {
             case PG_L1:
-                SVA_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
+                SVA_NOOP_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
                 break;
             case PG_L2:
-                SVA_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
+                SVA_NOOP_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
                 break;
             case PG_L3:
-                SVA_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
+                SVA_NOOP_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
                 break;
             case PG_L4:
                 /* 
@@ -363,11 +363,11 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
                  * valid to map in an L4 page into the L4. TODO: consider the
                  * security implications of this...
                  */
-                SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+                SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
                         "MMU: attempted to map non-L3/L4 page into L4.");
                 break;
             default:
-                SVA_ASSERT (0,"MMU attempted to make update to non page table page.");
+                SVA_NOOP_ASSERT (0,"MMU attempted to make update to non page table page.");
         }
 
         /* 
@@ -375,7 +375,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * count is < 1. 
          */
         if (isPTP(newPG)) {
-            SVA_ASSERT(pgRefCount(newPG) == maxPTPRefs, 
+            SVA_NOOP_ASSERT(pgRefCount(newPG) == maxPTPRefs, 
                     "MMU: attempted to double map a page table page.");
         }
     }
@@ -384,17 +384,17 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
      */
-    SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
+    SVA_NOOP_ASSERT (!isGhostVA((uintptr_t) page_entry), 
             "MMU: Kernel attempted to map into a secure page table page");
 
     /* If the pt entry resides in a ghost page table page then fail */
-    SVA_ASSERT (!isGhostPTP(ptePG), 
+    SVA_NOOP_ASSERT (!isGhostPTP(ptePG), 
             "MMU: Kernel attempted to map into an SVA page table page");
 
     
 #if NOT_YET_IMPLEMENTED
     /* Verify that we have the correct PTE for the given VA */
-    SVA_ASSERT (!isValidMappingOrder(page_entry, newVA) , 
+    SVA_NOOP_ASSERT (!isValidMappingOrder(page_entry, newVA) , 
             "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 #endif
 
@@ -420,7 +420,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * check_and_init_first_mapping.
      */
 
-    SVA_ASSERT ( 
+    SVA_NOOP_ASSERT ( 
             (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
             (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
             "MMU: all three -- mapping, new page frame, and PTP -- do not match privilege");
@@ -438,14 +438,14 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * this check is necessary. 
          */
          /* If the old mapping was to a stack fail */
-        SVA_ASSERT (!isStackPG(origPG));
+        SVA_NOOP_ASSERT (!isStackPG(origPG));
 #endif
             
         /* 
          * If the old mapping was to a code page then we know we shouldn't be
          * pointing this entry to another code page, thus fail.
          */
-        SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
+        SVA_NOOP_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
     
         /* 
          * When removing a mapping to a page table page by setting the new
@@ -458,7 +458,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * We can't turn this assertion on until that is setup because it will
          * alwasy be zero presently.
          */
-        SVA_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
+        SVA_NOOP_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
                 "MMU: Attempted to remove a mapping to a page with count of 0");
     }
 
@@ -695,7 +695,7 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
          * count for the new page mapping. First check that we aren't
          * overflowing the counter.
          */
-        SVA_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
+        SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
                 "MMU: overflow for the mapping count");
 
 #if NOT_YET_IMPLEMENTED

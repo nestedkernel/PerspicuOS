@@ -92,18 +92,16 @@ static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 /*
  * Assert macro for SVA
  */
-#if 1
 /* 
  * TODO: this will be removed. It is only used for temporarily obtaining
  * performance numbers.
  */
 static inline void
-SVA_ASSERT (int res, char * st) {
+SVA_NOOP_ASSERT (int res, char * st) {
   if (!res) res++;
 }
-#else
+
 #define SVA_ASSERT(res,string) if(!res) panic(string)
-#endif
 
 /*
  *****************************************************************************
