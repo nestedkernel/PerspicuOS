@@ -429,7 +429,7 @@ static inline void setPTPVA(page_desc_t *newPG, uintptr_t va) {
 
 /* State whether this kernel virtual address is in the secure memory range */
 static inline int isGhostVA(uintptr_t va)
-    { return va > SECMEMSTART && va < SECMEMEND; }
+    { return (va >= SECMEMSTART) && (va < SECMEMEND); }
 
 /* 
  * The following functions query the given page descriptor for type attributes.
