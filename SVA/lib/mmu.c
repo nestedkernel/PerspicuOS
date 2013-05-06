@@ -658,6 +658,7 @@ static inline void
 __do_mmu_update (pte_t * pteptr, page_entry_t val) {
     uintptr_t origPA = *pteptr & PG_FRAME;
     unsigned long origFrame = origPA >> PAGESHIFT;
+    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
     page_desc_t *origPG = &page_desc[origFrame];
     uintptr_t newPA = val & PG_FRAME;
     unsigned long newFrame = newPA >> PAGESHIFT;
@@ -682,60 +683,75 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
          *  removes the mapping and clears it. The one case is true though in
          *  that we don't decrement unless we have a value in the old mapping.
          */
-        if(*pteptr != 0) {
+        /* 
+         * Only decrement the mapping count if the page has an existing
+         * valid mapping.
+         */
+        //if((*pteptr & PG_V) && origPA != 0) 
+        if((*pteptr & PG_V)) {
 
-            /* 
-             * Only decrement the mapping count if the page has an existing
-             * valid mapping.
-             */
-            if(*pteptr & PG_V) 
-            {
-#if NOT_YET_IMPLEMENTED
-                printf("Decremented ref count [pdesc:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-                        origPG, origPA, newPA, origPG->count);
+            /* There is a bug when we modify counts on page_desc[0] so skip */
+            if(origFrame != 0) {
+
                 /* Update the mapping count of the old and new mapped physical pages */
                 origPG->count--;
-#endif
-            }
-            else if (origPA != 0){
+
+            } else {
 #if NOT_YET_IMPLEMENTED
-                /* TODO: not sure what happens here yet. */
+                /* 
+                 * FIXME:XXX this case has a bug when updating the metadata.
+                 * Figure it out 
+                 */
+                printf("Decremented ref count [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+                        origPG, *pteptr, origPA, origVA, origPG->count);
 #endif
             }
-        }
 
 #if NOT_YET_IMPLEMENTED
-        /* 
-         * TODO: what happens if the count is already zero here? For example
-         * when we remove a page, do we zero out the references to it from the
-         * PTs or do we just do an invalidate update?
-         */
-        if (pgRefCount(origPG) == 0) {
-            removePage(origPG);
-        }
+            /* 
+             * TODO: what happens if the count is already zero here? For example
+             * when we remove a page, do we zero out the references to it from the
+             * PTs or do we just do an invalidate update?
+             */
+            if (pgRefCount(origPG) == 0) {
+                removePage(origPG);
+            }
 #endif
+        }
 
         /*
          * If the new mapping is valid then update the counts for it.
          */
-        if (val & PG_V) {
 #if NOT_YET_IMPLEMENTED
-            /*
-             * If the new page is to a PTP and this is the first reference to
-             * the page, we need to set the VA mapping this page so that the
-             * verification routine can enforce that this page is only mapped
-             * to a single VA. Note that if we have gotten here, we know that
-             * we currently do not have a mapping to this page already, which
-             * means this is the first mapping to the page. 
-             */
-            if (isPTP(newPG)){
-                setPTPVA(newPG, newVA);
-            }
+        if (val & PG_V) {
+            
+            /* There is a bug when we modify counts on page_desc[0] so skip */
+            if(newFrame != 0) {
 
-            /* There is some type of bug with this update. */
-            newPG->count++;
-#endif
+                printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+                        newPG, val, newPA, newVA, newPG->count);
+                /*
+                 * If the new page is to a PTP and this is the first reference to
+                 * the page, we need to set the VA mapping this page so that the
+                 * verification routine can enforce that this page is only mapped
+                 * to a single VA. Note that if we have gotten here, we know that
+                 * we currently do not have a mapping to this page already, which
+                 * means this is the first mapping to the page. 
+                 */
+                if (isPTP(newPG)){
+                    setPTPVA(newPG, newVA);
+                }
+
+                /* There is some type of bug with this update. */
+                newPG->count++;
+            } else {
+                /* 
+                 * FIXME:XXX this case has a bug when updating the metadata.
+                 * Figure it out 
+                 */
+            }
         }
+#endif
     }
 
 #if ACTIVATE_PROT
