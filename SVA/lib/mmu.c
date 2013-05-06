@@ -847,32 +847,32 @@ check_and_init_first_mapping(unsigned long newMapping){
  */
 static inline void
 __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
-    unsigned long rflags;
+  unsigned long rflags;
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    rflags = sva_enter_critical();
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  rflags = sva_enter_critical();
 
-    /* 
-     * If this is the first mapping to the page then establish initial values
-     * for page types 
-     */
+  /* 
+   * If this is the first mapping to the page then establish initial values
+   * for page types 
+   */
 #if NOT_YET_IMPLEMENTED
-    check_and_init_first_mapping(val);
+  check_and_init_first_mapping(val);
 #endif
 
-    /* 
-     * If the given page update is valid then store the new value to the page
-     * table entry, else raise an error.
-     */
-    if (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
-        /* Perform the pagetable mapping update */
-        __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
-    } else {
-        panic("##### SVA invalid page update!!!\n");
-    }
+  /* 
+   * If the given page update is valid then store the new value to the page
+   * table entry, else raise an error.
+   */
+  if (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
+      /* Perform the pagetable mapping update */
+      __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
+  } else {
+      panic("##### SVA invalid page update!!!\n");
+  }
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 /* Functions for finding the virtual address of page table components */
