@@ -715,6 +715,7 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
         //if((*pteptr & PG_V) && origPA != 0) 
         if((*pteptr & PG_V)) {
 
+#if NOT_YET_IMPLEMENTED
             /* There is a bug when we modify counts on page_desc[0] so skip */
             if(origFrame != 0) {
 
@@ -722,15 +723,14 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
                 origPG->count--;
 
             } else {
-#if NOT_YET_IMPLEMENTED
                 /* 
                  * FIXME:XXX this case has a bug when updating the metadata.
                  * Figure it out 
                  */
                 printf("Decremented ref count [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
                         origPG, *pteptr, origPA, origVA, origPG->count);
-#endif
             }
+#endif
 
 #if NOT_YET_IMPLEMENTED
             /* 
