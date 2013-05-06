@@ -66,7 +66,7 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
 static const unsigned PAGESHIFT = 12;
 
 /* Size of the physical memory and page size in bytes */
-static const unsigned int memSize = 16*1024*1024*1024;
+static const unsigned int memSize = 2^64;
 static const unsigned int pageSize = 4096;
 static const unsigned int numPageDescEntries = memSize / pageSize;
 
@@ -78,10 +78,10 @@ static const unsigned int numPageDescEntries = memSize / pageSize;
 static const uintptr_t vmask = 0x0000000000000fffu;
 
 /* The number of references allowed per page table page */
-static const maxPTPRefs = 1;
+static const int maxPTPVARefs = 1;
 
 /* The count must be at least this value to remove a mapping to a page */
-static const minRefCountToRemoveMapping = 1;
+static const int minRefCountToRemoveMapping = 1;
 
 /*
  * Offset into the PML4E at which the mapping for the secure memory region can
@@ -141,6 +141,9 @@ static const uintptr_t addrmask = 0x000ffffffffff000u;
 typedef struct page_desc_t {
     /* Type of frame */
     enum page_type_t type;
+
+    /* If the page is a PTP mark the VA that maps to it */
+    uintptr_t virtAddr;
 
     /* Flag to denote whether the page is a Ghost page table page */
     unsigned ghostPTP : 1;
@@ -397,14 +400,32 @@ readOnlyPage(page_desc_t *pg){
  *  the system has the write protection enabled then the value of this bit is
  *  considered.
  */
-static inline page_entry_t setMappingReadOnly (page_entry_t mapping) 
-    { return (mapping & ~PG_RW); }
+static inline page_entry_t setMappingReadOnly (page_entry_t mapping) { 
+    return (mapping & ~PG_RW); 
+}
 
 /*
  *****************************************************************************
  * Page descriptor query functions
  *****************************************************************************
  */
+
+/* Page setter methods */
+
+/*
+ * Function: setPTPVA
+ *
+ * Description:
+ *  This function sets the given page descriptors virtual address to the
+ *  supplied virtual address.
+ *
+ * Inputs:
+ *  - newPG  -- page descriptor of the page to set the VA for.
+ *  - va     -- New va to set
+ */
+static inline void setPTPVA(page_desc_t *newPG, uintptr_t va) {
+    newPG->virtAddr = va; 
+}
 
 /* State whether this kernel virtual address is in the secure memory range */
 static inline int isGhostVA(uintptr_t va)
@@ -426,6 +447,9 @@ static inline int pgIsActive (page_desc_t *page)
 
 /* The number of active references to the page */
 static inline int pgRefCount(page_desc_t *page) { return page->count; }
+
+/* Return the virtual address of the page */
+static inline uintptr_t pgVA (page_desc_t *pg) { return pg->virtAddr; }
 
 /* Page type queries */
 static inline int isL1Pg (page_desc_t *page) { return page->type == PG_L1; }

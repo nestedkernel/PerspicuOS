@@ -334,19 +334,32 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         SVA_NOOP_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
 #endif
     
-        /*
-         * Verify that for each page update that the mapping matches the correct
-         * type of page allowed to be mapped into this page table. 
+        /* 
+         * If the new page is a page table page then we verify some page table
+         * page specific checks. 
+         *
+         * TODO: for better code design this can be refactored into a single
+         * function.
          */
-        switch(ptePG->type) {
+        if (isPTP(newPG)) {
+            /*
+             * Verify that that the mapping matches the correct type of page
+             * allowed to be mapped into this page table. Verify that the new
+             * PTP is of the correct type given the page level of the page
+             * entry. 
+             */
+            switch(ptePG->type) {
             case PG_L1:
-                SVA_NOOP_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
+                SVA_NOOP_ASSERT (isFramePg(newPG), 
+                        "MMU: attempted to map non-frame page into L1.");
                 break;
             case PG_L2:
-                SVA_NOOP_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
+                SVA_NOOP_ASSERT (isL1Pg(newPG), 
+                        "MMU: attempted to map non-L1 page into L2.");
                 break;
             case PG_L3:
-                SVA_NOOP_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
+                SVA_NOOP_ASSERT (isL2Pg(newPG), 
+                        "MMU: attempted to map non-L2 page into L3.");
                 break;
             case PG_L4:
                 /* 
@@ -358,16 +371,19 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
                         "MMU: attempted to map non-L3/L4 page into L4.");
                 break;
             default:
-                SVA_NOOP_ASSERT (0,"MMU attempted to make update to non page table page.");
-        }
+                SVA_NOOP_ASSERT (0,
+                        "MMU attempted to make update to non page table page.");
+            }
 
-        /* 
-         * If the new page is a page table page then verify that the reference
-         * count is < 1. 
-         */
-        if (isPTP(newPG)) {
-            SVA_NOOP_ASSERT(pgRefCount(newPG) == maxPTPRefs, 
-                    "MMU: attempted to double map a page table page.");
+            /* 
+             * If we have a page table page being mapped in and it currently
+             * has a mapping to it, then we verify that the new VA from the new
+             * mapping matches the existing currently mapped VA. 
+             */
+            if (pgRefCount(newPG) > 0) {
+                SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
+                        "MMU: attempted to insert mappping to a second VA for PTP");
+            }
         }
     }
         
@@ -382,9 +398,14 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     SVA_ASSERT (!isGhostPTP(ptePG), 
             "MMU: Kernel attempted to map into an SVA page table page");
 
-    
 #if NOT_YET_IMPLEMENTED
     /* Verify that we have the correct PTE for the given VA */
+
+    /* 
+     * TODO think about whether or not we only need to do this check when
+     * inserting a new mapping. Effectively if we are just updating metadata to
+     * a page entry do we need to assert that the mapping matches correctly? 
+     */
     SVA_NOOP_ASSERT (!is_correct_pe_for_va(page_entry, newVA) , 
             "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 #endif
@@ -436,7 +457,8 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * If the old mapping was to a code page then we know we shouldn't be
          * pointing this entry to another code page, thus fail.
          */
-        SVA_NOOP_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
+        SVA_NOOP_ASSERT (!isCodePG(origPG), 
+                "Kernel attempting to modify code page mapping");
     
         /* 
          * When removing a mapping to a page table page by setting the new
@@ -451,6 +473,15 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          */
         SVA_NOOP_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
                 "MMU: Attempted to remove a mapping to a page with count of 0");
+        
+        /* 
+         * Since we are adding a mapping to a new page, then we update the
+         * count for the new page mapping. First check that we aren't
+         * overflowing the counter.
+         */
+        SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
+                "MMU: overflow for the mapping count");
+
     }
 
     return 1;
@@ -630,6 +661,7 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
     page_desc_t *origPG = &page_desc[origFrame];
     uintptr_t newPA = val & PG_FRAME;
     unsigned long newFrame = newPA >> PAGESHIFT;
+    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
     page_desc_t *newPG = getPageDescPtr(val);
 
     /*
@@ -651,17 +683,25 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
          *  that we don't decrement unless we have a value in the old mapping.
          */
         if(*pteptr != 0) {
-#if 0 
+
+            /* 
+             * Only decrement the mapping count if the page has an existing
+             * valid mapping.
+             */
             if(*pteptr & PG_V) 
-#endif
             {
+#if NOT_YET_IMPLEMENTED
+                printf("Decremented ref count [pdesc:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+                        origPG, origPA, newPA, origPG->count);
                 /* Update the mapping count of the old and new mapped physical pages */
                 origPG->count--;
-            }
-#if 0
-            else {
-            }
 #endif
+            }
+            else if (origPA != 0){
+#if NOT_YET_IMPLEMENTED
+                /* TODO: not sure what happens here yet. */
+#endif
+            }
         }
 
 #if NOT_YET_IMPLEMENTED
@@ -675,24 +715,27 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
         }
 #endif
 
-    }
-    
-    /*
-     * If the new mapping is valid then update the counts for it.
-     */
-    if (val & PG_V) {
-        /* 
-         * Since we are adding a mapping to a new page, then we update the
-         * count for the new page mapping. First check that we aren't
-         * overflowing the counter.
+        /*
+         * If the new mapping is valid then update the counts for it.
          */
-        SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
-                "MMU: overflow for the mapping count");
-
+        if (val & PG_V) {
 #if NOT_YET_IMPLEMENTED
-        /* There is some type of bug with this update. */
-        newPG->count++;
+            /*
+             * If the new page is to a PTP and this is the first reference to
+             * the page, we need to set the VA mapping this page so that the
+             * verification routine can enforce that this page is only mapped
+             * to a single VA. Note that if we have gotten here, we know that
+             * we currently do not have a mapping to this page already, which
+             * means this is the first mapping to the page. 
+             */
+            if (isPTP(newPG)){
+                setPTPVA(newPG, newVA);
+            }
+
+            /* There is some type of bug with this update. */
+            newPG->count++;
 #endif
+        }
     }
 
 #if ACTIVATE_PROT
@@ -2251,15 +2294,31 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
     printf("==== SVA<decl_l4_pre>: CR0: 0x%lx, CR3: 0x%lx\n",_rcr0(), _rcr3());
 #endif
 
-    /* Mark this page frame as an L4 page frame */
-    pgDesc->type = PG_L4;
-    
+#if NOT_YET_IMPLEMENTED
     /* 
-     * Initialize the page data and page entry. Note that we pass a general
-     * page_entry_t to the function as it enables reuse of code for each of the
-     * entry declaration functions. 
+     * Assert that this is a new L4, if not die. We don't want declaring an L4
+     * with and existing mapping
      */
-    init_page_entry(frameAddr, (page_entry_t *) pml4e);
+    SVA_ASSERT(pgRefCount(pgDesc) == 0, 
+            "MMU: attempted to declare an L4 that is already mapped.");
+
+    /* 
+     * We need to make sure that this is valid declaration of a page, as we
+     * modify the page type here. 
+     */
+    if (valid_declare_page(pgDesc)) 
+#endif
+    {
+        /* Mark this page frame as an L4 page frame */
+        pgDesc->type = PG_L4;
+
+        /* 
+         * Initialize the page data and page entry. Note that we pass a general
+         * page_entry_t to the function as it enables reuse of code for each of the
+         * entry declaration functions. 
+         */
+        init_page_entry(frameAddr, (page_entry_t *) pml4e);
+    }
 
 #if DEBUG >= 2
     printf("==== SVA<decl_l4_post>: CR0: 0x%lx\n",_rcr0());
