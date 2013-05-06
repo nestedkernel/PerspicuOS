@@ -1293,9 +1293,10 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
 
   /*
    * Mark the physical page frames used to map the entry as Ghost Page Table
-   * Pages.
+   * Pages.  Note that we don't mark the PML4E as a ghost page table page
+   * because it is also used to map traditional memory pages (it is a top-most
+   * level page table page).
    */
-  getPageDescPtr (get_pml4ePaddr (get_pagetable(), vaddr))->ghostPTP = 1;
   getPageDescPtr (get_pdptePaddr (pml4e, vaddr))->ghostPTP = 1;
   getPageDescPtr (get_pdePaddr (pdpte, vaddr))->ghostPTP = 1;
   getPageDescPtr (get_ptePaddr (pde, vaddr))->ghostPTP = 1;
