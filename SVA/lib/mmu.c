@@ -322,13 +322,25 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     page_desc_t *ptePG = &page_desc[pteFrame];
 
     /* If we aren't mapping a new page then we can skip several checks */
-    /* TODO figure out if we can optimize with this check */
-    //if(newVal != 0 && newPA != 0){
+    if(newVal & PG_V){
+
+        /* If the new mapping references a secure memory page fail */
+        SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
 
 
-    /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
-    
+        /* If the mapping is to an SVA page then fail */
+        SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+
+#if OBSOLETE
+        /*
+         * If new mapping is to a physical page that is used in a kernel stack, flag
+         * an error.
+         */
+        SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
+#endif
+
+    }
+        
     /* 
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
@@ -336,27 +348,16 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
             "MMU: Kernel attempted to map into a secure page table page");
 
-    /* If the mapping is to an SVA page then fail */
-    SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
-    
     /* If the pt entry resides in a ghost page table page then fail */
     SVA_ASSERT (!isGhostPTP(ptePG), 
             "MMU: Kernel attempted to map into an SVA page table page");
 
-#if 0 /* This is under test and isn't ready for live use */
     
 #if NOT_YET_IMPLEMENTED
     /* Verify that we have the correct PTE for the given VA */
     SVA_ASSERT (!isValidMappingOrder(page_entry, newVA) , 
             "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 #endif
-
-
-    /*
-     * If new mapping is to a physical page that is used in a kernel stack, flag
-     * an error.
-     */
-    SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
 
     /*
      * If the new mapping is set for user access, but the VA being used is to
@@ -367,12 +368,8 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      *  - U/S Flag of new mapping
      *  - Type of the new mapping frame
      *  - Type of the PTE frame
-     *
-     * Ensure:
-     *  - new mapping PG_U matches the type of frame being mapped
-     *  - new mapping PG_U matches the type of PT page frame being mapped into
      */
-#if NOT_YET_IMPLEMENTED
+    
     /* 
      * TODO: this functionality depends on the pages in question being marked
      * as kernel or user page privilege. Once that functionality is added then
@@ -380,24 +377,19 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * check_and_init_first_mapping.
      */
 
-    /* TODO: is this only required if we are updating an l1 entry? */
-
     /* Ensures the new mapping U/S flag matches the PT page frame type */
-    SVA_ASSERT (isUserMapping(newVal) == isUserPGTPage(ptePG),
-            "Attempt to map user page to kernel PTE or kernel page to user PTE");
+    SVA_ASSERT ( 
+            (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
+            (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
+            "MMU: all three -- mapping, new page frame, and PTP -- do not match privilege");
 
-    /* Ensures the new mapping U/S flag matches the new page frame type */
-    SVA_ASSERT (isUserMapping(newVal) == isUserPG(newPG),
-            "Attempt to make user page assessible by kernel or kernel page accessable to user");
-#endif
-    
     /* 
      * If the original PA is not equivalent to the new PA then we are creating
      * an entirely new mapping, thus make sure that this is a valid new page
      * reference, and if so reduce the reference count the old page.
      */
     if (origPA != newPA) {
-#if NOT_YET_IMPLEMENTED
+#if OBSOLETE
         /* 
          * TODO: I need to think about this more to make sure I understand why
          * this check is necessary. 
@@ -406,11 +398,13 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         SVA_ASSERT (!isStackPG(origPG));
 #endif
             
+#if NOT_YET_IMPLEMENTED
         /* 
          * If the old mapping was to a code page then we know we shouldn't be
          * pointing this entry to another code page, thus fail.
          */
         SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
+#endif
     }
 
     /* TODO cannot map kernel code pages into userspace */
@@ -428,6 +422,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     }
 #endif
 
+#if 0 /* This is under test and isn't ready for live use */
     /*
      * Verify that for each page update that the mapping matches the correct
      * type of page allowed to be mapped into this page table. 
