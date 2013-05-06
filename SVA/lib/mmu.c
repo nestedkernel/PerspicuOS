@@ -228,6 +228,34 @@ static inline va_to_pte(){
  *
  */
 static inline page_entry_t * va_to_pte (uintptr_t va, page_type_t level){
+}
+
+/*
+ * Function: is_correct_pe_for_va 
+ *
+ * Description: This function verifies that the mapping being inserted is
+ *      correct by checking that the va address being mapped into this
+ *      particular page table entry should be in that address location.
+ *
+ *      To prove that we have a valid ordering we can just verify that the
+ *      update is being applied to the correct page table (at any level) and
+ *      that the particuler page table entry (at any level) is at the index
+ *      defined by the virtual address.
+ *
+ * Inputs:
+ *  
+ */
+static inline int 
+is_correct_pe_for_va (page_desc_t *pgDesc, uintptr_t newVA) {
+    /* 
+     * Check that we have the correct page table for the given VA and the
+     * active set of MMU mappings.
+     */
+    page_entry_t ptePhysAddr = va_to_pa_pte(newVA);
+    if (updatePageFrame != expectedPageFrameForVA(va)) {
+        return false;
+    }
+
     switch(level){
     case PG_L4:
         return va_to_pml4e();
@@ -243,43 +271,6 @@ static inline page_entry_t * va_to_pte (uintptr_t va, page_type_t level){
         break;
     default:
         panic("MMU: attempted to map into a non-page table page");
-    }
-}
-
-/*
- * Function: isValidMappingOrder
- *
- * Description: This function verifies that the mapping being inserted is
- *      correct by checking that the va address being mapped into this
- *      particular page table entry should be in that address location.
- *
- *      To prove that we have a valid ordering we can just verify that the
- *      update is being applied to the correct page table (at any level) and
- *      that the particuler page table entry (at any level) is at the index
- *      defined by the virtual address.
- *
- * Inputs:
- *  
- */
-static inline int 
-isValidMappingOrder (page_desc_t *pgDesc, uintptr_t newVA) {
-    /* 
-     * Check that we have the correct page table for the given VA and the
-     * active set of MMU mappings.
-     */
-    page_entry_t ptePhysAddr = va_to_pa_pte(newVA);
-    if (updatePageFrame != expectedPageFrameForVA(va)) {
-        return false;
-    }
-
-    /*
-     * Check that we have the correct index into the given page table from the
-     * virtual address
-     */
-    else if (pteIndex != expectedPTEIndex(va)) {
-        return false;
-    } else {
-        return true;
     }
 }
 #endif
@@ -329,11 +320,11 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     if(newVal & PG_V){
 
         /* If the new mapping references a secure memory page fail */
-        SVA_NOOP_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
+        SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
 
 
         /* If the mapping is to an SVA page then fail */
-        SVA_NOOP_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+        SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
 
 #if OBSOLETE
         /*
@@ -384,17 +375,17 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
      */
-    SVA_NOOP_ASSERT (!isGhostVA((uintptr_t) page_entry), 
+    SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
             "MMU: Kernel attempted to map into a secure page table page");
 
     /* If the pt entry resides in a ghost page table page then fail */
-    SVA_NOOP_ASSERT (!isGhostPTP(ptePG), 
+    SVA_ASSERT (!isGhostPTP(ptePG), 
             "MMU: Kernel attempted to map into an SVA page table page");
 
     
 #if NOT_YET_IMPLEMENTED
     /* Verify that we have the correct PTE for the given VA */
-    SVA_NOOP_ASSERT (!isValidMappingOrder(page_entry, newVA) , 
+    SVA_NOOP_ASSERT (!is_correct_pe_for_va(page_entry, newVA) , 
             "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 #endif
 
