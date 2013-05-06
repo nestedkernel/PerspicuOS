@@ -368,6 +368,10 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      *  - U/S Flag of new mapping
      *  - Type of the new mapping frame
      *  - Type of the PTE frame
+     * 
+     * Ensures the new mapping U/S flag matches the PT page frame type and the
+     * mapped in frame's page type, as well as no mapping kernel code pages
+     * into userspace.
      */
     
     /* 
@@ -377,7 +381,6 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
      * check_and_init_first_mapping.
      */
 
-    /* Ensures the new mapping U/S flag matches the PT page frame type */
     SVA_ASSERT ( 
             (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
             (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
@@ -398,29 +401,13 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         SVA_ASSERT (!isStackPG(origPG));
 #endif
             
-#if NOT_YET_IMPLEMENTED
         /* 
          * If the old mapping was to a code page then we know we shouldn't be
          * pointing this entry to another code page, thus fail.
          */
         SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
-#endif
     }
 
-    /* TODO cannot map kernel code pages into userspace */
-
-#if NOT_YET_IMPLEMENTED
-    /* 
-     * If the new page a page table page or any other protected kernel page,
-     * verify that the mapping does not enable user access.
-     *
-     * TODO: think on this more.
-     */
-    if (isProtectedKernelPage(newPG)){
-        SVA_ASSERT (!isUserMapping(newVal), 
-                "MMU: mapping a page table page as user accessible."); 
-    }
-#endif
 
 #if 0 /* This is under test and isn't ready for live use */
     /*

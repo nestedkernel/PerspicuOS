@@ -146,6 +146,9 @@ typedef struct page_desc_t {
     /* Flag denoting whether or not this frame is a stack frame */
     unsigned stack : 1;
     
+    /* Flag denoting whether or not this frame is a code frame */
+    unsigned code : 1;
+    
     /* State of page: value of != 0 is active and 0 is inactive */
     unsigned active : 1;
 
@@ -421,19 +424,15 @@ static inline int pgIsActive (page_desc_t *page)
 
 /* Page type queries */
 static inline int isL1Pg (page_desc_t *page) { return page->type == PG_L1; }
-
 static inline int isL2Pg (page_desc_t *page) { return page->type == PG_L2; }
-
 static inline int isL3Pg (page_desc_t *page) { return page->type == PG_L3; }
-
 static inline int isL4Pg (page_desc_t *page) { return page->type == PG_L4; }
-
 static inline int isSVAPg (page_desc_t *page) { return page->type == PG_SVA; }
+static inline int isGhostPTP (page_desc_t *page) { return page->ghostPTP; }
 
 static inline int isGhostPG (page_desc_t *page) { 
     return page->type == PG_GHOST; 
 }
-static inline int isGhostPTP (page_desc_t *page) { return page->ghostPTP; }
 
 static inline int isKernelStackPG(page_desc_t *page) { 
     return !page->user && page->stack; 
@@ -448,9 +447,8 @@ static inline int isPTP (page_desc_t *pg) {
 }
 
 static inline int isUserMapping (page_entry_t mapping) { return (mapping & PG_U);}
-
 static inline int isUserPTP (page_desc_t *page) { return isPTP(page) && page->user;}
-
 static inline int isUserPG (page_desc_t *page){ return page->user; }
+static inline int isCodePG (page_desc_t *page){ return page->code; }
 
 #endif
