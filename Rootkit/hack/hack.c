@@ -35,7 +35,7 @@ main (int argc, char ** argv) {
   //
   setVictimProcess (victim, hackType, addr, len);
   printf ("Victim set to %d: Hack with %d\n", victim, hackType);
-  printf ("Address is %lx: Length is %d\n", addr, len);
+  printf ("Address is %lx: Length is %ld\n", addr, len);
   return 0;
 }
 
