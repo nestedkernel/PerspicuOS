@@ -19,9 +19,10 @@
 #include <sys/select.h>
 #include <sys/stat.h>
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -41,6 +42,10 @@ static unsigned char * tradsp;
 static int logfd = 0;
 static char logbuf[128];
 
+///////////////////////////////////////////////////////////////////////////////
+// Functions to be used by ghosting applications.
+///////////////////////////////////////////////////////////////////////////////
+
 //
 // Function: ghostinit()
 //
@@ -50,12 +55,23 @@ static char logbuf[128];
 //
 void
 ghostinit (void) {
+  /*
+   * Allocate traditional memory using mmap().  We'll use it like a stack.
+   */
   tradBuffer = (unsigned char *) mmap(0, tradlen, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
   if (tradBuffer == MAP_FAILED) {
     abort ();
   }
 
+  /*
+   * Initialize the traditional memory stack pointer.
+   */
   tradsp = tradBuffer + tradlen;
+
+  /*
+   * Restrict ourselves to not receiving any signals.
+   */
+  ghostAllowFunction (0);
 
   /*
    * Open a log file.
@@ -65,6 +81,23 @@ ghostinit (void) {
   write (logfd, logbuf, strlen (logbuf));
   return;
 }
+
+//
+// Function: ghostAllowFunction()
+//
+// Description:
+//  Permit the specified function to be dispatched through an asynchronous
+//  event.
+//
+void
+ghostAllowFunction (void * f) {
+  __asm__ __volatile__ ("int $0x7d\n" :: "D" (f));
+  return;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Support routines for system call wrappers
+///////////////////////////////////////////////////////////////////////////////
 
 //
 // Template: allocateTradMem()
@@ -452,6 +485,24 @@ ghost_write(int d, void *buf, size_t nbytes) {
   return _write (d, buf, nbytes);
 }
 
+sig_t
+_signal (int sig, sig_t func) {
+  //
+  // Figure out the type of signal handler.  If it's a function,
+  // permit the kernel to call it.
+  //
+  if ((func != SIG_DFL) && (func != SIG_IGN)) {
+    static unsigned char trampoline = 1;
+    if (trampoline) {
+      ghostAllowFunction ((void *)0x7ffffffff000);
+    }
+    ghostAllowFunction ((void *)func);
+    trampoline = 0;
+  }
+
+  return (signal (sig, func));
+}
+
 int
 _clock_gettime(clockid_t clock_id, struct timespec *tp) {
   int ret;
@@ -489,3 +540,4 @@ void fstat () __attribute__ ((weak, alias ("_fstat")));
 ssize_t read () __attribute__ ((weak, alias ("_read")));
 void write () __attribute__ ((weak, alias ("_write")));
 void clock_gettime () __attribute__ ((weak, alias ("_clock_gettime")));
+void signal () __attribute__ ((weak, alias ("_signal")));
