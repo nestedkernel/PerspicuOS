@@ -97,9 +97,12 @@ loadICFPState (void) {
 }
 
 void
-installNewPushTarget (void * f) {
+installNewPushTarget (void) {
   /* Get the current SVA thread */
   struct SVAThread * threadp = getCPUState()->currentThread;
+
+  /* Get the current interrput context */
+  sva_icontext_t * icp = getCPUState()->newCurrentIC;
 
   //
   // Make sure we have room for another target.
@@ -110,7 +113,8 @@ installNewPushTarget (void * f) {
   //
   // Add the new target.
   //
-  threadp->validPushTargets[(threadp->numPushTargets)++] = f;
+  printf ("SVA: installNewPushTarget: %p %d\n", icp->rdi, threadp->numPushTargets);
+  threadp->validPushTargets[(threadp->numPushTargets)++] = icp->rdi;
   return;
 }
 
@@ -341,6 +345,7 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
     unsigned index = 0;
     unsigned char found = 0;
     for (index = 0; index < threadp->numPushTargets; ++index) {
+      printf("SVA: Target: %d: %lx\n", index, threadp->validPushTargets[index]);
       if (threadp->validPushTargets[index] == newf) {
         found = 1;
         break;
@@ -348,9 +353,27 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
     }
 
     if (!found) {
+      printf ("SVA: Pushing bad value %lx\n", newf);
+      bochsBreak();
       sva_exit_critical (rflags);
       return;
     }
+
+    found = 0;
+    for (index = 0; index < threadp->numPushTargets; ++index) {
+      if (threadp->validPushTargets[index] == p5) {
+        found = 1;
+        break;
+      }
+    }
+
+    if (!found) {
+      printf ("SVA: Pushing bad sighandler value %lx\n", p5);
+      bochsBreak();
+      sva_exit_critical (rflags);
+      return;
+    }
+
   }
 
   /*
@@ -1419,6 +1442,12 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   }
 
   /*
+   * Clear out any function call targets.
+   */
+  threadp->numPushTargets = 0;
+
+
+  /*
    * Setup the call to the new function.
    */
   ep->rip = func;
@@ -1549,6 +1578,17 @@ sva_init_stack (unsigned char * start_stackp,
    */
   newThread->secmemSize = oldThread->secmemSize;
   newThread->secmemPML4e = oldThread->secmemPML4e;
+
+  /*
+   * Copy over the valid list of push targets for sva_ipush().
+   */
+  if (oldThread->numPushTargets) {
+    unsigned index = 0;
+    newThread->numPushTargets = oldThread->numPushTargets;
+    for (index = 0; index < oldThread->numPushTargets; ++index) {
+      newThread->validPushTargets[index] = oldThread->validPushTargets[index];
+    }
+  }
 
   /*
    * Allocate the call frame for the call to the system call.
