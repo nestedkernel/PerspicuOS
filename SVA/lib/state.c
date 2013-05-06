@@ -87,7 +87,7 @@ loadICFPState (void) {
   struct SVAThread * thread = getCPUState()->currentThread;
 
   /* Find the buffer into which we want to save state. */
-  sva_fp_state_t * fp = thread->ICFP + (thread->ICFPIndex--);
+  sva_fp_state_t * fp = thread->ICFP + (--(thread->ICFPIndex));
 
   /*
    * Save the FP state.
@@ -1438,10 +1438,15 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   }
 
   /*
+   * Clear out saved FP state.
+   */
+  threadp->ICFPIndex = 1;
+  bzero (threadp->ICFP, sizeof (sva_fp_state_t));
+
+  /*
    * Clear out any function call targets.
    */
   threadp->numPushTargets = 0;
-
 
   /*
    * Setup the call to the new function.
@@ -1584,6 +1589,14 @@ sva_init_stack (unsigned char * start_stackp,
     for (index = 0; index < oldThread->numPushTargets; ++index) {
       newThread->validPushTargets[index] = oldThread->validPushTargets[index];
     }
+  }
+
+  /*
+   * Copy over the last saved interrupted FP state.
+   */
+  if (oldThread->ICFPIndex) {
+    *(newThread->ICFP) = *(oldThread->ICFP + oldThread->ICFPIndex - 1);
+    newThread->ICFPIndex = 1;
   }
 
   /*
