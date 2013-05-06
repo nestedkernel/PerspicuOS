@@ -371,7 +371,7 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         }
 
         /* 
-         * If the new page is a page table page then verify that the refernce
+         * If the new page is a page table page then verify that the reference
          * count is < 1. 
          */
         if (isPTP(newPG)) {
@@ -451,6 +451,12 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * When removing a mapping to a page table page by setting the new
          * reference to zero, verify that the reference count to the old page
          * table page will not be reduced to less than zero. 
+         */
+        /* 
+         * FIXME: the code to increment reference counts is broken. It happens
+         * in __do_mmu_update. The code is there but currently commented out.
+         * We can't turn this assertion on until that is setup because it will
+         * alwasy be zero presently.
          */
         SVA_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
                 "MMU: Attempted to remove a mapping to a page with count of 0");
@@ -630,47 +636,73 @@ static inline void
 __do_mmu_update (pte_t * pteptr, page_entry_t val) {
     uintptr_t origPA = *pteptr & PG_FRAME;
     unsigned long origFrame = origPA >> PAGESHIFT;
-    page_desc_t origPG = page_desc[origFrame];
+    page_desc_t *origPG = &page_desc[origFrame];
     uintptr_t newPA = val & PG_FRAME;
     unsigned long newFrame = newPA >> PAGESHIFT;
     page_desc_t *newPG = getPageDescPtr(val);
-    page_entry_t newMapping = val;
 
-#if 0
     /*
      * If we have a new mapping as opposed to just changing the flags of an
-     * existing mapping, then update the sva meta data for the pages.
+     * existing mapping, then update the sva meta data for the pages. We know
+     * that we have passed the validation checks so these updates have been
+     * vetted.
      */
     if (newPA != origPA) {
-        /*
-         * TODO: I'm not sure if this scenario, completely changing a mapping
-         * from one page to another, is possible. Oh the physical address can
-         * change, but the page being mapped should not be changed. 
+        
+        /* FIXME:TODO there is a special case where the original page could be
+         * invalid or non-existent. I can think of two cases actually: 
+         *  - a zero mapping meaning it is non-existent
+         *  - a non-zero real address mapping but with the valid bit set to 0
+         *  - a non-zero valid mapping 
          *
-         * Think more on this. 
+         *  The real issue is figuring out whether or not an invalidate mapping
+         *  removes the mapping and clears it. The one case is true though in
+         *  that we don't decrement unless we have a value in the old mapping.
          */
+        if(*pteptr != 0) {
+#if 0 
+            if(*pteptr & PG_V) 
+#endif
+            {
+                /* Update the mapping count of the old and new mapped physical pages */
+                origPG->count--;
+            }
+#if 0
+            else {
+            }
+#endif
+        }
 
+#if NOT_YET_IMPLEMENTED
         /* 
          * TODO: what happens if the count is already zero here? For example
          * when we remove a page, do we zero out the references to it from the
          * PTs or do we just do an invalidate update?
          */
+        if (pgRefCount(origPG) == 0) {
+            removePage(origPG);
+        }
+#endif
 
-        /* Update the mapping count of the old and new mapped physical pages */
-        if (origPG.active)
-            origPG.count--;
-
-        /* TODO: why is this 1<<12? Think on and verify */
+    }
+    
+    /*
+     * If the new mapping is valid then update the counts for it.
+     */
+    if (val & PG_V) {
         /* 
-         * Since we are adding a new mapping to a new page, then we update the
+         * Since we are adding a mapping to a new page, then we update the
          * count for the new page mapping. First check that we aren't
          * overflowing the counter.
          */
-        SVA_ASSERT (newPG->count < ((1<<12-1)), "MMU: overflow for the mapping count");
-        newPG->count++;
-    }
-#endif
+        SVA_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
+                "MMU: overflow for the mapping count");
 
+#if NOT_YET_IMPLEMENTED
+        /* There is some type of bug with this update. */
+        newPG->count++;
+#endif
+    }
 
 #if ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
