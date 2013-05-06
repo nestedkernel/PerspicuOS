@@ -321,7 +321,11 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     uintptr_t pteFrame = getPhysicalAddr (page_entry) >> PAGESHIFT;
     page_desc_t *ptePG = &page_desc[pteFrame];
 
-    /* If we aren't mapping a new page then we can skip several checks */
+    /* 
+     * If we aren't mapping a new page then we can skip several checks, and in
+     * some cases we must, otherwise, the checks will fail. For example if this
+     * is a mapping in a page table page then we allow a zero mapping. 
+     */
     if(newVal & PG_V){
 
         /* If the new mapping references a secure memory page fail */
@@ -338,9 +342,35 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          */
         SVA_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
 #endif
-
+    
+        /*
+         * Verify that for each page update that the mapping matches the correct
+         * type of page allowed to be mapped into this page table. 
+         */
+        switch(ptePG->type) {
+            case PG_L1:
+                SVA_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
+                break;
+            case PG_L2:
+                SVA_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
+                break;
+            case PG_L3:
+                SVA_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
+                break;
+            case PG_L4:
+                /* 
+                 * FreeBSD inserts a self mapping into the pml4, therefore it is
+                 * valid to map in an L4 page into the L4. TODO: consider the
+                 * security implications of this...
+                 */
+                SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+                        "MMU: attempted to map non-L3/L4 page into L4.");
+                break;
+            default:
+                SVA_ASSERT (0,"MMU attempted to make update to non page table page.");
+        }
     }
-        
+
     /* 
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
@@ -408,36 +438,6 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
         SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
     }
 
-
-#if 0 /* This is under test and isn't ready for live use */
-    /*
-     * Verify that for each page update that the mapping matches the correct
-     * type of page allowed to be mapped into this page table. 
-     */
-    switch(ptePG->type) {
-        case PG_L1:
-            SVA_ASSERT (isFramePg(newPG), "MMU: attempted to map non-frame page into L1.");
-            break;
-        case PG_L2:
-            SVA_ASSERT (isL1Pg(newPG), "MMU: attempted to map non-L1 page into L2.");
-            break;
-        case PG_L3:
-            SVA_ASSERT (isL2Pg(newPG), "MMU: attempted to map non-L2 page into L3.");
-            break;
-        case PG_L4:
-            /* 
-             * FreeBSD inserts a self mapping into the pml4, therefore it is
-             * valid to map in an L4 page into the L4. TODO: consider the
-             * security implications of this...
-             */
-            SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
-                    "MMU: attempted to map non-L3/L4 page into L4.");
-            break;
-        default:
-            SVA_ASSERT (0,"MMU attempted to make update to non page table page.");
-    }
-#endif
-    
     return 1;
 
 #if OBSOLETE

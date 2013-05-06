@@ -115,14 +115,12 @@ enum page_type_t {
     PG_L2,          /* Defines a page being used as an L2 PTP */
     PG_L3,          /* Defines a page being used as an L3 PTP */
     PG_L4,          /* Defines a page being used as an L4 PTP */
-    PG_LEAF,    /* TODO: only a temporary listing */
-    PG_TKDATA,  /* TODO don't care about */    /* Defines a kernel data page */
-    PG_TUDATA,  /* TODO don't care about */    /* Defines a user data page */
+    PG_LEAF,        /* Generic type representing a valid LEAF page */
+    PG_TKDATA,      /* Defines a kernel data page */
+    PG_TUDATA,      /* Defines a user data page */
     PG_CODE,        /* Defines a code page */
-    PG_STACK,   /* TODO don't care about */
-    PG_IO,      /* TODO don't care about */
     PG_SVA,         /* Defines an SVA system page */
-    PG_GHOST,      /* Defines a secure page */
+    PG_GHOST,       /* Defines a secure page */
 };
 
 /* Mask to get the address bits out of a PTE, PDE, etc. */
