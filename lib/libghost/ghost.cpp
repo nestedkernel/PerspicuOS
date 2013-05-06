@@ -486,6 +486,6 @@ void readlink () __attribute__ ((weak, alias ("_readlink")));
 void mkdir () __attribute__ ((weak, alias ("_mkdir")));
 void stat () __attribute__ ((weak, alias ("_stat")));
 void fstat () __attribute__ ((weak, alias ("_fstat")));
-void read () __attribute__ ((weak, alias ("_read")));
+ssize_t read () __attribute__ ((weak, alias ("_read")));
 void write () __attribute__ ((weak, alias ("_write")));
 void clock_gettime () __attribute__ ((weak, alias ("_clock_gettime")));
