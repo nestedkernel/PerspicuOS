@@ -20,5 +20,7 @@ extern "C" int ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set 
 extern "C" int ghost_getpeereid(int s, uid_t *euid, gid_t *egid);
 extern "C" ssize_t ghost_read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t ghost_write(int d, void *buf, size_t nbytes);
+extern "C" sig_t ghost_signal (int sig, sig_t func);
+extern "C" int ghost_sigaction (int sig, struct sigaction * act, struct sigaction * oact);
 
 extern "C" void ghostAllowFunction (void * f);

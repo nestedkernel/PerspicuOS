@@ -71,7 +71,9 @@ ghostinit (void) {
   /*
    * Restrict ourselves to not receiving any signals.
    */
-  ghostAllowFunction (0);
+  if (getenv ("GHOSTING") != NULL) {
+    ghostAllowFunction (0);
+  }
 
   /*
    * Open a log file.
@@ -486,7 +488,7 @@ ghost_write(int d, void *buf, size_t nbytes) {
 }
 
 sig_t
-_signal (int sig, sig_t func) {
+ghost_signal (int sig, sig_t func) {
   //
   // Figure out the type of signal handler.  If it's a function,
   // permit the kernel to call it.
@@ -501,6 +503,22 @@ _signal (int sig, sig_t func) {
   }
 
   return (signal (sig, func));
+}
+
+int
+ghost_sigaction (int sig, struct sigaction * act, struct sigaction * oact) {
+  int ret;
+  unsigned char * framep = tradsp;
+
+  write (2, "jtc\n", 4);
+
+  //
+  // Copy in the arguments.
+  //
+  struct sigaction * newact = allocAndCopy (act);
+  struct sigaction * newoact   = allocate (oact);
+  ret = sigaction (sig, act, oact);
+  return ret;
 }
 
 int
@@ -541,3 +559,4 @@ ssize_t read () __attribute__ ((weak, alias ("_read")));
 void write () __attribute__ ((weak, alias ("_write")));
 void clock_gettime () __attribute__ ((weak, alias ("_clock_gettime")));
 void signal () __attribute__ ((weak, alias ("_signal")));
+void sigaction () __attribute__ ((weak, alias ("_sigaction")));
