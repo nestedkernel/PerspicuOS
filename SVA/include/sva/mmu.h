@@ -115,16 +115,16 @@ SVA_NOOP_ASSERT (int res, char * st) {
 /* Enum representing the four page types */
 enum page_type_t {
     PG_UNUSED = 0,
-    PG_L1,          /* Defines a page being used as an L1 PTP */
-    PG_L2,          /* Defines a page being used as an L2 PTP */
-    PG_L3,          /* Defines a page being used as an L3 PTP */
-    PG_L4,          /* Defines a page being used as an L4 PTP */
-    PG_LEAF,        /* Generic type representing a valid LEAF page */
-    PG_TKDATA,      /* Defines a kernel data page */
-    PG_TUDATA,      /* Defines a user data page */
-    PG_CODE,        /* Defines a code page */
-    PG_SVA,         /* Defines an SVA system page */
-    PG_GHOST,       /* Defines a secure page */
+    PG_L1,          /*  1: Defines a page being used as an L1 PTP */
+    PG_L2,          /*  2: Defines a page being used as an L2 PTP */
+    PG_L3,          /*  3: Defines a page being used as an L3 PTP */
+    PG_L4,          /*  4: Defines a page being used as an L4 PTP */
+    PG_LEAF,        /*  5: Generic type representing a valid LEAF page */
+    PG_TKDATA,      /*  6: Defines a kernel data page */
+    PG_TUDATA,      /*  7: Defines a user data page */
+    PG_CODE,        /*  8: Defines a code page */
+    PG_SVA,         /*  9: Defines an SVA system page */
+    PG_GHOST,       /* 10: Defines a secure page */
 };
 
 /* Mask to get the address bits out of a PTE, PDE, etc. */

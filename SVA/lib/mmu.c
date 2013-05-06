@@ -45,6 +45,21 @@
 /* Define whether or not the mmu_init code assumes virtual addresses */
 #define USE_VIRT            0
 
+/* Function prototypes for finding the virtual address of page table components */
+static inline pml4e_t * get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr);
+static inline pdpte_t * get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr);
+static inline pde_t * get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr);
+static inline pte_t * get_pteVaddr (pde_t * pde, uintptr_t vaddr);
+
+
+/*
+ * Function prototypes for returning the physical address of page table pages.
+ */
+static inline uintptr_t get_pml4ePaddr (unsigned char * cr3, uintptr_t vaddr);
+static inline uintptr_t get_pdptePaddr (pml4e_t * pml4e, uintptr_t vaddr);
+static inline uintptr_t get_pdePaddr (pdpte_t * pdpte, uintptr_t vaddr);
+static inline uintptr_t get_ptePaddr (pde_t * pde, uintptr_t vaddr);
+
 /*
  *****************************************************************************
  * Define paging structures and related constants local to this source file
@@ -205,30 +220,6 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
  * Page table page index and entry lookups 
  *****************************************************************************
  */
-#if 0
-static inline va_to_pml4e_index(){ return va & PML4MASK; }
-static inline va_to_pdpte_index(){
-}
-static inline va_to_pde_index(){
-}
-static inline va_to_pte_index(){
-}
-static inline va_to_pml4e(uintptr_t va){
-    pml4_t * pml4 = get_pagetable();
-    return &pml4[va_to_pml4e_index]; 
-}
-static inline va_to_pdpte(){
-}
-static inline va_to_pde(){
-}
-static inline va_to_pte(){
-}
-
-/*
- *
- */
-static inline page_entry_t * va_to_pte (uintptr_t va, page_type_t level){
-}
 
 /*
  * Function: is_correct_pe_for_va 
@@ -246,34 +237,59 @@ static inline page_entry_t * va_to_pte (uintptr_t va, page_type_t level){
  *  
  */
 static inline int 
-is_correct_pe_for_va (page_desc_t *pgDesc, uintptr_t newVA) {
-    /* 
-     * Check that we have the correct page table for the given VA and the
-     * active set of MMU mappings.
-     */
-    page_entry_t ptePhysAddr = va_to_pa_pte(newVA);
-    if (updatePageFrame != expectedPageFrameForVA(va)) {
-        return false;
-    }
+is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vaddr)
+{
+    /* Variables to hold temporary address values */
+    pml4e_t *pml4e;
+    pdpte_t *pdpte;
+    pde_t *pde;
+    pte_t *pte;
 
-    switch(level){
-    case PG_L4:
-        return va_to_pml4e();
-        break;
-    case PG_L3:
-        return va_to_pdpte();
-        break;
-    case PG_L2:
-        return va_to_pde();
-        break;
-    case PG_L1:
-        return va_to_pte();
-        break;
-    default:
-        panic("MMU: attempted to map into a non-page table page");
-    }
+    /* Set the page type variable for later use */
+    enum page_type_t pglevel = newPG->type;
+
+    /*
+     * Get the currently active page table.
+     */
+    unsigned char * cr3 = get_pagetable();
+
+    /* 
+     * We need to get the physical address matching the page table page level
+     * and virtual address.
+     */
+    uintptr_t truePgEPAddr;
+
+    if (pglevel == PG_L4) {
+
+        truePgEPAddr = get_pml4ePaddr(cr3, vaddr);
+
+    } else if (pglevel == PG_L3) {
+
+        pml4e = get_pml4eVaddr (cr3, vaddr);
+        truePgEPAddr = get_pdptePaddr (pml4e, vaddr);
+
+    } else if (pglevel == PG_L2) {
+
+        pml4e = get_pml4eVaddr (cr3, vaddr);
+        pdpte = get_pdpteVaddr (pml4e, vaddr);
+        truePgEPAddr = get_pdePaddr (pdpte, vaddr);
+
+    } else if (pglevel == PG_L1) {
+
+        pml4e = get_pml4eVaddr (cr3, vaddr);
+        pdpte = get_pdpteVaddr (pml4e, vaddr);
+        pde = get_pdeVaddr (pdpte, vaddr);
+        truePgEPAddr = get_ptePaddr (pde, vaddr);
+
+    } 
+
+    /* 
+     * To make sure we have the correct page entry we compare the physical
+     * address of the entry under test with the physical address of the new
+     * entry from the VA.
+     */
+    return testPgEPAddr == truePgEPAddr;
 }
-#endif
 
 /*
  * Function: pt_update_is_valid()
@@ -309,8 +325,8 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     page_desc_t *newPG = &page_desc[newFrame];
 
     /* Get the page table page descriptor. The page_entry is the viratu */
-    uintptr_t pteFrame = getPhysicalAddr (page_entry) >> PAGESHIFT;
-    page_desc_t *ptePG = &page_desc[pteFrame];
+    uintptr_t ptePAddr = getPhysicalAddr (page_entry);
+    page_desc_t *ptePG = getPageDescPtr(ptePAddr);
 
     /* 
      * If we aren't mapping a new page then we can skip several checks, and in
@@ -342,43 +358,14 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * function.
          */
         if (isPTP(newPG)) {
-            /*
-             * Verify that that the mapping matches the correct type of page
-             * allowed to be mapped into this page table. Verify that the new
-             * PTP is of the correct type given the page level of the page
-             * entry. 
-             */
-            switch(ptePG->type) {
-            case PG_L1:
-                SVA_NOOP_ASSERT (isFramePg(newPG), 
-                        "MMU: attempted to map non-frame page into L1.");
-                break;
-            case PG_L2:
-                SVA_NOOP_ASSERT (isL1Pg(newPG), 
-                        "MMU: attempted to map non-L1 page into L2.");
-                break;
-            case PG_L3:
-                SVA_NOOP_ASSERT (isL2Pg(newPG), 
-                        "MMU: attempted to map non-L2 page into L3.");
-                break;
-            case PG_L4:
-                /* 
-                 * FreeBSD inserts a self mapping into the pml4, therefore it is
-                 * valid to map in an L4 page into the L4. TODO: consider the
-                 * security implications of this...
-                 */
-                SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
-                        "MMU: attempted to map non-L3/L4 page into L4.");
-                break;
-            default:
-                SVA_NOOP_ASSERT (0,
-                        "MMU attempted to make update to non page table page.");
-            }
 
             /* 
              * If we have a page table page being mapped in and it currently
              * has a mapping to it, then we verify that the new VA from the new
              * mapping matches the existing currently mapped VA. 
+             *
+             * This guarantees that we have at most one VA mapping to each page
+             * table page.
              */
             if (pgRefCount(newPG) > 0) {
                 SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
@@ -397,18 +384,6 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     /* If the pt entry resides in a ghost page table page then fail */
     SVA_ASSERT (!isGhostPTP(ptePG), 
             "MMU: Kernel attempted to map into an SVA page table page");
-
-#if NOT_YET_IMPLEMENTED
-    /* Verify that we have the correct PTE for the given VA */
-
-    /* 
-     * TODO think about whether or not we only need to do this check when
-     * inserting a new mapping. Effectively if we are just updating metadata to
-     * a page entry do we need to assert that the mapping matches correctly? 
-     */
-    SVA_NOOP_ASSERT (!is_correct_pe_for_va(page_entry, newVA) , 
-            "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
-#endif
 
     /*
      * If the new mapping is set for user access, but the VA being used is to
@@ -481,8 +456,58 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          */
         SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
                 "MMU: overflow for the mapping count");
-
     }
+
+    /* TODO: do we need this check */
+
+    /* 
+     * Verify that the page we are mapping into is a page frame
+     */
+    SVA_NOOP_ASSERT (isPTP(ptePG), 
+            "MMU: attempted mapping into a non-ptp page frame");
+
+    /*
+     * Verify that that the mapping matches the correct type of page
+     * allowed to be mapped into this page table. Verify that the new
+     * PTP is of the correct type given the page level of the page
+     * entry. 
+     */
+    switch(ptePG->type) {
+        case PG_L1:
+            SVA_NOOP_ASSERT (isFramePg(newPG), 
+                    "MMU: attempted to map non-frame page into L1.");
+            break;
+        case PG_L2:
+            SVA_NOOP_ASSERT (isL1Pg(newPG), 
+                    "MMU: attempted to map non-L1 page into L2.");
+            break;
+        case PG_L3:
+            SVA_NOOP_ASSERT (isL2Pg(newPG), 
+                    "MMU: attempted to map non-L2 page into L3.");
+            break;
+        case PG_L4:
+            /* 
+             * FreeBSD inserts a self mapping into the pml4, therefore it is
+             * valid to map in an L4 page into the L4. TODO: consider the
+             * security implications of this...
+             */
+            SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+                    "MMU: attempted to map non-L3/L4 page into L4.");
+            break;
+        default:
+            /* 
+             * TODO when enabling this we will have had to finish the init and
+             * remove code 
+             */
+            SVA_NOOP_ASSERT (0,
+                    "MMU attempted to make update to non page table page.");
+    }
+    
+    /* 
+     * Verify that we have the correct PTE for the given VA.
+     */
+    SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
+            "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 
     return 1;
 
@@ -728,8 +753,8 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
             /* There is a bug when we modify counts on page_desc[0] so skip */
             if(newFrame != 0) {
 
-                printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-                        newPG, val, newPA, newVA, newPG->count);
+                //printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+                        //newPG, val, newPA, newVA, newPG->count);
                 /*
                  * If the new page is to a PTP and this is the first reference to
                  * the page, we need to set the VA mapping this page so that the
