@@ -294,10 +294,6 @@ SFI::instrumentMemcpy (Value * Dst, Value * Src, Value * Len, Instruction * I) {
   //
   // Create a call to the checking function.
   //
-  CheckF->dump();
-  Dst->dump();
-  Src->dump();
-  Len->dump();
   CallInst::Create (CheckF, Args, "", I);
 
   //
