@@ -113,7 +113,6 @@ installNewPushTarget (void) {
   //
   // Add the new target.
   //
-  printf ("SVA: installNewPushTarget: %p %d\n", icp->rdi, threadp->numPushTargets);
   threadp->validPushTargets[(threadp->numPushTargets)++] = icp->rdi;
   return;
 }
@@ -345,7 +344,6 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
     unsigned index = 0;
     unsigned char found = 0;
     for (index = 0; index < threadp->numPushTargets; ++index) {
-      printf("SVA: Target: %d: %lx\n", index, threadp->validPushTargets[index]);
       if (threadp->validPushTargets[index] == newf) {
         found = 1;
         break;
@@ -353,8 +351,7 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
     }
 
     if (!found) {
-      printf ("SVA: Pushing bad value %lx\n", newf);
-      bochsBreak();
+      panic ("SVA: Pushing bad value %lx\n", newf);
       sva_exit_critical (rflags);
       return;
     }
@@ -368,8 +365,7 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
     }
 
     if (!found) {
-      printf ("SVA: Pushing bad sighandler value %lx\n", p5);
-      bochsBreak();
+      panic ("SVA: Pushing bad sighandler value %lx\n", p5);
       sva_exit_critical (rflags);
       return;
     }
