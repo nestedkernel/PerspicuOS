@@ -491,7 +491,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pt_entry_t *)KPTphys)[i] |= PG_RW | PG_V | PG_G;
 	}
 
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("KPTphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPTphys)[0],
             ((pdp_entry_t *)KPTphys)[0]);
     printf("KPTphys[1]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPTphys)[1],
@@ -511,7 +511,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V;
 	}
     
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("Map the pts at location in ptmap");
     printf("KPDphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDphys)[0],
             ((pdp_entry_t *)KPDphys)[0]);
@@ -532,7 +532,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pd_entry_t *)KPDphys)[i] |= PG_RW | PG_V | PG_PS | PG_G;
 	}
     
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("Now doing zero to end of alloc under 2M pages\n");
     printf("KPDphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDphys)[0],
             ((pdp_entry_t *)KPDphys)[0]);
@@ -553,7 +553,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)KPDPphys)[i + KPDPI] |= PG_RW | PG_V | PG_U;
 	}
     
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("PDP entry connect to pds\n");
     printf("KPDPphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)KPDPphys)[0],
             ((pdp_entry_t *)KPDPphys)[0]);
@@ -596,7 +596,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] |= PG_RW | PG_V | PG_U;
 
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("KVA self reflecting spot:\t\t\t %p, %lx\n",&((pdp_entry_t *)KPML4phys)[PML4PML4I],
             ((pdp_entry_t *)KPML4phys)[PML4PML4I]);
 #endif
@@ -612,7 +612,7 @@ create_pagetables(vm_paddr_t *firstaddr)
 	((pdp_entry_t *)KPML4phys)[KPML4I] = KPDPphys;
 	((pdp_entry_t *)KPML4phys)[KPML4I] |= PG_RW | PG_V | PG_U;
 
-#if 0//SVA_DEBUG
+#if SVA_DEBUG
     printf("pml4[0]:\t\t\t %p: 0x%lx\n", &((pdp_entry_t *)KPML4phys)[0], 
             ((pdp_entry_t *)KPML4phys)[0]);
     printf("KVA slot to the pml4:\t\t\t %p: 0x%lx\n", &((pdp_entry_t *)KPML4phys)[KPML4I], 
@@ -2985,7 +2985,15 @@ pmap_remove_pde(pmap_t pmap, pd_entry_t *pdq, vm_offset_t sva,
 	PMAP_LOCK_ASSERT(pmap, MA_OWNED);
 	KASSERT((sva & PDRMASK) == 0,
 	    ("pmap_remove_pde: sva is not 2mpage aligned"));
+
+#ifdef SVA_MMU
+    /* Store the current mapping and then remove the page mapping */
+	oldpde = *pdq;
+    sva_update_mapping(pdq, 0);
+#else
 	oldpde = pte_load_clear(pdq);
+#endif
+
 	if (oldpde & PG_W)
 		pmap->pm_stats.wired_count -= NBPDR / PAGE_SIZE;
 
@@ -3040,7 +3048,19 @@ pmap_remove_pte(pmap_t pmap, pt_entry_t *ptq, vm_offset_t va,
 	vm_page_t m;
 
 	PMAP_LOCK_ASSERT(pmap, MA_OWNED);
+
+#ifdef SVA_MMU
+    /* 
+     * To emulate the proper behavior here we first read the pte value then do
+     * an update mapping to remove the mapping. Pass in a value of zero to
+     * remove the mapping.
+     */
+	oldpte = *ptq;
+    sva_update_mapping(ptq, 0);
+#else
 	oldpte = pte_load_clear(ptq);
+#endif
+
 	if (oldpte & PG_W)
 		pmap->pm_stats.wired_count -= 1;
 	pmap_resident_count_dec(pmap, 1);
