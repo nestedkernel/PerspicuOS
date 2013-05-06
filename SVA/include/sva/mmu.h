@@ -77,6 +77,12 @@ static const unsigned int numPageDescEntries = memSize / pageSize;
 /* Mask to get the proper number of bits from the virtual address */
 static const uintptr_t vmask = 0x0000000000000fffu;
 
+/* The number of references allowed per page table page */
+static const maxPTPRefs = 1;
+
+/* The count must be at least this value to remove a mapping to a page */
+static const minRefCountToRemoveMapping = 1;
+
 /*
  * Offset into the PML4E at which the mapping for the secure memory region can
  * be found.
@@ -419,6 +425,9 @@ static inline int isFramePg (page_desc_t *page) {
 /* Description: Return whether the page is active or not */
 static inline int pgIsActive (page_desc_t *page) 
     { return page->type != PG_UNUSED ; } 
+
+/* The number of active references to the page */
+static inline int pgRefCount(page_desc_t *page) { return page->count; }
 
 /* Page type queries */
 static inline int isL1Pg (page_desc_t *page) { return page->type == PG_L1; }

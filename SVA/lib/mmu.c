@@ -369,8 +369,17 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
             default:
                 SVA_ASSERT (0,"MMU attempted to make update to non page table page.");
         }
-    }
 
+        /* 
+         * If the new page is a page table page then verify that the refernce
+         * count is < 1. 
+         */
+        if (isPTP(newPG)) {
+            SVA_ASSERT(pgRefCount(newPG) == maxPTPRefs, 
+                    "MMU: attempted to double map a page table page.");
+        }
+    }
+        
     /* 
      * If the virtual address of the page_entry is in secure memory then fail,
      * as the kernel will never be allowed to map any VA mapping that region. 
@@ -419,7 +428,8 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     /* 
      * If the original PA is not equivalent to the new PA then we are creating
      * an entirely new mapping, thus make sure that this is a valid new page
-     * reference, and if so reduce the reference count the old page.
+     * reference. Also verify that the reference counts to the old page are
+     * sane, i.e., there is at least a current count of 1 to it. 
      */
     if (origPA != newPA) {
 #if OBSOLETE
@@ -436,6 +446,14 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
          * pointing this entry to another code page, thus fail.
          */
         SVA_ASSERT (!isCodePG(origPG), "Kernel attempting to modify code page mapping");
+    
+        /* 
+         * When removing a mapping to a page table page by setting the new
+         * reference to zero, verify that the reference count to the old page
+         * table page will not be reduced to less than zero. 
+         */
+        SVA_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
+                "MMU: Attempted to remove a mapping to a page with count of 0");
     }
 
     return 1;
