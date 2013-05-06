@@ -69,10 +69,10 @@ ghostinit (void) {
   tradsp = tradBuffer + tradlen;
 
   /*
-   * Restrict ourselves to not receiving any signals.
+   * Restrict ourselves to only jumping to the signal handler trampoline.
    */
-  if (getenv ("GHOSTING") != NULL) {
-    ghostAllowFunction (0);
+  if (getenv ("GHOSTING")) {
+    ghostAllowFunction ((void *)0x7ffffffff000);
   }
 
   /*
@@ -493,15 +493,13 @@ ghost_signal (int sig, sig_t func) {
   // Figure out the type of signal handler.  If it's a function,
   // permit the kernel to call it.
   //
+  unsigned char * framep = tradsp;
   if ((func != SIG_DFL) && (func != SIG_IGN)) {
-    static unsigned char trampoline = 1;
-    if (trampoline) {
-      ghostAllowFunction ((void *)0x7ffffffff000);
-    }
     ghostAllowFunction ((void *)func);
-    trampoline = 0;
   }
 
+  // Restore the stack pointer
+  tradsp = framep;
   return (signal (sig, func));
 }
 
@@ -510,14 +508,41 @@ ghost_sigaction (int sig, struct sigaction * act, struct sigaction * oact) {
   int ret;
   unsigned char * framep = tradsp;
 
-  write (2, "jtc\n", 4);
-
   //
   // Copy in the arguments.
   //
   struct sigaction * newact = allocAndCopy (act);
   struct sigaction * newoact   = allocate (oact);
-  ret = sigaction (sig, act, oact);
+
+  //
+  // Register the signal handler.
+  //
+  ret = sigaction (sig, newact, newoact);
+
+  //
+  // Permit the use of the signal handler.
+  //
+  if (act) {
+    void * handler = 0;
+    if (act->sa_flags & SA_SIGINFO) {
+      handler = (void *) act->sa_sigaction;
+    } else {
+      handler = (void *) act->sa_handler;
+    }
+
+    if ((handler != SIG_DFL) && (handler != SIG_IGN)) {
+      ghostAllowFunction (handler);
+    }
+  }
+
+  //
+  // Copy out the output arguments.
+  //
+  if (oact)
+    *oact = *newoact;
+
+  // Restore the stack pointer
+  tradsp = framep;
   return ret;
 }
 
