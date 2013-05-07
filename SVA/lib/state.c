@@ -1477,6 +1477,36 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
 }
 
 /*
+ * Intrinsic: sva_release_stack()
+ *
+ * Description:
+ *  This intrinsic tells the virtual machine that the specified integer state
+ *  should be discarded and that its stack is no longer a kernel stack.
+ */
+void
+sva_release_stack (uintptr_t id) {
+  /* Get a pointer to the saved state (the ID is the pointer) */
+  struct SVAThread * newThread = (struct SVAThread *)(id);
+  sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
+
+  /*
+   * TODO: Release ghost memory.
+   */
+
+  /*
+   * Mark the integer state as invalid.  This will prevent it from being
+   * context switched on to the CPU.
+   */
+  new->valid = 0;
+
+  /*
+   * Mark the thread as available for reuse.
+   */
+  newThread->used = 0;
+  return;
+}
+
+/*
  * Intrinsic: sva_init_stack()
  *
  * Description:
