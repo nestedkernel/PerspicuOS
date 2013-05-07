@@ -321,7 +321,6 @@ struct thread {
   unsigned char sva; /* Flag whether SVA saved state on context switch */
   void (*callout)(void *, struct trapframe *); /* Thread startup function */
   void * callarg; /* Thread startup argument */
-  sva_fp_state_t svaFP; /* SVA floating point state */
 #endif
 };
 
