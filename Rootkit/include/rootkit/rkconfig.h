@@ -12,6 +12,7 @@
  *===----------------------------------------------------------------------===
  */
 
+#if 0
 /* Define the target address containing the data that we want to steal */
 #if 1
 /* Traditional version */
@@ -26,5 +27,10 @@
 
 /* Define the file descriptor to which the stolen data should be written */
 #define FD 0x1
+#else
+#define TARGET 0x425760
+#define SIZE 0xb
+#define FD 0x1
+#endif
 
 
