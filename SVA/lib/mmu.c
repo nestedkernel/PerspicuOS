@@ -45,12 +45,13 @@
 /* Define whether or not the mmu_init code assumes virtual addresses */
 #define USE_VIRT            0
 
-/* Function prototypes for finding the virtual address of page table components */
+/* 
+ * Function prototypes for finding the virtual address of page table components
+ */
 static inline pml4e_t * get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr);
 static inline pdpte_t * get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr);
 static inline pde_t * get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr);
 static inline pte_t * get_pteVaddr (pde_t * pde, uintptr_t vaddr);
-
 
 /*
  * Function prototypes for returning the physical address of page table pages.
@@ -668,6 +669,155 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
 }
 
 /*
+ * Function: 
+ *
+ * Description:
+ *
+ * Inputs:
+ */
+static inline void 
+setPgPrivMode (page_desc_t *pg, uintptr_t va) {
+    page_entry_t *pe;
+    switch(pg->type){
+        case PG_L4:
+            //pe = va_to_pml4VA(va);
+        case PG_L3:
+        case PG_L2:
+        case PG_L1:
+        default:
+            break;
+    }
+}
+
+/*
+ * Function: updateNewPageData
+ *
+ * Description: 
+ *  This function is called whenever we are inserting a new mapping into a page
+ *  entry. The goal is to manage any SVA page data that needs to be set for
+ *  tracking the new mapping with the existing page data. This is essential to
+ *  enable the mmu verification checks.
+ *
+ * Inputs:
+ *  - mapping : the new mapping to be inserted
+ */
+static inline void
+updateNewPageData(page_entry_t mapping) {
+    uintptr_t newPA = mapping & PG_FRAME;
+    unsigned long newFrame = newPA >> PAGESHIFT;
+    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
+    page_desc_t *newPG = getPageDescPtr(mapping);
+
+    /*
+     * If the new mapping is valid then update the counts for it.
+     */
+#if NOT_YET_IMPLEMENTED
+    if (mapping & PG_V) {
+
+        /* There is a bug when we modify counts on page_desc[0] so skip */
+        if(newFrame != 0) {
+
+            //printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+            //newPG, val, newPA, newVA, newPG->count);
+            /*
+             * If the new page is to a PTP and this is the first reference to
+             * the page, we need to set the VA mapping this page so that the
+             * verification routine can enforce that this page is only mapped
+             * to a single VA. Note that if we have gotten here, we know that
+             * we currently do not have a mapping to this page already, which
+             * means this is the first mapping to the page. 
+             */
+            if (isPTP(newPG)){
+                setPTPVA(newPG, newVA);
+            }
+
+            /* There is some type of bug with this update. */
+            newPG->count++;
+        } else {
+            /* 
+             * FIXME:XXX this case has a bug when updating the metadata.
+             * Figure it out 
+             */
+        }
+
+        /* 
+         * Set the privilege mode of this entry given the VA 
+         */
+        //setPrivMode(newPG, newVA);
+
+        /* 
+         * Set the VA of this entry if it is the first mapping to a page
+         * table page.
+         */
+    }
+#endif
+}
+
+/*
+ * Function: updateOrigPageData
+ *
+ * Description:
+ *  This function updates the metadata for a page that is being removed from
+ *  the mapping. 
+ * 
+ * Inputs:
+ *  - mapping : the mapping for the old page
+ */
+static inline void
+updateOrigPageData(page_entry_t mapping){
+    uintptr_t origPA = mapping & PG_FRAME; 
+    unsigned long origFrame = origPA >> PAGESHIFT;
+    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
+    page_desc_t *origPG = &page_desc[origFrame];
+
+    /* FIXME:TODO there is a special case where the original page could be
+     * invalid or non-existent. I can think of two cases actually: 
+     *  - a zero mapping meaning it is non-existent
+     *  - a non-zero real address mapping but with the valid bit set to 0
+     *  - a non-zero valid mapping 
+     *
+     *  The real issue is figuring out whether or not an invalidate mapping
+     *  removes the mapping and clears it. The one case is true though in
+     *  that we don't decrement unless we have a value in the old mapping.
+     */
+    /* 
+     * Only decrement the mapping count if the page has an existing
+     * valid mapping.
+     */
+    //if((*pteptr & PG_V) && origPA != 0) 
+    if((mapping & PG_V)) {
+
+#if NOT_YET_IMPLEMENTED
+        /* There is a bug when we modify counts on page_desc[0] so skip */
+        if(origFrame != 0) {
+
+            /* Update the mapping count of the old and new mapped physical pages */
+            origPG->count--;
+
+        } else {
+            /* 
+             * FIXME:XXX this case has a bug when updating the metadata.
+             * Figure it out 
+             */
+            printf("Decremented ref count [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
+                    origPG, mapping, origPA, origVA, origPG->count);
+        }
+#endif
+
+#if NOT_YET_IMPLEMENTED
+        /* 
+         * TODO: what happens if the count is already zero here? For example
+         * when we remove a page, do we zero out the references to it from the
+         * PTs or do we just do an invalidate update?
+         */
+        if (pgRefCount(origPG) == 0) {
+            removePage(origPG);
+        }
+#endif
+    }
+}
+
+/*
  * Function: __do_mmu_update
  *
  * Description:
@@ -680,15 +830,9 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
  *  newVal       - Representes the mapping to insert into the page_entry
  */
 static inline void
-__do_mmu_update (pte_t * pteptr, page_entry_t val) {
+__do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
     uintptr_t origPA = *pteptr & PG_FRAME;
-    unsigned long origFrame = origPA >> PAGESHIFT;
-    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-    page_desc_t *origPG = &page_desc[origFrame];
-    uintptr_t newPA = val & PG_FRAME;
-    unsigned long newFrame = newPA >> PAGESHIFT;
-    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-    page_desc_t *newPG = getPageDescPtr(val);
+    uintptr_t newPA = mapping & PG_FRAME;
 
     /*
      * If we have a new mapping as opposed to just changing the flags of an
@@ -697,96 +841,18 @@ __do_mmu_update (pte_t * pteptr, page_entry_t val) {
      * vetted.
      */
     if (newPA != origPA) {
-        
-        /* FIXME:TODO there is a special case where the original page could be
-         * invalid or non-existent. I can think of two cases actually: 
-         *  - a zero mapping meaning it is non-existent
-         *  - a non-zero real address mapping but with the valid bit set to 0
-         *  - a non-zero valid mapping 
-         *
-         *  The real issue is figuring out whether or not an invalidate mapping
-         *  removes the mapping and clears it. The one case is true though in
-         *  that we don't decrement unless we have a value in the old mapping.
-         */
-        /* 
-         * Only decrement the mapping count if the page has an existing
-         * valid mapping.
-         */
-        //if((*pteptr & PG_V) && origPA != 0) 
-        if((*pteptr & PG_V)) {
-
-#if NOT_YET_IMPLEMENTED
-            /* There is a bug when we modify counts on page_desc[0] so skip */
-            if(origFrame != 0) {
-
-                /* Update the mapping count of the old and new mapped physical pages */
-                origPG->count--;
-
-            } else {
-                /* 
-                 * FIXME:XXX this case has a bug when updating the metadata.
-                 * Figure it out 
-                 */
-                printf("Decremented ref count [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-                        origPG, *pteptr, origPA, origVA, origPG->count);
-            }
-#endif
-
-#if NOT_YET_IMPLEMENTED
-            /* 
-             * TODO: what happens if the count is already zero here? For example
-             * when we remove a page, do we zero out the references to it from the
-             * PTs or do we just do an invalidate update?
-             */
-            if (pgRefCount(origPG) == 0) {
-                removePage(origPG);
-            }
-#endif
-        }
-
-        /*
-         * If the new mapping is valid then update the counts for it.
-         */
-#if NOT_YET_IMPLEMENTED
-        if (val & PG_V) {
-            
-            /* There is a bug when we modify counts on page_desc[0] so skip */
-            if(newFrame != 0) {
-
-                //printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-                        //newPG, val, newPA, newVA, newPG->count);
-                /*
-                 * If the new page is to a PTP and this is the first reference to
-                 * the page, we need to set the VA mapping this page so that the
-                 * verification routine can enforce that this page is only mapped
-                 * to a single VA. Note that if we have gotten here, we know that
-                 * we currently do not have a mapping to this page already, which
-                 * means this is the first mapping to the page. 
-                 */
-                if (isPTP(newPG)){
-                    setPTPVA(newPG, newVA);
-                }
-
-                /* There is some type of bug with this update. */
-                newPG->count++;
-            } else {
-                /* 
-                 * FIXME:XXX this case has a bug when updating the metadata.
-                 * Figure it out 
-                 */
-            }
-        }
-#endif
+        updateOrigPageData(*pteptr);
+        updateNewPageData(mapping);
     }
 
 #if ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
-    if (readOnlyPage(newPG))
-        val = setMappingReadOnly(val);
+    if (readOnlyPage(getPageDescPtr(mapping)) && isUserMapping(mapping))
+        mapping = setMappingReadOnly(mapping);
 #endif
 
     /* perform the actual write to the pte entry */
-    page_entry_store ((page_entry_t *) pteptr, val);
+    page_entry_store ((page_entry_t *) pteptr, mapping);
 }
 
 /*
@@ -823,15 +889,15 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
      * referencing this new page. This is an update type operation. A value of
      * 0 in bit position 2 configures for no writes.
      */
-    if (readOnlyPage(pg)) {
+    if (readOnlyPage(pg) && isUserMapping(*page_entry)) {
         newMapping = setMappingReadOnly(newMapping);
-        printf("==== SVA<init_page_entry>: Setting readonly L%d, mapping: 0x%lx\n",
-                getPageDescPtr(frameAddr)->type, newMapping);
+        //printf("==== SVA<init_page_entry>: Setting readonly L%d, mapping: 0x%lx\n",
+                //getPageDescPtr(frameAddr)->type, newMapping);
+
+        /* Perform the actual store of the value to the page_entry */
+        page_entry_store(page_entry, newMapping);
     }
 #endif
-    
-    /* Perform the actual store of the value to the page_entry */
-    page_entry_store(page_entry, newMapping);
 }
 
 /*
@@ -1585,9 +1651,11 @@ sva_mm_load_pgtable (void * pg) {
     /* Control Register 0 value (which is used to enable paging) */
     unsigned int cr0;
 
+#if DEBUG >= 2
+    printf("##### SVA<sva_mm_load_pgtable> new entry value: 0x%lx,", pg);
+    print_regs();
+#endif 
 #if 0
-    printf("##### SVA<sva_mm_load_pgtable> current cr0: 0x%lx,", _rcr0());
-    printf("\n\tcurrent cr3: 0x%lx, new cr3 value: 0x%lx\n", _rcr3(), pg);
     /* 
      * Unset page protection so that we can write to cr3
      */
@@ -1603,11 +1671,9 @@ sva_mm_load_pgtable (void * pg) {
             "movl %0, %%cr0\n"
             : "=r" (cr0)
             : "r" (pg) : "memory");
-
-#if 0
-    printf("secmem2\n");
-    printf("##### SVA<sva_mm_load_pgtable> current cr0: 0x%lx,", _rcr0());
-    printf("\n\tcurrent cr3: 0x%lx, new cr3 value: 0x%lx\n", _rcr3(), pg);
+    
+#if DEBUG >= 2
+    print_regs();
 #endif
 
     /*
@@ -1628,9 +1694,7 @@ sva_mm_load_pgtable (void * pg) {
     }
 
 #if 0
-    printf("secmem2.1\n");
-    //protect_paging();
-    printf("secmem2.2\n");
+    protect_paging();
 #endif
 
     return;
@@ -1917,7 +1981,9 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
                 printf("%sInitializing leaf entry: pteaddr: %p, mapping: 0x%lx\n",
                         indent, nextEntry, *nextEntry);
 #endif
+#if NOT_YET_IMPLEMENTED
                 init_leaf_page_from_mapping(*nextEntry);
+#endif
             } else {
 #if DEBUG_INIT >= 2
             printf("%sProcessing:pte addr: %p, newPgAddr: %p, mapping: 0x%lx\n",
@@ -2483,9 +2549,9 @@ init_leaf_page_from_mapping (page_entry_t mapping) {
     printf("newPg ptr: %p, mapping: %lx\n",newPg, mapping);
 #endif
 
+#if 0
     /* Mark the page type as either user or kernel data */
     /* TODO debug this to see why it causes a bug when setting */
-#if 0
     if(mapping & PG_U) {
         newPg->type = PG_TUDATA;
     } else {
@@ -2648,9 +2714,9 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
     printf("##### SVA: pre-update_l4_page: pml4e: %p, *pml4e: 0x%lx, newMapping: 0x%lx\n",
             pml4ePtr, *pml4ePtr, val);
     
-    printf("\tFrame Type: %d, Frame Address: %p, index: 0x%lx\n", 
-            page_desc[(  (val & PG_FRAME)/ pageSize)],
-            (val & PG_FRAME), (  (val & PG_FRAME)/ pageSize)); 
+    printf("\tFrame Type: %d, pml4e: %p, *pml4e: %p, Frame Address: %p\n", 
+            page_desc[((val & PG_FRAME)/pageSize)].type,
+            pml4ePtr, *pml4ePtr, (val & PG_FRAME)); 
 #endif
 
     __update_mapping(pml4ePtr, val);

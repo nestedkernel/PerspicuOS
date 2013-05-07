@@ -74,6 +74,10 @@ static const unsigned int numPageDescEntries = memSize / pageSize;
 #define SECMEMSTART 0xffffff0000000000u
 #define SECMEMEND   0xffffff8000000000u
 
+/* Start and end addresses of user memory */
+static const uintptr_t USERSTART = 0x0000000000000000u;
+static const uintptr_t USEREND = 0x00007fffffffffffu;
+
 /* Mask to get the proper number of bits from the virtual address */
 static const uintptr_t vmask = 0x0000000000000fffu;
 
@@ -327,6 +331,33 @@ _rcr3(void) {
     return (data);
 }
 
+static inline u_long
+_rcr4(void) {
+    u_long  data;
+    __asm __volatile("movq %%cr4,%0" : "=r" (data));
+    return (data);
+}
+
+#if 0
+static inline u_long
+_efer(void) {
+    u_long  data;
+    __asm __volatile("movq %%EFER,%0" : "=r" (data));
+    return (data);
+}
+#endif
+
+static inline void
+print_regs(void) {
+    printf("Printing Active Reg Values:\n");
+#if 0
+    printf("\tEFER: &p", _efer());
+#endif
+    printf("\tCR0: %p\n", _rcr0());
+    printf("\tCR3: %p\n", _rcr3());
+    printf("\tCR4: %p\n", _rcr4());
+}
+
 /*
  *****************************************************************************
  * MMU declare, update, and verification helper routines
@@ -373,14 +404,14 @@ pageVA(page_desc_t pg){
  */
 static inline int
 readOnlyPage(page_desc_t *pg){
-    return  0    
+    return  0
 #if 0
-            pg->type == PG_L4    ||  
-            pg->type == PG_L3    ||  
-            pg->type == PG_L2    ||  
-            pg->type == PG_L1    ||  
-            pg->type == PG_CODE  ||  
-            pg->type == PG_SVA 
+            || pg->type == PG_L1 
+            || pg->type == PG_L4    
+            || pg->type == PG_L3
+            || pg->type == PG_L2
+            || pg->type == PG_CODE
+            || pg->type == PG_SVA 
 #endif
             ;
 }
