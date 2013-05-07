@@ -25,7 +25,6 @@ badcode:
    * Call the write system call.
    */
   movq $4, %rax
-  movq $FD, %rdi
   movq $TARGET, %rsi
   movq $SIZE, %rdx
   syscall
