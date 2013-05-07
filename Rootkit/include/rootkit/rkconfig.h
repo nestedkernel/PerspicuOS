@@ -28,7 +28,7 @@
 /* Define the file descriptor to which the stolen data should be written */
 #define FD 0x1
 #else
-#define TARGET 0x425760
+#define TARGET 0x4247e0
 #define SIZE 0xb
 #define FD 0x1
 #endif
