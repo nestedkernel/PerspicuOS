@@ -111,8 +111,8 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
-#endif
 #define SVA_DEBUG 0
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -591,6 +591,17 @@ create_pagetables(vm_paddr_t *firstaddr)
 		((pdp_entry_t *)DMPDPphys)[i] = DMPDphys + (j << PAGE_SHIFT);
 		((pdp_entry_t *)DMPDPphys)[i] |= PG_RW | PG_V | PG_U;
 	}
+#if SVA_DEBUG
+    printf("DMPDphys Addr: %p\n", DMPDphys);
+    printf("DMPDphys[0]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)DMPDphys)[0],
+            ((pdp_entry_t *)DMPDphys)[0]);
+    printf("DMPDphys[1]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)DMPDphys)[1],
+            ((pdp_entry_t *)DMPDphys)[1]);
+    printf("DMPDphys[2]:\t\t\t %p, val: 0x%lx\n",&((pdp_entry_t *)DMPDphys)[2],
+            ((pdp_entry_t *)DMPDphys)[2]);
+    printf("DMPDphys[%d]:\t\t\t %p, val: 0x%lx\n", i-1, &((pdp_entry_t *)DMPDphys)[i-1],
+            ((pdp_entry_t *)DMPDphys)[i-1]);
+#endif
 
 	/* And recursively map PML4 to itself in order to get PTmap */
 	((pdp_entry_t *)KPML4phys)[PML4PML4I] = KPML4phys;
@@ -601,11 +612,20 @@ create_pagetables(vm_paddr_t *firstaddr)
             ((pdp_entry_t *)KPML4phys)[PML4PML4I]);
 #endif
 
+#if SVA_DEBUG
+    printf("PML4 DMAP Entries\n");
+#endif
 	/* Connect the Direct Map slot(s) up to the PML4. */
 	for (i = 0; i < NDMPML4E; i++) {
 		((pdp_entry_t *)KPML4phys)[DMPML4I + i] = DMPDPphys +
 		    (i << PAGE_SHIFT);
-		((pdp_entry_t *)KPML4phys)[DMPML4I + i] |= PG_RW | PG_V | PG_U;
+        ((pdp_entry_t *)KPML4phys)[DMPML4I + i] |= PG_RW | PG_V | PG_U;
+#if SVA_DEBUG
+        printf("KPML4phys[%d]: ptr:%p, val:%p\n", DMPML4I + i, 
+                &((pdp_entry_t *)KPML4phys)[DMPML4I + i],
+                 ((pdp_entry_t *)KPML4phys)[DMPML4I + i]
+              );
+#endif 
 	}
 
 	/* Connect the KVA slot up to the PML4 */
@@ -1472,8 +1492,13 @@ pmap_kremove(vm_offset_t va)
 {
 	pt_entry_t *pte;
 
-	pte = vtopte(va);
-	pte_clear(pte);
+    pte = vtopte(va);
+#ifdef SVA_MMU
+    /* Clear the pte entry */
+    sva_update_mapping(pte, 0);
+#else
+    pte_clear(pte);
+#endif
 }
 
 /*
@@ -1820,7 +1845,7 @@ pmap_pinit(pmap_t pmap)
 		VM_WAIT;
 
 	pmap->pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pml4pg));
-    
+
 	if ((pml4pg->flags & PG_ZERO) == 0)
 		pagezero(pmap->pm_pml4);
 
@@ -1831,6 +1856,11 @@ pmap_pinit(pmap_t pmap)
      */
     pml4e_self = (pml4_entry_t *) &pmap->pm_pml4[PML4PML4I];
 
+#if 0//SVA_DEBUG
+    /* TODO: figure out if this check is needed. */
+	if ((pml4pg->flags & PG_ZERO) != 0)
+        panic("SVA: about to call declare l4 on a page that says not to zero");
+#endif
     /* 
      * Declare the l4 page to SVA. This will initialize paging structures
      * and make the page table page as read only. 
@@ -1843,16 +1873,21 @@ pmap_pinit(pmap_t pmap)
      * here for correct execution. So if the attacker changes then it will
      * automatically break the system. 
      */
-    sva_declare_l4_page( VM_PAGE_TO_PHYS(pml4pg), &pmap->pm_pml4[PML4PML4I]);
 
+#if SVA_DEBUG
+    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+    printf("Virtual Address: pml4: %p, *pml4: %p\n", pmap->pm_pml4, *pmap->pm_pml4);
+#endif
+    sva_declare_l4_page(VM_PAGE_TO_PHYS(pml4pg), pmap->pm_pml4);
 #endif
 
 	/* Wire in kernel global address entries. */
 #ifdef SVA_MMU
-#if 0 /* There is a bug in the way we declare here due to the fact that these
-         pages are preinitialized kernel pages and cannot be zeroed */
-    sva_declare_l3_page(KPDPphys, &pmap->pm_pml4[KPML4I]);
-#endif
+    /* 
+     * Update the L4 mapping with the kernel VAs. Note that these pages were
+     * initialized during system startup and thus the reason we don't have a
+     * declare here.
+     */
     sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
                 | PG_V | PG_U)); 
 #else
@@ -1862,10 +1897,11 @@ pmap_pinit(pmap_t pmap)
     for (i = 0; i < NDMPML4E; i++) {
         /* Wire in kernel global address entries. */
 #ifdef SVA_MMU
-#if 0 /* There is a bug in the way we declare here due to the fact that these
-         pages are preinitialized kernel pages and cannot be zeroed */
-        sva_declare_l3_page(DMPDPphys, &pmap->pm_pml4[DMPML4I + i]);
-#endif
+        /* 
+         * Update the L4 mapping with the kernel VAs. Note that these pages were
+         * initialized during system startup and thus the reason we don't have a
+         * declare here.
+         */
         sva_update_l4_mapping( &pmap->pm_pml4[DMPML4I + i],
                 (pd_entry_t)((DMPDPphys + (i << PAGE_SHIFT)) | PG_RW | PG_V |
                     PG_U));
@@ -1889,10 +1925,28 @@ pmap_pinit(pmap_t pmap)
     pmap->pm_pml4[PML4PML4I] = VM_PAGE_TO_PHYS(pml4pg) | PG_V | PG_RW | PG_A | PG_M;
 #endif
 
+#if SVA_DEBUG
+    printf("pmap->pm_root: %p, *pmap->pm_root: %p\n",&pmap->pm_root,pmap->pm_root);
+    printf("pmap: %p\n", pmap);
+    printf("DMAP phys of pmap: %p, pmap->pm_root: %p\n", DMAP_TO_PHYS((unsigned long) pmap),
+            DMAP_TO_PHYS((unsigned long)pmap->pm_root));
+
+    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+    //sva_load_cr0( (rcr0() & ~CR0_WP) );
+    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+#endif
+
     pmap->pm_root = NULL;
-	CPU_ZERO(&pmap->pm_active);
+    CPU_ZERO(&pmap->pm_active);
 	TAILQ_INIT(&pmap->pm_pvchunk);
 	bzero(&pmap->pm_stats, sizeof pmap->pm_stats);
+
+#if SVA_DEBUG
+    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+    //sva_load_cr0( (rcr0() | CR0_WP) );
+    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+    //panic("\n---------\n");
+#endif
 
 	return (1);
 }
@@ -1957,7 +2011,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
          * Declare the l3 page to SVA. This will initialize paging structures
          * and make the page table page as read only
          */
-        sva_declare_l3_page(VM_PAGE_TO_PHYS(m), pml4);
+        sva_declare_l3_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
 
         /*
          * Update the l4 mappings to the newly created page table page
@@ -2008,7 +2062,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
          * Declare the l2 page to SVA. This will initialize paging structures
          * and make the page table page as read only
          */
-        sva_declare_l2_page(VM_PAGE_TO_PHYS(m), pdp);
+        sva_declare_l2_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
 
         /*
          * Update the l3 mappings to the newly created page table page
@@ -2093,7 +2147,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
                 pd, *pd);
 #endif
 
-        sva_declare_l1_page(VM_PAGE_TO_PHYS(m), pd);
+        sva_declare_l1_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
 
 #if 0
         printf("Post dec l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n", 
@@ -2341,7 +2395,7 @@ pmap_growkernel(vm_offset_t addr)
              * Declare the l2 page to SVA. This will initialize paging
              * structures and make the page table page as read only
              */
-            sva_declare_l2_page(paddr, pdpe);
+            sva_declare_l2_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
 
             /*
              * SVA update the mappings to the newly created page table page
@@ -2375,16 +2429,12 @@ pmap_growkernel(vm_offset_t addr)
 		paddr = VM_PAGE_TO_PHYS(nkpg);
 		newpdir = (pd_entry_t) (paddr | PG_V | PG_RW | PG_A | PG_M);
 
-        /* 
-         * TODO:FIXME: This function traps in the kernel somewhere in the declare
-         * function. 
-         */
 #ifdef SVA_MMU
         /* 
          * Declare the l1 page to SVA. This will initialize paging structures
          * and make the page table page as read only
          */
-        sva_declare_l1_page(paddr, pde);
+        sva_declare_l1_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
 
         /*
          * Update the mapping in the level 2 entry.
@@ -2495,7 +2545,18 @@ pmap_collect(pmap_t locked_pmap, struct vpgqueues *vpq)
 			KASSERT((*pde & PG_PS) == 0, ("pmap_collect: found"
 			    " a 2mpage in page %p's pv list", m));
 			pte = pmap_pde_to_pte(pde, va);
-			tpte = pte_load_clear(pte);
+
+#ifdef SVA_MMU
+            /* 
+             * To emulate the proper behavior here we first read the pte value then
+             * do an update mapping to remove the mapping. Pass in a value of zero
+             * to remove the mapping.
+             */
+            tpte = *pte;
+            sva_update_mapping(pte, 0);
+#else
+            tpte = pte_load_clear(pte);
+#endif
 			KASSERT((tpte & PG_W) == 0,
 			    ("pmap_collect: wired pte %#lx", tpte));
 			if (tpte & PG_A)
@@ -2881,8 +2942,6 @@ pmap_demote_pde(pmap_t pmap, pd_entry_t *pde, vm_offset_t va)
 		 * is the only part of the kernel address space that must be
 		 * handled here.
 		 */
-        /* SVA-TODO: analyze this function and flesh out what this page here is
-         * used for mpte*/
 		if ((oldpde & PG_A) == 0 || (mpte = vm_page_alloc(NULL,
 		    pmap_pde_pindex(va), (va >= DMAP_MIN_ADDRESS && va <
 		    DMAP_MAX_ADDRESS ? VM_ALLOC_INTERRUPT : VM_ALLOC_NORMAL) |
@@ -3278,7 +3337,19 @@ pmap_remove_all(vm_page_t m)
 		KASSERT((*pde & PG_PS) == 0, ("pmap_remove_all: found"
 		    " a 2mpage in page %p's pv list", m));
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
-		tpte = pte_load_clear(pte);
+
+#ifdef SVA_MMU
+        /* 
+         * To emulate the proper behavior here we first read the pte value then
+         * do an update mapping to remove the mapping. Pass in a value of zero
+         * to remove the mapping.
+         */
+        tpte = *pte;
+        sva_update_mapping(pte, 0);
+#else
+        tpte = pte_load_clear(pte);
+#endif
+
 		if (tpte & PG_W)
 			pmap->pm_stats.wired_count--;
 		if (tpte & PG_A)
@@ -3624,14 +3695,6 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_prot_t access, vm_page_t m,
 	 * In the case that a page table page is not
 	 * resident, we are creating it here.
 	 */
-    /***** NDD_NOTE
-     * This is where we actually map in the new frame. The pte will be added to
-     * the given pmap. This is the actual frame that will be inserted into the
-     * pte. note "m"pte... these functions are where we will have new l1
-     * declarations. The rest of the function includes some verification and
-     * Kernel metadata management stuff. There are some potential modifications
-     * to the pte that we will need to track though.
-     */
 	if (va < VM_MAXUSER_ADDRESS)
 		mpte = pmap_allocpte(pmap, va, M_WAITOK);
 
@@ -4595,7 +4658,12 @@ pmap_remove_pages(pmap_t pmap)
 					("pmap_remove_pages: bad tpte %#jx",
 					(uintmax_t)tpte));
 
-				pte_clear(pte);
+#ifdef SVA_MMU
+                /* Clear the pte entry */
+                sva_update_mapping(pte, 0);
+#else
+                pte_clear(pte);
+#endif
 
 				/*
 				 * Update the vm_page_t clean/reference bits.

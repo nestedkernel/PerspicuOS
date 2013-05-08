@@ -297,6 +297,22 @@ get_pagetable (void) {
   return (unsigned char *)((((uintptr_t)cr3) & 0x000ffffffffff000u));
 }
 
+/*
+ *****************************************************************************
+ * Low level register read/write functions
+ *****************************************************************************
+ */
+#define MSR_REG_EFER    0xC0000080      /* MSR for EFER register */
+
+static inline uint64_t
+rdmsr(u_int msr)
+{
+    uint32_t low, high;
+
+    __asm __volatile("rdmsr" : "=a" (low), "=d" (high) : "c" (msr));
+    return (low | ((uint64_t)high << 32));
+}
+
 /* 
  * Return the current value in cr0
  */
@@ -338,24 +354,18 @@ _rcr4(void) {
     return (data);
 }
 
-#if 0
-static inline u_long
+static inline uint64_t
 _efer(void) {
-    u_long  data;
-    __asm __volatile("movq %%EFER,%0" : "=r" (data));
-    return (data);
+    return rdmsr(MSR_REG_EFER);
 }
-#endif
 
 static inline void
 print_regs(void) {
     printf("Printing Active Reg Values:\n");
-#if 0
-    printf("\tEFER: &p", _efer());
-#endif
-    printf("\tCR0: %p\n", _rcr0());
-    printf("\tCR3: %p\n", _rcr3());
-    printf("\tCR4: %p\n", _rcr4());
+    printf("\tEFER: %p\n", _efer());
+    printf("\t CR0: %p\n", _rcr0());
+    printf("\t CR3: %p\n", _rcr3());
+    printf("\t CR4: %p\n", _rcr4());
 }
 
 /*
@@ -386,35 +396,6 @@ pageVA(page_desc_t pg){
     return getVirtual(pg.physAddress);    
 }
 #endif
-
-/*
- * Function: readOnlyPage
- *
- * Description: 
- *  This function determines whether or not the given page descriptor
- *  references a page that should be marked as read only. We set this for pages
- *  of type: l4,l3,l2,l1, code, and TODO: is this all of them?
- *
- * Inputs:
- *  pg  - page descriptor to check
- *
- * Return:
- *  - 0 denotes not a read only page
- *  - 1 denotes a read only page
- */
-static inline int
-readOnlyPage(page_desc_t *pg){
-    return  0
-#if 0
-            || pg->type == PG_L1 
-            || pg->type == PG_L4    
-            || pg->type == PG_L3
-            || pg->type == PG_L2
-            || pg->type == PG_CODE
-            || pg->type == PG_SVA 
-#endif
-            ;
-}
 
 /*
  * Description:
@@ -510,5 +491,75 @@ static inline int isUserMapping (page_entry_t mapping) { return (mapping & PG_U)
 static inline int isUserPTP (page_desc_t *page) { return isPTP(page) && page->user;}
 static inline int isUserPG (page_desc_t *page){ return page->user; }
 static inline int isCodePG (page_desc_t *page){ return page->code; }
+
+/*
+ * Function: readOnlyPage
+ *
+ * Description: 
+ *  This function determines whether or not the given page descriptor
+ *  references a page that should be marked as read only. We set this for pages
+ *  of type: l4,l3,l2,l1, code, and TODO: is this all of them?
+ *
+ * Inputs:
+ *  pg  - page descriptor to check
+ *
+ * Return:
+ *  - 0 denotes not a read only page
+ *  - 1 denotes a read only page
+ */
+static inline int
+readOnlyPageType(page_desc_t *pg){
+    return  0
+#if 0
+            || pg->type == PG_L1 
+            || pg->type == PG_L2
+            || pg->type == PG_L4    
+            || pg->type == PG_L3
+            || pg->type == PG_CODE
+            || pg->type == PG_SVA 
+#endif
+            ;
+}
+
+/*
+ * Function: mapPageReadOnly
+ *
+ * Description:
+ *  This function determines if the particular page-translation-page entry in
+ *  combination with the new mapping necessitates setting the new mapping as
+ *  read only. The first thing to check is whether or not the new page needs to
+ *  be marked as read only. The second issue is to distinguish between the case
+ *  when the new read only page is being inserted as a page-translation-page
+ *  reference or as the lookup value for a given VA by the MMU. The latter case
+ *  is the only we mark as read only, which will protect the page from writes
+ *  if the WP bit in CR0 is set. 
+ *
+ * Inputs:
+ *  - ptePG     : The page descriptor of the page we are inserting the new
+ *                mapping into. We need this because if the page level is 2 or
+ *                3 then we may have a leaf page or not depending on the PS
+ *                flag in the mapping. If the insertion is to an L1 then we
+ *                have a new leaf mapping. 
+ *  - maping    : The mapping to be inserted, is used to determine whether we
+ *                have a big page size or not (PS bit). 
+ */
+static inline int 
+mapPageReadOnly(page_desc_t * ptePG, page_entry_t mapping) {
+
+    if (readOnlyPageType(getPageDescPtr(mapping))){
+        /* If we have an L1 page then we have a data frame mapping */
+        if (isL1Pg(ptePG))
+            return 1;
+
+        /* 
+         * If we assigning to an L2 or L3 check the PS flag to see if we map a page
+         * frame.
+         */
+        if ( (isL2Pg(ptePG) || isL3Pg(ptePG) ) && (mapping & PG_PS) )
+            return 1;
+    }
+
+    return 0;
+}
 
 #endif

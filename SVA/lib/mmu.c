@@ -48,6 +48,7 @@
 /* 
  * Function prototypes for finding the virtual address of page table components
  */
+static inline page_entry_t * get_pgeVaddr (uintptr_t vaddr);
 static inline pml4e_t * get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr);
 static inline pdpte_t * get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr);
 static inline pde_t * get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr);
@@ -60,6 +61,8 @@ static inline uintptr_t get_pml4ePaddr (unsigned char * cr3, uintptr_t vaddr);
 static inline uintptr_t get_pdptePaddr (pml4e_t * pml4e, uintptr_t vaddr);
 static inline uintptr_t get_pdePaddr (pdpte_t * pdpte, uintptr_t vaddr);
 static inline uintptr_t get_ptePaddr (pde_t * pde, uintptr_t vaddr);
+
+static inline void __update_mapping (pte_t * pageEntryPtr, page_entry_t val);
 
 /*
  *****************************************************************************
@@ -505,6 +508,10 @@ pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
     }
     
     /* 
+     * TODO There might be a bug in this lookup, as it doesn't account for PS=1
+     * pages e.g., 2MB or 1GB pages. 
+     */
+    /* 
      * Verify that we have the correct PTE for the given VA.
      */
     SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
@@ -847,8 +854,9 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
 
 #if ACTIVATE_PROT
     /* If the new page should be read only, mark the entry value as such */
-    if (readOnlyPage(getPageDescPtr(mapping)) && isUserMapping(mapping))
+    if (mapPageReadOnly(getPageDescPtr(*pteptr), mapping)) {
         mapping = setMappingReadOnly(mapping);
+    }
 #endif
 
     /* perform the actual write to the pte entry */
@@ -883,20 +891,28 @@ init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
     /* Zero page */
     memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
+#if UNDER_TEST
 #if ACTIVATE_PROT
     /*
      * If this should be marked as a read only page, set the RO flag of the pde
      * referencing this new page. This is an update type operation. A value of
      * 0 in bit position 2 configures for no writes.
      */
-    if (readOnlyPage(pg) && isUserMapping(*page_entry)) {
+    if (readOnlyPageType(pg))
+    {
         newMapping = setMappingReadOnly(newMapping);
-        //printf("==== SVA<init_page_entry>: Setting readonly L%d, mapping: 0x%lx\n",
-                //getPageDescPtr(frameAddr)->type, newMapping);
 
         /* Perform the actual store of the value to the page_entry */
         page_entry_store(page_entry, newMapping);
     }
+#endif
+
+#else
+    /* TODO:
+     * In the end we want to use this to insert the new declared PTPs so they
+     * pass validation as they are real PTP updates. 
+     */
+    __update_mapping(page_entry, *page_entry);
 #endif
 }
 
@@ -1026,6 +1042,56 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
 }
 
 /* Functions for finding the virtual address of page table components */
+
+/* 
+ * Function: get_pgeVaddr
+ *
+ * Description:
+ *  This function does page walk to find the entry controlling access to the
+ *  specified address. The function takes into consideration the potential use
+ *  of larger page sizes.
+ * 
+ * Inputs:
+ *  - vaddr     : Virtual Address to find entry for
+ */
+static inline page_entry_t * 
+get_pgeVaddr (uintptr_t vaddr) {
+    page_entry_t *pge;
+
+    /* Get the base of the pml4 to traverse */
+    uintptr_t cr3 = get_pagetable();
+
+    /* Get the VA of the pml4e for this vaddr */
+    pml4e_t *pml4e = get_pml4eVaddr (cr3, vaddr);
+
+    /* Get the VA of the pdpte for this vaddr */
+    pdpte_t *pdpte = get_pdpteVaddr (pml4e, vaddr);
+
+    /* 
+     * The PDPE can be configurd in large page mode. If it is then we have the
+     * entry corresponding to the given vaddr If not then we go deeper in the
+     * page walk.
+     */
+    if(*pdpte & PG_PS) {
+        pge = pdpte;
+    } else {
+        /* Get the pde associated with this vaddr */
+        pde_t *pde = get_pdeVaddr (pdpte, vaddr);
+        
+        /* 
+         * As is the case with the pdpte, if the pde is configured for large
+         * page size then we have the corresponding entry. Otherwise we need to
+         * traverse one more level, which is the last. 
+         */
+        if(*pde & PG_PS)
+            pge = pde;
+        else 
+            pge = get_pteVaddr (pde, vaddr);
+    }
+    
+    /* Return the entry corresponding to this vaddr */
+    return pge;
+}
 
 static inline pml4e_t *
 get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
@@ -1651,7 +1717,7 @@ sva_mm_load_pgtable (void * pg) {
     /* Control Register 0 value (which is used to enable paging) */
     unsigned int cr0;
 
-#if DEBUG >= 2
+#if DEBUG >= 5
     printf("##### SVA<sva_mm_load_pgtable> new entry value: 0x%lx,", pg);
     print_regs();
 #endif 
@@ -1672,7 +1738,7 @@ sva_mm_load_pgtable (void * pg) {
             : "=r" (cr0)
             : "r" (pg) : "memory");
     
-#if DEBUG >= 2
+#if DEBUG >= 5
     print_regs();
 #endif
 
@@ -1775,6 +1841,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         numPgEntries, enum page_type_t pageLevel ) 
 { 
     int i;
+    int traversedPTEAlready;
     enum page_type_t subLevelPgType;
     unsigned long numSubLevelPgEntries;
     page_desc_t *thisPg;
@@ -1794,6 +1861,9 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
 
     /* Get the page_desc for this page */
     thisPg = getPageDescPtr(pageMapping);
+
+    /* Mark if we have seen this traversal already */
+    traversedPTEAlready = thisPg->type != PG_UNUSED;
 
 #if DEBUG_INIT >= 1
     /* Character inputs to make the printing pretty for debugging */
@@ -1824,18 +1894,6 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
             break;
     }
 #endif
-
-    /* 
-     * There is one recursive mapping, which is the last entry in the PML4 page
-     * table page. Thus we return if the page desc has already been initialized
-     * to avoid an infinite recurse.
-     */
-    if (thisPg->type != PG_UNUSED){
-#if DEBUG_INIT >= 1
-        printf("%sRecursed on already initialized page_desc\n", indent);
-#endif
-        return;
-    }
 
     /*
      * For each level of page we do the following:
@@ -1913,6 +1971,20 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         printf("SVA: page type %d. Frame addr: %p\n",thisPg->type, pagePtr); 
         panic("SVA: walked an entry with invalid page type.");
     }
+    
+    /* 
+     * There is one recursive mapping, which is the last entry in the PML4 page
+     * table page. Thus we return before traversing the descriptor again.
+     * Notice though that we keep the last assignment to the page as the page
+     * type information. 
+     */
+    if(traversedPTEAlready) {
+#if DEBUG_INIT >= 1
+        printf("%sRecursed on already initialized page_desc\n", indent);
+#endif
+        return;
+    }
+
 
 #if 0//ACTIVATE_PROT
 
@@ -2154,7 +2226,7 @@ sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr, (page_entry_t *) pte);
+    //init_page_entry(frameAddr, (page_entry_t *) pte);
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -2174,7 +2246,10 @@ sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
  *  *pde  - the virtual address of the pde referencing this new create l1 page
  */
 void
-sva_declare_l1_page (unsigned long frameAddr, pde_t *pde) {
+sva_declare_l1_page (unsigned long frameAddr, uintptr_t vaddr) {
+
+    /* Get the entry controlling the permissions for this pml4 PTP */
+    page_entry_t *pge = get_pgeVaddr(vaddr);;
 
     /* Get the page_desc for the newly declared l4 page frame */
     page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2182,10 +2257,9 @@ sva_declare_l1_page (unsigned long frameAddr, pde_t *pde) {
     /* Disable interrupts so that we appear to execute as a single instruction. */
     unsigned long rflags = sva_enter_critical();
 
-
-#if DEBUG >= 4
-    printf("##### SVA<declare_l1_page>: frameAddr: %p, pde: %p, *pde: 0x%lx\n", 
-            frameAddr, pde, *pde);
+#if DEBUG >= 2
+    printf("<<<<\n   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
 #endif
 
     /*
@@ -2198,7 +2272,12 @@ sva_declare_l1_page (unsigned long frameAddr, pde_t *pde) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr, (page_entry_t *) pde);
+    init_page_entry(frameAddr, pge);
+
+#if DEBUG >= 2
+    printf("   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+            frameAddr, pge, *pge);
+#endif
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -2249,34 +2328,20 @@ void llva_remove_l1_page(pte_t * pteptr) {
  *  *pdpte    - the virtual address of the l3entry referencing this newly
  *              created l2 page
  */
-void sva_declare_l2_page(unsigned long frameAddr, pdpte_t * pdpte) {
+void sva_declare_l2_page(unsigned long frameAddr, uintptr_t vaddr) {
     
+    /* Get the entry controlling the permissions for this pml4 PTP */
+    page_entry_t *pge = get_pgeVaddr(vaddr);;
+
     /* Get the page_desc for the newly declared l4 page frame */
     page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
     /* Disable interrupts so that we appear to execute as a single instruction. */
     unsigned long rflags = sva_enter_critical();
 
-    /*
-     * TODO: Not certain if this is obsoete yet as we might need to handle
-     * dynamic page sizes and this code should help with that. 
-     */
-#if OBSOLETE
-    void* pagetable = get_pagetable();
-
-    memset(pgdptr, 0, USER_PTRS_PER_PGD * sizeof(pgd_t));
-    memcpy(pgdptr + USER_PTRS_PER_PGD,
-            swapper_pg_dir + USER_PTRS_PER_PGD,
-            (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
-
-    pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
-    pte_t new_val = __pte(pte_val(*pte) & ~_PAGE_RW);
-    unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
-#endif
-
-#if DEBUG >= 4
-    printf("##### SVA<declare_l2_page>: frameAddr: %p, pdpte: %p, *pdpte: 0x%lx\n", 
-            frameAddr, pdpte, *pdpte);
+#if DEBUG >= 2
+    printf("<<<<\n   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
 #endif
 
     /*
@@ -2294,7 +2359,12 @@ void sva_declare_l2_page(unsigned long frameAddr, pdpte_t * pdpte) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr, (page_entry_t *) pdpte);
+    init_page_entry(frameAddr, pge);
+
+#if DEBUG >= 2
+    printf("   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+            frameAddr, pge, *pge);
+#endif
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -2345,8 +2415,12 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
  *              created l3 page
  */
 void
-sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
+sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
     
+
+    /* Get the entry controlling the permissions for this pml4 PTP */
+    page_entry_t *pge = get_pgeVaddr(vaddr);;
+
     /* Get the page_desc for the newly declared l4 page frame */
     page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
@@ -2354,8 +2428,8 @@ sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
     unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
-    printf("##### SVA<declare_l3_page>: frameAddr: %p, pml4e: %p, *pml4e: 0x%lx\n", 
-            frameAddr, pml4e, *pml4e);
+    printf("<<<<\n   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
 #endif
 
     /* Mark this page frame as an L3 page frame */
@@ -2366,7 +2440,12 @@ sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr, (page_entry_t *) pml4e);
+    init_page_entry(frameAddr, (page_entry_t *) pge);
+    
+#if DEBUG >= 2
+    printf("   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+            frameAddr, pge, *pge);
+#endif
 
     /* Restore interrupts */
     sva_exit_critical (rflags);
@@ -2387,8 +2466,11 @@ sva_declare_l3_page (unsigned long frameAddr, pml4e_t *pml4e) {
  *              created l4 page
  */
 void
-sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
-    
+sva_declare_l4_page (unsigned long frameAddr, uintptr_t vaddr) {
+
+    /* Get the entry controlling the permissions for this pml4 PTP */
+    page_entry_t *pml4PE = get_pgeVaddr(vaddr);;
+
     /* Get the page_desc for the newly declared l4 page frame */
     page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
@@ -2396,9 +2478,9 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
     unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
-    printf("##### SVA<declare_l4_page>: frameAddr: %p, pml4e: %p, *pml4e: 0x%lx\n", 
-            frameAddr, pml4e, *pml4e);
-    printf("==== SVA<decl_l4_pre>: CR0: 0x%lx, CR3: 0x%lx\n",_rcr0(), _rcr3());
+    print_regs();
+    printf("<<<<\n   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx, ptetype %d\n", 
+            frameAddr, pml4PE, *pml4PE, getPageDescPtr(*pml4PE)->type);
 #endif
 
 #if NOT_YET_IMPLEMENTED
@@ -2424,13 +2506,12 @@ sva_declare_l4_page (unsigned long frameAddr, pml4e_t *pml4e) {
          * page_entry_t to the function as it enables reuse of code for each of the
          * entry declaration functions. 
          */
-        init_page_entry(frameAddr, (page_entry_t *) pml4e);
+        init_page_entry(frameAddr, (page_entry_t *) pml4PE);
     }
 
 #if DEBUG >= 2
-    printf("==== SVA<decl_l4_post>: CR0: 0x%lx\n",_rcr0());
-    printf("##### SVA: post declare_l4_page: frameAddr: %p, pml4e PTR: %p, pml4e: 0x%lx\n", 
-            frameAddr, pml4e, *pml4e);
+    printf("   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx\n>>>>\n", 
+            frameAddr, pml4PE, *pml4PE);
 #endif
 
     /* Restore interrupts */
@@ -2595,13 +2676,21 @@ sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
  */
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
-
-#if DEBUG > 2
-    printf("##### SVA: update_l1_page\n");
+#if DEBUG >= 2
+    printf("<<<<\n\tSVA:  pre-update_l1_page: pte: %p, *pte: 0x%lx, newMapping: 0x%lx\n",
+            pteptr, *pteptr, val);
+    print_regs();
 #endif
 
+    /* TODO: bug in init_leaf_page */
     init_leaf_page_from_mapping(val);
     __update_mapping(pteptr,val);
+
+#if DEBUG >= 2
+    printf("\tSVA: post-update_l1_page: pte: %p, *pte: 0x%lx\n>>>>\n", 
+            pteptr, *pteptr);
+#endif
+
 }
 
 /*
@@ -2616,11 +2705,18 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 4
-    printf("##### SVA: update_l2_page\n");
+#if DEBUG >= 2
+    printf("<<<<\n\tSVA:  pre-update_l2_page: pde: %p, *pde: 0x%lx, newMapping: 0x%lx\n",
+            pdePtr, *pdePtr, val);
+    print_regs();
 #endif
 
     __update_mapping(pdePtr, val);
+
+#if DEBUG >= 2
+    printf("\tSVA: post-update_l2_page: pde: %p, *pde: 0x%lx\n>>>>\n", 
+            pdePtr, *pdePtr);
+#endif
 
 #if OBSOLETE
     void* pagetable = get_pagetable();
@@ -2696,11 +2792,15 @@ void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
 
     unsigned long rflags;
 
-#if DEBUG >= 3
-    printf("##### SVA: update_l3_page\n");
+#if DEBUG >= 2
+    printf("<<<<\n\tSVA:  pre-update_l3_page: pdpte: %p, *pdpte: 0x%lx, newMapping: %p\n>>>>\n",
+            pdptePtr, *pdptePtr, val);
 #endif
-
     __update_mapping(pdptePtr, val);
+#if DEBUG >= 2
+    printf("\tSVA: post-update_l3_page: pdpte: %p, *pdpte: 0x%lx\n>>>>\n",
+            pdptePtr, *pdptePtr);
+#endif
 }
 
 /*
@@ -2711,18 +2811,14 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
     unsigned long rflags;
 
 #if DEBUG >= 2
-    printf("##### SVA: pre-update_l4_page: pml4e: %p, *pml4e: 0x%lx, newMapping: 0x%lx\n",
+    printf("<<<<\n   SVA:update_l4_page: pml4e: %p, *pml4e: 0x%lx, newMapping: 0x%lx\n",
             pml4ePtr, *pml4ePtr, val);
-    
-    printf("\tFrame Type: %d, pml4e: %p, *pml4e: %p, Frame Address: %p\n", 
-            page_desc[((val & PG_FRAME)/pageSize)].type,
-            pml4ePtr, *pml4ePtr, (val & PG_FRAME)); 
 #endif
 
     __update_mapping(pml4ePtr, val);
 
 #if DEBUG >= 2
-    printf("##### SVA: post-update_l4_page: pml4e: %p, *pml4e: 0x%lx\n",
+    printf("   SVA:update_l4_page: pml4e: %p, *pml4e: 0x%lx\n>>>>\n",
             pml4ePtr, *pml4ePtr);
 #endif
 }

@@ -45,11 +45,6 @@
 #ifndef _MACHINE_PMAP_H_
 #define	_MACHINE_PMAP_H_
 
-#ifdef SVA_MMU
-#include <sva/mmu_intrinsics.h>
-#define SVA_DEBUG 1
-#endif
-
 /*
  * Page-directory and page-table entries follow this format, with a few
  * of the fields not present here and there, depending on a lot of things.
@@ -226,12 +221,7 @@ pte_load_store(pt_entry_t *ptep, pt_entry_t pte)
 static __inline void
 pte_store(pt_entry_t *ptep, pt_entry_t pte)
 {
-#ifdef SVA_MMU
-    /* Insert new mapping */
-    sva_update_mapping(ptep, pte);
-#else
     *ptep = pte;
-#endif
 }
 
 #define	pte_clear(ptep)		pte_store((ptep), (pt_entry_t)0ULL)
