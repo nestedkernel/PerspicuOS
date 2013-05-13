@@ -8,6 +8,8 @@ o Critical Features
   o Determine what is causing overhead and fix it
   o Get Apache to work
   o Test ssh-agent with ssh client
+  o Add appendix
+  o FP optimization
 
 o SVA-OS
   o MMU
