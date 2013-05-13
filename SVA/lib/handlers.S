@@ -278,6 +278,21 @@ Trap:
   cmovneq IC_RSP(%rsp), %rsp
 
   /*
+   * Zero out live registers that could be spilled to the stack.  Without
+   * memory safety, we can't guarantee that they're safe.
+   */
+  xorq %r15, %r15
+  xorq %r14, %r14
+  xorq %r13, %r13
+  xorq %r12, %r12
+  xorq %r11, %r11
+  xorq %r10, %r10
+  xorq %r9,  %r9
+  xorq %r8,  %r8
+  xorq %rdx, %rdx
+  xorq %rcx, %rcx
+
+  /*
    * Call the trap handler registered by the OS for this trap.
    */
   movq $interrupt_table, %rax
@@ -514,6 +529,17 @@ SVAsyscall:
    * switch to the kernel stack pointer specified by the kernel.
    */
   movq TSS_RSP0(%rbx), %rsp
+
+  /*
+   * Zero out live registers that could be spilled to the stack.  Without
+   * memory safety, we can't guarantee that they're safe.
+   */
+  xorq %r15, %r15
+  xorq %r14, %r14
+  xorq %r13, %r13
+  xorq %r12, %r12
+  xorq %r11, %r11
+  xorq %r10, %r10
 
   /*
    * Call the system software system call handler.
