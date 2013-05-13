@@ -304,6 +304,13 @@ cpu_exit(struct thread *td)
 		user_ldt_free(td);
 	else
 		mtx_unlock(&dt_lock);
+#if 1
+  /* SVA:
+   *  Destroy the integer state to release resources and mark that the thread
+   *  can never be put on to the processor again.
+   */
+  sva_release_stack (td->svaID);
+#endif
 }
 
 void
