@@ -243,9 +243,11 @@ Trap:
   movq %gs:0x260, %rbp
   movq %rsp, CPU_NEWIC(%rbp)
 
+#if 0
   /* Verify the Interrupt Context */
   callq assertGoodIC
   RETTARGET
+#endif
 
   /*
    * Modify the value in the Task State Segment (TSS) so that the next trap
