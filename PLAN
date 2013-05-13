@@ -3,20 +3,20 @@ SVA2 Master Plan
 
 o Critical Features
   x Invoke
-  o Context Switching: Adding page table register
-  o Integrating load/store instrumentation pass
-  o Applications using Secure Memory
-  o Experiments
+  x Context Switching: Adding page table register
+  x Integrating load/store instrumentation pass
+  x Applications using Secure Memory
+  x Experiments
   o Non-writable kernel code memory
   o CFI check that we're jumping to a kernel-level address
 
 o SVA-OS
   o MMU
-  o Thread local storage
-  o Process creation and deletion
+  . Thread local storage
+  x Process creation and deletion
     x kernel thread creation
     x process creation
-    o process deletion
+    x process deletion
   x Invoke instructions
     x invoke
       x sva_invoke
@@ -30,7 +30,7 @@ o SVA-OS
     x sva_ialloca
   o Context Switching
     x Basic context switching
-    o Adding page table register
+    x Adding page table register
     o FP optimzation
   x Interrupt Context
     x System Calls
@@ -51,6 +51,6 @@ o Compiler Instrumentation
     o Non-writable kernel code memory
   o MachineFunctionPass for Load/Store Instrumentation (3 weeks)
 
-o Experiments (1 week)
+x Experiments (1 week)
 
-o Applications using Secure Memory (3 weeks)
+x Applications using Secure Memory (3 weeks)
