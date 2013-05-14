@@ -172,7 +172,7 @@ void X86CFIOptPass::insertCheckCall32r(MachineBasicBlock& MBB,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, reg);
+  //addSkipInstruction (MBB, MI, dl, TII, reg);
   return;
 }
 
@@ -194,7 +194,7 @@ void X86CFIOptPass::insertCheckCall64r(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, reg);
+  //addSkipInstruction (MBB, MI, dl, TII, reg);
   return;
 }
 
@@ -221,7 +221,7 @@ void X86CFIOptPass::insertCheckCall32m(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, X86::EAX);
+  //addSkipInstruction (MBB, MI, dl, TII, X86::EAX);
 
   // call %eax
   BuildMI(MBB,MI,dl,TII->get(X86::CALL32r)).addReg(X86::EAX);
@@ -279,7 +279,7 @@ void X86CFIOptPass::insertCheckJmp32r(MachineBasicBlock& MBB, MachineInstr *MI,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, reg);
+  //addSkipInstruction (MBB, MI, dl, TII, reg);
   return;
 }
 
@@ -306,7 +306,7 @@ void X86CFIOptPass::insertCheckJmp64r(MachineBasicBlock& MBB, MachineInstr* MI,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, reg);
+  //addSkipInstruction (MBB, MI, dl, TII, reg);
   return;
 }
 
@@ -357,7 +357,7 @@ void X86CFIOptPass::insertCheckJmp32m(MachineBasicBlock& MBB, MachineInstr* MI,
     //
     // Add code to skip the CFI label.
     //
-    addSkipInstruction (MBB, MI, dl, TII, killed);
+    //addSkipInstruction (MBB, MI, dl, TII, killed);
 
     // JMP32r %killed
     BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(killed);
@@ -474,7 +474,7 @@ void X86CFIOptPass::insertCheckTailJmpr(MachineBasicBlock& MBB, MachineInstr* MI
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, reg);
+  //addSkipInstruction (MBB, MI, dl, TII, reg);
   return;
 }
 
@@ -664,7 +664,7 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   //
   // Add code to skip the CFI label.
   //
-  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
+  //addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
 
   // jmp %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);

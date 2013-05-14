@@ -37,7 +37,7 @@ namespace llvm{
     const static bool skipID = true; // skip prefetchnta 
 #else
     const static bool JTOpt  = false; // jump table index optimization
-    const static bool skipID = false; // skip prefetchnta 
+    const static bool skipID = true; // skip prefetchnta 
 #endif
   
   
