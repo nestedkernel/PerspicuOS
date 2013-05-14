@@ -36,6 +36,7 @@
               addq  $8, %rsp ; \
               cmpl  $CHECKLABEL, (%rcx) ; \
               jne 23f ; \
+              addq  $0x8, %rcx ; \
               jmpq  *%rcx ; \
               23: movq $0xfea, %rax;
 
