@@ -1045,10 +1045,15 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
             // If the JMP32r instruction is a jump table, the check can be
             // eliminated.
             //
+#if 0
             if (!JTOpt || !fromJmpTable(MI)){
               insertIDSuccessors(MBB,dl,TII);
               insertCheckJmp64r(MBB,MI,dl,TII,EMBB);
             }
+#else
+            insertIDSuccessors(MBB,dl,TII);
+            insertCheckJmp64r(MBB,MI,dl,TII,EMBB);
+#endif
             break;
 
           case X86::RET:

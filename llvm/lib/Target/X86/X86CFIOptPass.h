@@ -32,14 +32,8 @@ namespace llvm{
     const static int CFI_ID = 0xbeefbeef;
 #endif
 
-#if 0
     const static bool JTOpt  = true; // jump table index optimization
     const static bool skipID = true; // skip prefetchnta 
-#else
-    const static bool JTOpt  = false; // jump table index optimization
-    const static bool skipID = true; // skip prefetchnta 
-#endif
-  
   
     // The X86 target machine
     X86TargetMachine &TM;
