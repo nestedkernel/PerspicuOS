@@ -830,22 +830,45 @@ MachineBasicBlock* X86CFIOptPass::splitMBBAt(MachineBasicBlock &CurMBB,
   return NewMBB;
 }
 
-// returns true if MI's target is from a jump table
-bool X86CFIOptPass::fromJmpTable(const MachineInstr* const MI){
-  assert(MI->getOpcode() == X86::JMP32r);
+//
+// Method: fromJmpTable()
+//
+// Description:
+//  Determine if the argument to the given jump instruction comes from a jump
+//  table.
+//
+// Return value:
+//  true  - MI's target is from a jump table
+//  false - MI's target is notfrom a jump table
+//
+bool X86CFIOptPass::fromJmpTable (const MachineInstr* const MI){
+  // Assert that we're being used on the right kind of instruction
+  assert((MI->getOpcode() == X86::JMP32r) || (MI->getOpcode() == X86::JMP64r));
+
+  //
+  // Get the register operand.
+  //
   const unsigned Reg = MI->getOperand(0).getReg();
-  if(!Reg) return false;
+  if (!Reg)
+    return false;
   const MachineBasicBlock& MBB = *MI->getParent();
   const TargetRegisterInfo* TRI = MBB.getParent()->getTarget().getRegisterInfo();
+
+  //
+  // Scan back through the basic block looking for an instruction that either
+  // defines or modified the register holding the target address.  If one of
+  // the operands is a jump table, assume that the new value for the register
+  // is okay.
+  //
   MachineBasicBlock::const_iterator I(MI), E = MBB.begin();
   --I;
-  while(I != E){
-  if((*I).definesRegister(Reg) || (*I).modifiesRegister(Reg, TRI)){
-    for(unsigned i = 0, e = (*I).getNumOperands(); i < e; ++i)
-    if((*I).getOperand(i).getType() == MachineOperand::MO_JumpTableIndex)
-      return true;
-    return false;
-  }
+  while (I != E) {
+    if ((*I).definesRegister(Reg) || (*I).modifiesRegister(Reg, TRI)) {
+      for (unsigned i = 0, e = (*I).getNumOperands(); i < e; ++i)
+        if ((*I).getOperand(i).getType() == MachineOperand::MO_JumpTableIndex)
+          return true;
+      return false;
+    }
   }
   return false;
 }
@@ -1042,18 +1065,13 @@ bool X86CFIOptPass::runOnMachineFunction (MachineFunction &F) {
 
           case X86::JMP64r:
             //
-            // If the JMP32r instruction is a jump table, the check can be
+            // If the JMP64r instruction is a jump table, the check can be
             // eliminated.
             //
-#if 0
             if (!JTOpt || !fromJmpTable(MI)){
               insertIDSuccessors(MBB,dl,TII);
               insertCheckJmp64r(MBB,MI,dl,TII,EMBB);
             }
-#else
-            insertIDSuccessors(MBB,dl,TII);
-            insertCheckJmp64r(MBB,MI,dl,TII,EMBB);
-#endif
             break;
 
           case X86::RET:
