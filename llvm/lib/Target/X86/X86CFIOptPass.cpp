@@ -664,7 +664,7 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   //
   // Add code to skip the CFI label.
   //
-  //addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
+  addSkipInstruction (MBB, MI, dl, TII, X86::ECX);
 
   // jmp %ecx
   BuildMI(MBB,MI,dl,TII->get(X86::JMP32r)).addReg(X86::ECX);
