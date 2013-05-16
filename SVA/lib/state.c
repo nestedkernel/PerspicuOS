@@ -15,6 +15,7 @@
 #if 0
 #include <sva/config.h>
 #endif
+#include <sva/cfi.h>
 #include <sva/callbacks.h>
 #include <sva/util.h>
 #include <sva/state.h>
@@ -1490,6 +1491,12 @@ sva_release_stack (uintptr_t id) {
   sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
 
   /*
+   * Ensure that we're not trying to release our own state.
+   */
+  if (newThread == getCPUState()->currentThread)
+    return;
+
+  /*
    * TODO: Release ghost memory.
    */
 
@@ -1571,7 +1578,15 @@ sva_init_stack (unsigned char * start_stackp,
    * Verify that the stack is big enough.
    */
   if (stacklen < sizeof (struct frame)) {
-    panic ("Invalid stacklen: %d!\n", stacklen);
+    panic ("sva_init_stack: Invalid stacklen: %d!\n", stacklen);
+  }
+
+  /*
+   * Verify that the function is a kernel function.
+   */
+  uintptr_t f = (uintptr_t)(func);
+  if ((f <= SECMEMEND) || (*((unsigned int *)(f)) != CHECKLABEL)) {
+    panic ("sva_init_stack: Invalid function %p\n", func);
   }
 
   /* Pointer to the current CPU State */
