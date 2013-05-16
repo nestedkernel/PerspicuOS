@@ -3,5 +3,5 @@ x) The signal mask stored for the signal handler does not work yet.
 o) More verification of signal handler arguments should be done.  The machine
    context structure may be of particular interest.
 
-o) Interrupt handlers should zero out live registers
+x) Interrupt handlers should zero out live registers
 
