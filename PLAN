@@ -3,6 +3,7 @@ SVA2 Master Plan
 
 o Critical Features
   o MMU
+  o Increase number of sshd runs to reduce standard deviation
   x Zero out live registers in handlers.S
   o CFI check that we're jumping to a kernel-level address
   o Determine what is causing overhead and fix it
