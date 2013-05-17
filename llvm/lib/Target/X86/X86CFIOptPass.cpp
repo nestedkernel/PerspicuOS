@@ -562,16 +562,16 @@ void X86CFIOptPass::insertCheckJmp64m(MachineBasicBlock& MBB, MachineInstr* MI,
              !MI->readsRegister(X86::EBX, TRI) &&
              !MI->readsRegister(X86::RBX, TRI))
       reg = X86::RBX;
-  else if (!MI->readsRegister(X86::SI, TRI) &&
-           !MI->readsRegister(X86::ESI, TRI) &&
-           !MI->readsRegister(X86::RSI, TRI))
-    reg = X86::RSI;
-  else if (!MI->readsRegister(X86::DI, TRI) &&
-           !MI->readsRegister(X86::EDI, TRI) &&
-           !MI->readsRegister(X86::RDI, TRI))
-    reg = X86::RDI;
-  else
-    abort();
+    else if (!MI->readsRegister(X86::SI, TRI) &&
+             !MI->readsRegister(X86::ESI, TRI) &&
+             !MI->readsRegister(X86::RSI, TRI))
+      reg = X86::RSI;
+    else if (!MI->readsRegister(X86::DI, TRI) &&
+             !MI->readsRegister(X86::EDI, TRI) &&
+             !MI->readsRegister(X86::RDI, TRI))
+      reg = X86::RDI;
+    else
+      abort();
 
   // pushl %reg
   BuildMI (MBB,MI,dl,TII->get(X86::PUSH64r)).addReg(reg);
