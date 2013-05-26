@@ -33,6 +33,9 @@
 
 /* Macro for return */
 #define RETQ  movq  (%rsp), %rcx ; \
+              movl  $0xffffff80, %edx ; \
+              shlq   $32, %rdx ; \
+              orq   %rdx, %rcx ; \
               addq  $8, %rsp ; \
               cmpl  $CHECKLABEL, (%rcx) ; \
               jne 23f ; \

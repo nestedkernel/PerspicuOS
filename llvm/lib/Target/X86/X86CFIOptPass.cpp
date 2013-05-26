@@ -625,12 +625,30 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
   //
   if (is64Bit()) {
     //
-    // Fetch the return address from the stack; we use %ecx since it is not
-    // used for return values:
-    // movl (%rsp), %ecx,
+    // Load a mask value into a register.  We use a register since we need a
+    // 64-bit value and can't mask against a 64-bit immediate.  Note that we
+    // need to use a shift:
     //
-    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::ECX)
+    // movl $0xffffff80, %rdx
+    // shq $32, %rdx
+    //
+    // We use %rdx since it is not used for return values.
+    //
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV32ri),X86::EDX).addImm(0xffffff80);
+    BuildMI(MBB,MI,dl,TII->get(X86::SHL64ri),X86::EDX)
+    .addReg(X86::EDX).addImm(32);
+
+    //
+    // Fetch the return address from the stack and OR it with the bitmask.  We
+    // use %rcx because the callee does not need to preserve it for the caller:
+    //
+    // movq (%rsp), %rcx,
+    // orq (%rsp), %rcx,
+    //
+    BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
     .addReg(X86::RSP).addImm(1).addReg(0).addImm(0).addReg(0);
+    BuildMI(MBB,MI,dl,TII->get(X86::OR64rr), X86::ECX)
+    .addReg(X86::RCX).addReg(X86::EDX);
 
     //
     // Adjust the stack pointer to remove the return address:
