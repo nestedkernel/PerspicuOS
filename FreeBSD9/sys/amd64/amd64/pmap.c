@@ -111,7 +111,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
-#define SVA_DEBUG 0
+#define SVA_DEBUG 1
 #endif
 
 #include <sys/param.h>
@@ -1495,7 +1495,7 @@ pmap_kremove(vm_offset_t va)
     pte = vtopte(va);
 #ifdef SVA_MMU
     /* Clear the pte entry */
-    sva_update_mapping(pte, 0);
+    sva_remove_mapping(pte);
 #else
     pte_clear(pte);
 #endif
@@ -1729,6 +1729,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		/* PDP page */
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
+
         /*
          * Update the pml4 pdp page
          */
@@ -1737,6 +1738,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 #else
 		*pml4 = 0;
 #endif
+
 	} else if (m->pindex >= NUPDE) {
 		/* PD page */
 		pdp_entry_t *pdp;
@@ -1846,6 +1848,14 @@ pmap_pinit(pmap_t pmap)
 
 	pmap->pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pml4pg));
 
+#ifdef SVA_MMU
+    /* 
+     * Due to the large page size mapping on PDEs in the DMAP we need to demote
+     * the PDE to a set of PTs so that we can control the new PTPs alone.
+     */
+    pmap_demote_DMAP(VM_PAGE_TO_PHYS(pml4pg), PAGE_SIZE, FALSE);
+#endif
+
 	if ((pml4pg->flags & PG_ZERO) == 0)
 		pagezero(pmap->pm_pml4);
 
@@ -1890,12 +1900,14 @@ pmap_pinit(pmap_t pmap)
      */
     sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
                 | PG_V | PG_U)); 
-#else
+#else /* !SVA_MMU */
 	pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
-#endif /* !SVA_MMU */
+
+#endif 
 
     for (i = 0; i < NDMPML4E; i++) {
         /* Wire in kernel global address entries. */
+
 #ifdef SVA_MMU
         /* 
          * Update the L4 mapping with the kernel VAs. Note that these pages were
@@ -1905,10 +1917,11 @@ pmap_pinit(pmap_t pmap)
         sva_update_l4_mapping( &pmap->pm_pml4[DMPML4I + i],
                 (pd_entry_t)((DMPDPphys + (i << PAGE_SHIFT)) | PG_RW | PG_V |
                     PG_U));
-#else
+#else /* !SVA_MMU */
 		pmap->pm_pml4[DMPML4I + i] = (DMPDPphys + (i << PAGE_SHIFT)) |
 		    PG_RW | PG_V | PG_U;
 #endif
+
     }
 
 #ifdef SVA_MMU
@@ -2007,6 +2020,13 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		pml4 = &pmap->pm_pml4[pml4index];
 
 #ifdef SVA_MMU
+
+		pdp_entry_t *pdp = (pdp_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m));
+
+#if SVA_DEBUG
+        printf("<<< FBSD __pmap_allocatepte: pre declare l3: ");
+        printf("%p, contents: 0x%lx\n", pdp, *pdp); 
+#endif
         /* 
          * Declare the l3 page to SVA. This will initialize paging structures
          * and make the page table page as read only
@@ -2312,17 +2332,32 @@ pmap_release(pmap_t pmap)
 
 	m = PHYS_TO_VM_PAGE(pmap->pm_pml4[PML4PML4I] & PG_FRAME);
 
+#ifdef SVA_MMU
+    sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], 0); 
+#else
 	pmap->pm_pml4[KPML4I] = 0;	/* KVA */
-	for (i = 0; i < NDMPML4E; i++)	/* Direct Map */
-		pmap->pm_pml4[DMPML4I + i] = 0;
-	pmap->pm_pml4[PML4PML4I] = 0;	/* Recursive Mapping */
+#endif
+
+	for (i = 0; i < NDMPML4E; i++) {	/* Direct Map */
+#ifdef SVA_MMU
+        sva_update_l4_mapping(&pmap->pm_pml4[DMPML4I + i], 0); 
+#else
+        pmap->pm_pml4[DMPML4I + i] = 0;
+#endif
+    }
+
+#ifdef SVA_MMU
+    sva_update_l4_mapping(&pmap->pm_pml4[PML4PML4I], 0); 
+#else
+    pmap->pm_pml4[PML4PML4I] = 0;	/* Recursive Mapping */
+#endif
 
 	m->wire_count--;
 	atomic_subtract_int(&cnt.v_wire_count, 1);
 	vm_page_free_zero(m);
 	PMAP_LOCK_DESTROY(pmap);
 }
-
+
 static int
 kvm_size(SYSCTL_HANDLER_ARGS)
 {
@@ -2553,7 +2588,7 @@ pmap_collect(pmap_t locked_pmap, struct vpgqueues *vpq)
              * to remove the mapping.
              */
             tpte = *pte;
-            sva_update_mapping(pte, 0);
+            sva_remove_mapping(pte);
 #else
             tpte = pte_load_clear(pte);
 #endif
@@ -3048,7 +3083,7 @@ pmap_remove_pde(pmap_t pmap, pd_entry_t *pdq, vm_offset_t sva,
 #ifdef SVA_MMU
     /* Store the current mapping and then remove the page mapping */
 	oldpde = *pdq;
-    sva_update_mapping(pdq, 0);
+    sva_remove_mapping(pdq);
 #else
 	oldpde = pte_load_clear(pdq);
 #endif
@@ -3115,7 +3150,7 @@ pmap_remove_pte(pmap_t pmap, pt_entry_t *ptq, vm_offset_t va,
      * remove the mapping.
      */
 	oldpte = *ptq;
-    sva_update_mapping(ptq, 0);
+    sva_remove_mapping(ptq);
 #else
 	oldpte = pte_load_clear(ptq);
 #endif
@@ -3345,7 +3380,7 @@ pmap_remove_all(vm_page_t m)
          * to remove the mapping.
          */
         tpte = *pte;
-        sva_update_mapping(pte, 0);
+        sva_remove_mapping(pte);
 #else
         tpte = pte_load_clear(pte);
 #endif
@@ -4660,7 +4695,7 @@ pmap_remove_pages(pmap_t pmap)
 
 #ifdef SVA_MMU
                 /* Clear the pte entry */
-                sva_update_mapping(pte, 0);
+                sva_remove_mapping(pte);
 #else
                 pte_clear(pte);
 #endif

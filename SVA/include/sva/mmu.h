@@ -93,6 +93,9 @@ static const int minRefCountToRemoveMapping = 1;
  */
 static const uintptr_t secmemOffset = ((SECMEMSTART >> 39) << 3) & vmask;
 
+/* Zero mapping is the mapping that eliminates the previous entry */
+static const uintptr_t ZERO_MAPPING = 0;
+
 /*
  * Assert macro for SVA
  */
@@ -510,11 +513,11 @@ static inline int isCodePG (page_desc_t *page){ return page->code; }
 static inline int
 readOnlyPageType(page_desc_t *pg){
     return  0
+            || pg->type == PG_L4    
 #if 0
+            || pg->type == PG_L3
             || pg->type == PG_L1 
             || pg->type == PG_L2
-            || pg->type == PG_L4    
-            || pg->type == PG_L3
             || pg->type == PG_CODE
             || pg->type == PG_SVA 
 #endif
