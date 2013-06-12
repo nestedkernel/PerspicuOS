@@ -1054,6 +1054,7 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
   sva_exit_critical (rflags);
 }
 
+#if UNDER_TEST
 /*
  * Function: __clean_and_restore_ptp
  *
@@ -1062,6 +1063,16 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
  *  protected page (PTPs as well as code pages) and releases the VG resources
  *  associated with the page, as well as zero and make the page writeable
  *  again. 
+ *
+ *  It is important to note that the pte for a page-translation-page will be a
+ *  pte in the DMAP region. This is due to the fact that access to the PTPs is
+ *  managed via that region as only one VA is given to each PTP. 
+ *
+ *  *** FIXME: THIS FUNCTION IS STILL UNDER CONSTRUCTION ***
+ *
+ * Inputs:
+ *  - pageEntryPtr  : A pointer to a pte that points to the given read only
+ *                    page. 
  */
 static inline void 
 __clean_and_restore_ptp (pte_t * pageEntryPtr){
@@ -1078,6 +1089,7 @@ __clean_and_restore_ptp (pte_t * pageEntryPtr){
 
     protect_paging();
 }
+#endif
 
 /* Functions for finding the virtual address of page table components */
 
@@ -2715,9 +2727,8 @@ sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
  *  it to writeable.
  *
  * Inputs:
- *  pteptr - The location within the page tabel page in which the new
- *           translation should be placed.
- *  val    - The new translation to insert into the page table.
+ *  pteptr - The location within the page tabel page for which the translation
+ *           should be removed.
  */
 void
 sva_remove_mapping(page_entry_t * pteptr) {
