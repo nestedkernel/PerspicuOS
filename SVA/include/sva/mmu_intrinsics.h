@@ -49,6 +49,9 @@ extern void sva_remove_mapping (page_entry_t * ptePtr);
 extern void sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t
         btext, uintptr_t etext);
 
+/* Key initialization and secure storage allocation */
+extern void sva_translate();
+
 /*
  *****************************************************************************
  * SVA intrinsics implemented as inline functions
