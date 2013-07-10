@@ -23,15 +23,29 @@
  * ===========================================================================
  */
 
-
 #ifndef SVA_KEYS_H
 #define SVA_KEYS_H
 
-/* Type representing a key */
-//typedef char sva_key_t;
+/*
+ *****************************************************************************
+ * Define structures used in SVA for key managment
+ *****************************************************************************
+ */
 
+/* 
+ * Structure: sva_key_t
+ *
+ * Description: encapsulates an sva key, which is a character array.
+ */
 typedef struct sva_key_t{
     char key[256];
 } sva_key_t;
+
+/*
+ *****************************************************************************
+ * Define functions used in the SVA key management interface
+ *****************************************************************************
+ */
+void init_thread_key ();
 
 #endif /* SVA_KEYS_H */

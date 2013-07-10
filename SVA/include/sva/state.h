@@ -20,6 +20,7 @@
 
 #include "sva/x86.h"
 #include "sva/mmu_types.h"
+#include "sva/keys.h"
 
 /* Processor privilege level */
 typedef unsigned char priv_level_t;
@@ -263,6 +264,10 @@ struct SVAThread {
 
   /* Flag whether the thread is in use */
   unsigned char used;
+
+  /* Pointer to thread private key */
+  sva_key_t secret;
+
 } __attribute__ ((aligned (16)));
 
 /*
