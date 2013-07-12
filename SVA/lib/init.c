@@ -513,6 +513,7 @@ static void
 init_dispatcher ()
 {
   /* Register the secure memory allocation and deallocation traps */
+  extern void trap124(void);
   extern void trap125(void);
   extern void trap126(void);
   extern void trap127(void);
@@ -520,6 +521,7 @@ init_dispatcher ()
   extern unsigned char * allocSecureMemory (uintptr_t size);
   extern void freeSecureMemory (unsigned char * p, uintptr_t size);
   extern void installNewPushTarget (void * f);
+  extern void getThreadSecret();
 
   /*
    * Register the bad trap handler for all interrupts and traps.
@@ -655,8 +657,8 @@ init_dispatcher ()
   REGISTER_INTERRUPT(121)
   REGISTER_INTERRUPT(122)
   REGISTER_INTERRUPT(123)
-  REGISTER_INTERRUPT(124)
 #if 0
+  REGISTER_INTERRUPT(124)
   REGISTER_INTERRUPT(125)
   REGISTER_INTERRUPT(126)
   REGISTER_INTERRUPT(127)
@@ -793,9 +795,11 @@ init_dispatcher ()
   /*
    * Register the secure memory allocation and deallocation handlers.
    */
+  register_x86_interrupt (0x7c, trap124, 3);
   register_x86_interrupt (0x7d, trap125, 3);
   register_x86_interrupt (0x7e, trap126, 3);
   register_x86_interrupt (0x7f, trap127, 3);
+  sva_register_general_exception (0x7c, getThreadSecret);
   sva_register_general_exception (0x7d, installNewPushTarget);
   sva_register_general_exception (0x7e, freeSecureMemory);
   sva_register_general_exception (0x7f, allocSecureMemory);

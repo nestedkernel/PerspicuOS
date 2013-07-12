@@ -46,6 +46,7 @@ typedef struct sva_key_t{
  * Define functions used in the SVA key management interface
  *****************************************************************************
  */
-void init_thread_key ();
+inline sva_key_t * getSecretFromActiveContext();
+void getThreadSecret (void);
 
 #endif /* SVA_KEYS_H */

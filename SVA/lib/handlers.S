@@ -750,7 +750,7 @@ INTERRUPT(120)
 INTERRUPT(121)
 INTERRUPT(122)
 INTERRUPT(123)
-INTERRUPT(124)
+TRAP(124) /* Get Thread Secret Trap */
 TRAP(125) /* Install Push Target Trap */
 TRAP(126) /* Secure Memory Free Trap */
 TRAP(127) /* Secure Memory Allocation Trap */

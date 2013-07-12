@@ -69,6 +69,45 @@ void init_thread_key (struct SVAThread * thread) {
 #endif
 }
 
+/*
+ * Function: getSecretFromActiveContext()
+ *
+ * Description:
+ *  This function obtains the app secret from the currently active CPU state.
+ *  It then returns a pointer to the secret key object. 
+ *
+ * Return value:
+ *  - A pointer to the key inside the active context's
+ *    thread structure.
+ */
+inline sva_key_t *
+getSecretFromActiveContext() {
+  return &getCPUState()->currentThread->secret;
+}
+
+/*
+ * Function: getThreadSecret
+ *
+ * Description:
+ *  This is the trap handler to return a pointer to the active thread's secret
+ *  key, when requested by the user mode process. The pointer is obtained from
+ *  the active CPU state and placed in the EAX register. Note also the type of
+ *  data structure pointed to by the pointer. It is an encapsulated key so that
+ *  the representation (length) can change without modifying the interface.
+ */
+void 
+getThreadSecret (void) {
+    /*
+     * Get the current interrupt context; the arguments will be in it.
+     */
+    struct CPUState * cpup = getCPUState(); 
+    sva_key_t * tSecret = &(cpup->currentThread->secret); 
+    sva_icontext_t * icp = cpup->newCurrentIC; 
+
+    /* Set the rax register with the pointer to the secret key */
+    icp->rax = (uintptr_t) tSecret;
+}
+
 #if 0
 /* 
  * FIXME: this function was originally proposed by John for allocating a key.
