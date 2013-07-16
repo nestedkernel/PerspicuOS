@@ -60,13 +60,47 @@ char keyI = 0;
  */
 void init_thread_key (struct SVAThread * thread) {
 #if INCOMPLETE_ON
-    /* Put the private key into the thread's key slot */
-    strcpy(thread->secret.key, dummy256KeyPtr);
-    dummy256KeyPtr[keyI] = uniqueFirstChar++;
-    if(uniqueFirstChar == 0x7E) {
-        keyI++; uniqueFirstChar = 0x22; 
-    } 
+  /* Put the private key into the thread's key slot */
+  strcpy (thread->secret.key, dummy256KeyPtr);
+  dummy256KeyPtr[keyI] = uniqueFirstChar++;
+  if (uniqueFirstChar == 0x7E) {
+    keyI++; uniqueFirstChar = 0x22; 
+  } 
 #endif
+}
+
+/*
+ * Function: installKey()
+ *
+ * Description:
+ *  This function allocates ghost memory for an application can copies the
+ *  specified key into that ghost memory.
+ *
+ * Inputs:
+ *  keyp - A pointer to the key to install.
+ *  size - The size of the key in bytes.
+ */
+sva_key_t *
+installKey (sva_key_t * keyp, uintptr_t size) {
+  // SVA ghost memory allocator function
+  extern unsigned char * ghostMalloc (intptr_t size);
+
+  //
+  // Allocate some ghost memory for the key.
+  //
+  unsigned char * ghostKey = ghostMalloc (size);
+
+  //
+  // Copy the key into the ghost memory.
+  //
+  if (ghostKey) {
+    memcpy (ghostKey, keyp, size);
+  }
+
+  //
+  // Return a pointer to the key in ghost memory.
+  //
+  return (sva_key_t *) ghostKey;
 }
 
 /*
@@ -97,15 +131,15 @@ getSecretFromActiveContext() {
  */
 void 
 getThreadSecret (void) {
-    /*
-     * Get the current interrupt context; the arguments will be in it.
-     */
-    struct CPUState * cpup = getCPUState(); 
-    sva_key_t * tSecret = &(cpup->currentThread->secret); 
-    sva_icontext_t * icp = cpup->newCurrentIC; 
+  /*
+   * Get the current interrupt context; the arguments will be in it.
+   */
+  struct CPUState * cpup = getCPUState(); 
+  sva_key_t * tSecret = &(cpup->currentThread->secret); 
+  sva_icontext_t * icp = cpup->newCurrentIC; 
 
-    /* Set the rax register with the pointer to the secret key */
-    icp->rax = (uintptr_t) tSecret;
+  /* Set the rax register with the pointer to the secret key */
+  icp->rax = (uintptr_t) tSecret;
 }
 
 #if 0
@@ -128,16 +162,16 @@ uint64_t keyIndex = 0;
 void
 sva_translate(){
 
-    /* Copy the key into the pointer for the key */
-    strcpy(appKeys[keyIndex].key, dummy256KeyPtr);
+  /* Copy the key into the pointer for the key */
+  strcpy (appKeys[keyIndex].key, dummy256KeyPtr);
 #if DEBUG
-    printf("The new key value: %s, The current index: %llu\n",
-            appKeys[keyIndex].key, keyIndex); 
+  printf ("The new key value: %s, The current index: %llu\n",
+           appKeys[keyIndex].key, keyIndex); 
 #endif
-    /* 
-     * Increment the key so that the next time we get a request we store a new
-     * key.
-     */
-    keyIndex++;
+  /* 
+   * Increment the key so that the next time we get a request we store a new
+   * key.
+   */
+  keyIndex++;
 }
 #endif
