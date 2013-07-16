@@ -43,20 +43,13 @@ getNextSecureAddress (struct SVAThread * threadp) {
 }
 
 /*
- * Function: allocSecureMemory()
+ * Function: ghostMalloc()
  *
  * Description:
- *  Allocate secure memory.  Fetch it from the operating system kernel if
- *  necessary.
- *
- * Inputs:
- *  size - The amount of secure memory to allocate measured in bytes.
- *
- * Return value:
- *  A pointer to the first byte of the secure memory.
+ *  Allocate ghost memory.
  */
 unsigned char *
-allocSecureMemory (void) {
+ghostMalloc (intptr_t size) {
   /* Physical address of allocated secure memory pointer */
   uintptr_t sp;
 
@@ -72,11 +65,6 @@ allocSecureMemory (void) {
   struct CPUState * cpup = getCPUState();
   struct SVAThread * threadp = cpup->currentThread;
   sva_icontext_t * icp = cpup->newCurrentIC;
-
-  /*
-   * Get the size out of the interrupt context.
-   */
-  intptr_t size = icp->rdi;
 
   /*
    * Determine if this is the first secure memory allocation.
@@ -129,17 +117,44 @@ allocSecureMemory (void) {
     }
   }
 
+  /* Return a pointer to the allocated ghost memory */
+  return vaddrStart;
+}
+
+/*
+ * Function: allocSecureMemory()
+ *
+ * Description:
+ *  Allocate secure memory.  Fetch it from the operating system kernel if
+ *  necessary.
+ *
+ * Inputs:
+ *  size - The amount of secure memory to allocate measured in bytes.
+ *
+ * Return value:
+ *  A pointer to the first byte of the secure memory.
+ */
+unsigned char *
+allocSecureMemory (void) {
+  /*
+   * Call the ghost memory allocator to allocate some ghost memory.  The number
+   * of bytes to allocate is in the %rdi register of the interrupted program
+   * state.
+   */
+  sva_icontext_t * icp = getCPUState()->newCurrentIC;
+  unsigned char * vaddrStart = ghostMalloc (icp->rdi);
+
   /*
    * Zero out the memory.
    */
-  memset (vaddrStart, 0, size);
+  memset (vaddrStart, 0, icp->rdi);
 
   /*
    * Set the return value in the Interrupt Context to be a pointer to the newly
    * allocated memory.
    */
   icp->rax = (uintptr_t) vaddrStart;
-  printf ("SVA: secmemalloc: %lx %lx\n", vaddrStart, size);
+  printf ("SVA: secmemalloc: %lx %lx\n", vaddrStart, icp->rdi);
   return vaddrStart;
 }
 
