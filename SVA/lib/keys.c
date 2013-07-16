@@ -142,36 +142,62 @@ getThreadSecret (void) {
   icp->rax = (uintptr_t) tSecret;
 }
 
-#if 0
-/* 
- * FIXME: this function was originally proposed by John for allocating a key.
- * In designing and developing the key management solution it wasn't obvious
- * how this would be used. Therefore, a primitive form is left commented out
- * below. It may be obsolete however given the new design.
+/*
+ * Structure: translations
+ *
+ * Description:
+ *  Record information about SVA bitcode to native code translations.
  */
-sva_key_t appKeys[100];
-uint64_t keyIndex = 0; 
+struct translation {
+  /* Private key of the translated program */
+  sva_key_t key;
+
+  /* Entry point for the translated program */
+  void * entryPoint;
+
+  /* Flag indiating whether entry is in use */
+  unsigned char used;
+};
+
+/* Array of cached translations */
+static struct translation translations [4096];
 
 /*
- * Function: sva_translate
+ * Function: sva_translate()
  *
- * Description: This function is responsible for allocating space for
- *  application keys and putting the key into the recently allocated region.
+ * Description:
+ *  Translate SVA bitcode into native code and return a handle to the native
+ *  code entry point.  As part of its operation for Virtual Ghost, also
+ *  allocate space for application keys and put the key into the recently
+ *  allocated region.
  *
+ * Return value:
+ *  An opaque value that can be used to calls to sva_reinit_icontext().
  */
-void
-sva_translate(){
-
-  /* Copy the key into the pointer for the key */
-  strcpy (appKeys[keyIndex].key, dummy256KeyPtr);
-#if DEBUG
-  printf ("The new key value: %s, The current index: %llu\n",
-           appKeys[keyIndex].key, keyIndex); 
-#endif
-  /* 
-   * Increment the key so that the next time we get a request we store a new
-   * key.
+void *
+sva_translate(void * entryPoint) {
+  /*
+   * Find a free translation.
    */
-  keyIndex++;
+  for (unsigned index = 0; index < 4096; ++index) {
+    if (__sync_bool_compare_and_swap (&(translations[index].used), 0, 1)) {
+      /*
+       * Remember which thread is the one we've grabbed.
+       */
+      struct translation * transp = translations + index;
+
+      /*
+       * Do some basic initialization of the thread.
+       */
+      transp->entryPoint = entryPoint;
+      strcpy (&(transp->key), dummy256KeyPtr);
+
+      return transp;
+    }
+  }
+
+  /*
+   * Translation failed.
+   */
+  return 0;
 }
-#endif

@@ -50,7 +50,7 @@ extern void sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_
         btext, uintptr_t etext);
 
 /* Key initialization and secure storage allocation */
-extern void sva_translate();
+extern void * sva_translate(void * entryPoint);
 
 /*
  *****************************************************************************
