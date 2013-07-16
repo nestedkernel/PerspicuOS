@@ -17,7 +17,8 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  Nathan Dautenhahn (nathandautenhahn.com), dautenh1@illinois.edu
+ *         Author:  Nathan Dautenhahn (nathandautenhahn.com),
+ *                                     dautenh1@illinois.edu
  *        Company:  University of Illinois at Urbana-Champaign
  *
  * ===========================================================================
@@ -37,7 +38,7 @@
  *
  * Description: encapsulates an sva key, which is a character array.
  */
-typedef struct sva_key_t{
+typedef struct sva_key_t {
     char key[256];
 } sva_key_t;
 
