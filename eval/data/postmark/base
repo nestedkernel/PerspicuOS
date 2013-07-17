@@ -1,0 +1,56 @@
+
+---------------------------
+Executing Round: 1 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	1 seconds total
+	1 seconds of transactions (500 per second)
+
+Files:
+	764 created (764 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 264 files (264 per second)
+	243 read (243 per second)
+	257 appended (257 per second)
+	764 deleted (764 per second)
+		Deletion alone: 528 files (528 per second)
+		Mixed with transactions: 236 files (236 per second)
+
+Data:
+	1.36 megabytes read (1.36 megabytes per second)
+	4.45 megabytes written (4.45 megabytes per second)
+
+---------------------------
+Executing Round: 2 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	1 seconds total
+	1 seconds of transactions (500 per second)
+
+Files:
+	764 created (764 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 264 files (264 per second)
+	243 read (243 per second)
+	257 appended (257 per second)
+	764 deleted (764 per second)
+		Deletion alone: 528 files (528 per second)
+		Mixed with transactions: 236 files (236 per second)
+
+Data:
+	1.36 megabytes read (1.36 megabytes per second)
+	4.45 megabytes written (4.45 megabytes per second)

@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/local/bin/ruby
 #
 # Usage ./benchmark_apache.rb <run_type> 
 #

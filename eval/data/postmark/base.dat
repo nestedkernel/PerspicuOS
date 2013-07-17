@@ -1,0 +1,270 @@
+
+---------------------------
+Executing Round: 1 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	27 seconds total
+	27 seconds of transactions (18518 per second)
+
+Files:
+	249825 created (9252 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (9234 per second)
+	250169 read (9265 per second)
+	246899 appended (9144 per second)
+	249825 deleted (9252 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (9231 per second)
+
+Data:
+	1626.89 megabytes read (60.26 megabytes per second)
+	1626.94 megabytes written (60.26 megabytes per second)
+
+---------------------------
+Executing Round: 2 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	18 seconds total
+	18 seconds of transactions (27777 per second)
+
+Files:
+	249825 created (13879 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (13851 per second)
+	250169 read (13898 per second)
+	246899 appended (13716 per second)
+	249825 deleted (13879 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (13847 per second)
+
+Data:
+	1626.89 megabytes read (90.38 megabytes per second)
+	1626.94 megabytes written (90.39 megabytes per second)
+
+---------------------------
+Executing Round: 3 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	20 seconds total
+	20 seconds of transactions (25000 per second)
+
+Files:
+	249825 created (12491 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (12466 per second)
+	250169 read (12508 per second)
+	246899 appended (12344 per second)
+	249825 deleted (12491 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (12462 per second)
+
+Data:
+	1626.89 megabytes read (81.34 megabytes per second)
+	1626.94 megabytes written (81.35 megabytes per second)
+
+---------------------------
+Executing Round: 4 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	24 seconds total
+	24 seconds of transactions (20833 per second)
+
+Files:
+	249825 created (10409 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (10388 per second)
+	250169 read (10423 per second)
+	246899 appended (10287 per second)
+	249825 deleted (10409 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (10385 per second)
+
+Data:
+	1626.89 megabytes read (67.79 megabytes per second)
+	1626.94 megabytes written (67.79 megabytes per second)
+
+---------------------------
+Executing Round: 5 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	18 seconds total
+	18 seconds of transactions (27777 per second)
+
+Files:
+	249825 created (13879 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (13851 per second)
+	250169 read (13898 per second)
+	246899 appended (13716 per second)
+	249825 deleted (13879 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (13847 per second)
+
+Data:
+	1626.89 megabytes read (90.38 megabytes per second)
+	1626.94 megabytes written (90.39 megabytes per second)
+
+---------------------------
+Executing Round: 1 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	18 seconds total
+	18 seconds of transactions (27777 per second)
+
+Files:
+	249825 created (13879 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (13851 per second)
+	250169 read (13898 per second)
+	246899 appended (13716 per second)
+	249825 deleted (13879 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (13847 per second)
+
+Data:
+	1626.89 megabytes read (90.38 megabytes per second)
+	1626.94 megabytes written (90.39 megabytes per second)
+
+---------------------------
+Executing Round: 2 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	19 seconds total
+	19 seconds of transactions (26315 per second)
+
+Files:
+	249825 created (13148 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (13122 per second)
+	250169 read (13166 per second)
+	246899 appended (12994 per second)
+	249825 deleted (13148 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (13118 per second)
+
+Data:
+	1626.89 megabytes read (85.63 megabytes per second)
+	1626.94 megabytes written (85.63 megabytes per second)
+
+---------------------------
+Executing Round: 3 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	18 seconds total
+	18 seconds of transactions (27777 per second)
+
+Files:
+	249825 created (13879 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (13851 per second)
+	250169 read (13898 per second)
+	246899 appended (13716 per second)
+	249825 deleted (13879 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (13847 per second)
+
+Data:
+	1626.89 megabytes read (90.38 megabytes per second)
+	1626.94 megabytes written (90.39 megabytes per second)
+
+---------------------------
+Executing Round: 4 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	20 seconds total
+	20 seconds of transactions (25000 per second)
+
+Files:
+	249825 created (12491 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (12466 per second)
+	250169 read (12508 per second)
+	246899 appended (12344 per second)
+	249825 deleted (12491 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (12462 per second)
+
+Data:
+	1626.89 megabytes read (81.34 megabytes per second)
+	1626.94 megabytes written (81.35 megabytes per second)
+
+---------------------------
+Executing Round: 5 
+---------------------------
+PostMark v1.51 : 8/14/01
+Reading configuration from file '../data/postmark/postmark.conf'
+Eh?
+Creating files...Done
+Performing transactions..........Done
+Deleting files...Done
+Time:
+	57 seconds total
+	57 seconds of transactions (8771 per second)
+
+Files:
+	249825 created (4382 per second)
+		Creation alone: 500 files (500 per second)
+		Mixed with transactions: 249325 files (4374 per second)
+	250169 read (4388 per second)
+	246899 appended (4331 per second)
+	249825 deleted (4382 per second)
+		Deletion alone: 578 files (578 per second)
+		Mixed with transactions: 249247 files (4372 per second)
+
+Data:
+	1626.89 megabytes read (28.54 megabytes per second)
+	1626.94 megabytes written (28.54 megabytes per second)

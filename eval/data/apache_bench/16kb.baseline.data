@@ -1,0 +1,43 @@
+This is ApacheBench, Version 2.3 <$Revision: 655654 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking trypticon.cs.illinois.edu (be patient)
+
+
+Server Software:        Apache/2.2.21
+Server Hostname:        trypticon.cs.illinois.edu
+Server Port:            80
+
+Document Path:          /downloads/16kb.zero
+Document Length:        16384 bytes
+
+Concurrency Level:      25
+Time taken for tests:   0.805 seconds
+Complete requests:      5000
+Failed requests:        0
+Write errors:           0
+Total transferred:      83400000 bytes
+HTML transferred:       81920000 bytes
+Requests per second:    6212.11 [#/sec] (mean)
+Time per request:       4.024 [ms] (mean)
+Time per request:       0.161 [ms] (mean, across all concurrent requests)
+Transfer rate:          101189.51 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.0      0       0
+Processing:     1    4   0.2      4       4
+Waiting:        0    2   1.1      2       4
+Total:          1    4   0.2      4       4
+
+Percentage of the requests served within a certain time (ms)
+  50%      4
+  66%      4
+  75%      4
+  80%      4
+  90%      4
+  95%      4
+  98%      4
+  99%      4
+ 100%      4 (longest request)
