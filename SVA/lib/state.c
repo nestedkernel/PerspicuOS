@@ -1406,8 +1406,8 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   struct translation * transp = (struct translation *)(handle);
   if ((translations <= transp) && (transp < translations + 4096)) {
-    if ((transp - translations) % sizeof (struct translation)) {
-      panic ("SVA: Invalid translation handle\n");
+    if (((uint64_t)transp - (uint64_t)translations) % sizeof (struct translation)) {
+      panic ("SVA: Invalid translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
       return;
     }
   } else {
@@ -1494,6 +1494,12 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
     ep->gs = 0x1b;
     ep->rflags = (rflags & 0xfffu);
   }
+
+  /*
+   * Now that ghost memory has been reinitialized, install the key for this
+   * bitcode file into the ghost memory.
+   */
+  threadp->ghostKey = installKey (transp->key, sizeof (sva_key_t));
 
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
