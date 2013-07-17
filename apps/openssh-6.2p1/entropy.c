@@ -234,6 +234,8 @@ seed_rng(void)
 	memset(buf, '\0', sizeof(buf));
 
 #endif /* OPENSSL_PRNG_ONLY */
+#if 0
 	if (RAND_status() != 1)
 		fatal("PRNG is not seeded");
+#endif
 }
