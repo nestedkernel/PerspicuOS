@@ -1385,11 +1385,35 @@ svaDummy (void) {
  *  Reinitialize an interrupt context so that, upon return, it begins to
  *  execute code at a new location.  This supports the exec() family of system
  *  calls.
+ *
+ * Inputs:
+ *  transp - An identifier representing the entry point.
+ *  priv   - A flag that, when set, indicates that the code will be executed in
+ *           the processor's privileged mode.
+ *  stack   - The value to set for the stack pointer.
+ *  arg     - The argument to pass to the function entry point.
  */
 void
-sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
+sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
   /* Old interrupt flags */
   uintptr_t rflags;
+
+  /* Function entry point */
+  void * func = 0;
+
+  /*
+   * Validate the translation handle.
+   */
+  struct translation * transp = (struct translation *)(handle);
+  if ((translations <= transp) && (transp < translations + 4096)) {
+    if ((transp - translations) % sizeof (struct translation)) {
+      panic ("SVA: Invalid translation handle\n");
+      return;
+    }
+  } else {
+    panic ("SVA: Invalid translation handle\n");
+    return;
+  }
 
   /*
    * Disable interrupts.
@@ -1452,7 +1476,7 @@ sva_reinit_icontext (void * func, unsigned char priv, uintptr_t stackp, uintptr_
   /*
    * Setup the call to the new function.
    */
-  ep->rip = func;
+  ep->rip = transp->entryPoint;
   ep->rsp = stackp;
   ep->rdi = arg;
 
