@@ -1009,14 +1009,14 @@ after_select(fd_set *readset, fd_set *writeset)
 		case AUTH_SOCKET:
 			if (FD_ISSET(sockets[i].fd, readset)) {
 				slen = sizeof(sunaddr);
-				sock = accept(sockets[i].fd,
+				sock = ghost_accept(sockets[i].fd,
 				    (struct sockaddr *)&sunaddr, &slen);
 				if (sock < 0) {
 					error("accept from AUTH_SOCKET: %s",
 					    strerror(errno));
 					break;
 				}
-				if (getpeereid(sock, &euid, &egid) < 0) {
+				if (ghost_getpeereid(sock, &euid, &egid) < 0) {
 					error("getpeereid %d failed: %s",
 					    sock, strerror(errno));
 					close(sock);
@@ -1035,7 +1035,7 @@ after_select(fd_set *readset, fd_set *writeset)
 		case AUTH_CONNECTION:
 			if (buffer_len(&sockets[i].output) > 0 &&
 			    FD_ISSET(sockets[i].fd, writeset)) {
-				len = write(sockets[i].fd,
+				len = ghost_write(sockets[i].fd,
 				    buffer_ptr(&sockets[i].output),
 				    buffer_len(&sockets[i].output));
 				if (len == -1 && (errno == EAGAIN ||
@@ -1049,7 +1049,7 @@ after_select(fd_set *readset, fd_set *writeset)
 				buffer_consume(&sockets[i].output, len);
 			}
 			if (FD_ISSET(sockets[i].fd, readset)) {
-				len = read(sockets[i].fd, buf, sizeof(buf));
+				len = ghost_read(sockets[i].fd, buf, sizeof(buf));
 				if (len == -1 && (errno == EAGAIN ||
 				    errno == EWOULDBLOCK ||
 				    errno == EINTR))
@@ -1143,6 +1143,21 @@ main(int ac, char **av)
 	struct timeval *tvp = NULL;
 	size_t len;
 
+#if 1
+  /* Initialize the ghost runtime */
+  extern void ghostinit(void);
+  ghostinit();
+
+  /*
+   * Allocate some heap memory and copy a secret into it.
+   */
+  char * secretp = malloc (16);
+  secretp[0] = 'j';
+  secretp[1] = 't';
+  secretp[2] = 'c';
+  printf ("#JTC: %p\n", secretp);
+  fflush (stdout);
+#endif
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
 
@@ -1357,8 +1372,9 @@ skip:
 
 	while (1) {
 		prepare_select(&readsetp, &writesetp, &max_fd, &nalloc, &tvp);
-		result = select(max_fd + 1, readsetp, writesetp, NULL, tvp);
+		result = ghost_select(max_fd + 1, readsetp, writesetp, NULL, tvp);
 		saved_errno = errno;
+    logit ("ghost: ssh-agent: select returned\n");
 		if (parent_alive_interval != 0)
 			check_parent_exists();
 		(void) reaper();	/* remove expired keys */
@@ -1366,8 +1382,10 @@ skip:
 			if (saved_errno == EINTR)
 				continue;
 			fatal("select: %s", strerror(saved_errno));
-		} else if (result > 0)
+		} else if (result > 0) {
+      logit ("ghost: ssh-agent: doing after_select\n");
 			after_select(readsetp, writesetp);
+    }
 	}
 	/* NOTREACHED */
 }
