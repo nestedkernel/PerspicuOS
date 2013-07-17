@@ -142,25 +142,8 @@ getThreadSecret (void) {
   icp->rax = (uintptr_t) tSecret;
 }
 
-/*
- * Structure: translations
- *
- * Description:
- *  Record information about SVA bitcode to native code translations.
- */
-struct translation {
-  /* Private key of the translated program */
-  sva_key_t key;
-
-  /* Entry point for the translated program */
-  void * entryPoint;
-
-  /* Flag indiating whether entry is in use */
-  unsigned char used;
-};
-
 /* Array of cached translations */
-static struct translation translations [4096];
+struct translation translations [4096];
 
 /*
  * Function: sva_translate()

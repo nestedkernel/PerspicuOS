@@ -43,11 +43,37 @@ typedef struct sva_key_t {
 } sva_key_t;
 
 /*
+ * Structure: translation
+ *
+ * Description:
+ *  Record information about SVA bitcode to native code translations.
+ */
+struct translation {
+  /* Private key of the translated program */
+  sva_key_t key;
+
+  /* Entry point for the translated program */
+  void * entryPoint;
+
+  /* Flag indiating whether entry is in use */
+  unsigned char used;
+};
+
+/*
  *****************************************************************************
  * Define functions used in the SVA key management interface
  *****************************************************************************
  */
 inline sva_key_t * getSecretFromActiveContext();
 void getThreadSecret (void);
+
+/*
+ *****************************************************************************
+ * Globals shared amount compilation units.
+ *****************************************************************************
+ */
+
+/* Array of cached translations */
+extern struct translation translations [4096];
 
 #endif /* SVA_KEYS_H */
