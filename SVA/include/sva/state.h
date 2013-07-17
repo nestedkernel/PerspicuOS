@@ -266,7 +266,7 @@ struct SVAThread {
   unsigned char used;
 
   /* Pointer to thread private key */
-  sva_key_t secret;
+  sva_key_t * ghostKey;
 
 } __attribute__ ((aligned (16)));
 
