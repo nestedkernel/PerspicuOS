@@ -60,12 +60,14 @@ char keyI = 0;
  */
 void init_thread_key (struct SVAThread * thread) {
 #if INCOMPLETE_ON
+#if 0
   /* Put the private key into the thread's key slot */
   strcpy (thread->secret.key, dummy256KeyPtr);
   dummy256KeyPtr[keyI] = uniqueFirstChar++;
   if (uniqueFirstChar == 0x7E) {
     keyI++; uniqueFirstChar = 0x22; 
   } 
+#endif
 #endif
 }
 
@@ -116,7 +118,7 @@ installKey (sva_key_t * keyp, uintptr_t size) {
  */
 inline sva_key_t *
 getSecretFromActiveContext() {
-  return &getCPUState()->currentThread->secret;
+  return getCPUState()->currentThread->ghostKey;
 }
 
 /*
@@ -135,7 +137,7 @@ getThreadSecret (void) {
    * Get the current interrupt context; the arguments will be in it.
    */
   struct CPUState * cpup = getCPUState(); 
-  sva_key_t * tSecret = &(cpup->currentThread->secret); 
+  sva_key_t * tSecret = cpup->currentThread->ghostKey; 
   sva_icontext_t * icp = cpup->newCurrentIC; 
 
   /* Set the rax register with the pointer to the secret key */
