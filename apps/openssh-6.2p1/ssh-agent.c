@@ -49,6 +49,9 @@
 #endif
 #include "openbsd-compat/sys-queue.h"
 
+#if 1
+#include <openssl/ssl.h>
+#endif
 #include <openssl/evp.h>
 #include <openssl/md5.h>
 #include "openbsd-compat/openssl-compat.h"
@@ -96,6 +99,9 @@ typedef struct {
 	Buffer input;
 	Buffer output;
 	Buffer request;
+#if 1
+  SSL * sslDesc;
+#endif
 } SocketEntry;
 
 u_int sockets_alloc = 0;
@@ -137,6 +143,10 @@ extern char *__progname;
 /* Default lifetime (0 == forever) */
 static int lifetime = 0;
 
+#if 1
+/* OpenSSL Context */
+SSL_CTX * SSLContext;
+#endif
 static void
 close_socket(SocketEntry *e)
 {
@@ -900,6 +910,13 @@ new_socket(sock_type type, int fd)
 {
 	u_int i, old_alloc, new_alloc;
 
+#if 1
+  /*
+   * Create a new OpenSSL session and associate the file descriptor with it.
+   */
+  SSL * sslDesc = SSL_new (SSLContext);
+  SSL_set_fd (sslDesc, fd);
+#endif
 	set_nonblock(fd);
 
 	if (fd > max_fd)
@@ -912,6 +929,9 @@ new_socket(sock_type type, int fd)
 			buffer_init(&sockets[i].output);
 			buffer_init(&sockets[i].request);
 			sockets[i].type = type;
+#if 1
+      sockets[i].sslDesc = sslDesc;
+#endif
 			return;
 		}
 	old_alloc = sockets_alloc;
@@ -925,6 +945,9 @@ new_socket(sock_type type, int fd)
 	buffer_init(&sockets[old_alloc].output);
 	buffer_init(&sockets[old_alloc].request);
 	sockets[old_alloc].type = type;
+#if 1
+  sockets[old_alloc].sslDesc = sslDesc;
+#endif
 }
 
 static int
@@ -1157,6 +1180,12 @@ main(int ac, char **av)
   secretp[2] = 'c';
   printf ("#JTC: %p\n", secretp);
   fflush (stdout);
+
+  /* Initialize the OpenSSL library */
+  SSL_library_init();
+
+  /* Create an OpenSSL context to use */
+  SSLContext = SSL_CTX_new (SSLv3_server_method());
 #endif
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
