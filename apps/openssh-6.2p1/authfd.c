@@ -706,3 +706,83 @@ decode_reply(int type)
 	/* NOTREACHED */
 	return 0;
 }
+
+#if 1
+
+#include <sys/types.h>
+#include <rijndael.h>
+
+size_t
+ssh_ghostread (int fd,
+               unsigned char * buf,
+               size_t size,
+               rijndael_ctx * ctx)
+{
+  /* Buffer for reading encrypted data */
+  static char buffer[4096];
+
+  /* Length of read data */
+  size_t length;
+  size_t cryptLength;
+
+  /* Source and destination pointers */
+  char * src;
+  char * dst;
+
+  /*
+   * Read the data from the untrusted operating system into memory.
+   */
+  assert (size <= 4096);
+  length = read (fd, buffer, size);
+
+  /*
+   * Decrypt the data and store it into ghost memory.
+   */
+  src = buffer;
+  dst = buf;
+  for (cryptLength = length; cryptLength; cryptLength -= 16) {
+    rijndael_decrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+
+  return length;
+}
+
+size_t
+ssh_ghostwrite (int fd,
+                unsigned char * buf,
+                size_t size,
+                rijndael_ctx *ctx)
+{
+  /* Buffer for holding encrypted data for the OS */
+  static char buffer[4096];
+
+  /* Source and destination pointers */
+  char * src;
+  char * dst;
+
+  /* Length of read data */
+  size_t length;
+  size_t cryptLength;
+
+  assert (size <= 4096);
+
+  /*
+   * Encrypt the data and store it into ghost memory.
+   */
+  src = buf;
+  dst = buffer;
+  for (cryptLength = length; cryptLength; cryptLength -= 16) {
+    rijndael_encrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+
+  /*
+   * Write the data from the untrusted operating system into memory.
+   */
+  length = write (fd, buffer, size);
+  return length;
+}
+#endif
