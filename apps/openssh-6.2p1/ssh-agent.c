@@ -1019,7 +1019,10 @@ prepare_select(fd_set **fdrp, fd_set **fdwp, int *fdl, u_int *nallocp,
 }
 
 static void
-after_select(fd_set *readset, fd_set *writeset)
+after_select(fd_set *readset,
+             fd_set *writeset,
+             char * encryptSchedule,
+             char * descryptSchedule)
 {
 	struct sockaddr_un sunaddr;
 	socklen_t slen;
@@ -1062,9 +1065,16 @@ after_select(fd_set *readset, fd_set *writeset)
 		case AUTH_CONNECTION:
 			if (buffer_len(&sockets[i].output) > 0 &&
 			    FD_ISSET(sockets[i].fd, writeset)) {
+#if 0
 				len = ghost_write(sockets[i].fd,
 				    buffer_ptr(&sockets[i].output),
 				    buffer_len(&sockets[i].output));
+#else
+				len = ssh_ghostwrite(sockets[i].fd,
+				    buffer_ptr(&sockets[i].output),
+				    buffer_len(&sockets[i].output),
+            encryptSchedule);
+#endif
 				if (len == -1 && (errno == EAGAIN ||
 				    errno == EWOULDBLOCK ||
 				    errno == EINTR))
@@ -1421,7 +1431,7 @@ skip:
 			fatal("select: %s", strerror(saved_errno));
 		} else if (result > 0) {
       logit ("ghost: ssh-agent: doing after_select\n");
-			after_select(readsetp, writesetp);
+			after_select(readsetp, writesetp, encryptSchedule, decryptSchedule);
     }
 	}
 	/* NOTREACHED */
