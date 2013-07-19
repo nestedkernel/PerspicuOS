@@ -87,6 +87,10 @@
 #include <sys/prctl.h>	/* For prctl() and PR_SET_DUMPABLE */
 #endif
 
+#if 1
+#include "rijndael.h"
+#endif
+
 typedef enum {
 	AUTH_UNUSED,
 	AUTH_SOCKET,
@@ -910,7 +914,7 @@ new_socket(sock_type type, int fd)
 {
 	u_int i, old_alloc, new_alloc;
 
-#if 1
+#if 0
   /*
    * Create a new OpenSSL session and associate the file descriptor with it.
    */
@@ -929,7 +933,7 @@ new_socket(sock_type type, int fd)
 			buffer_init(&sockets[i].output);
 			buffer_init(&sockets[i].request);
 			sockets[i].type = type;
-#if 1
+#if 0
       sockets[i].sslDesc = sslDesc;
 #endif
 			return;
@@ -945,7 +949,7 @@ new_socket(sock_type type, int fd)
 	buffer_init(&sockets[old_alloc].output);
 	buffer_init(&sockets[old_alloc].request);
 	sockets[old_alloc].type = type;
-#if 1
+#if 0
   sockets[old_alloc].sslDesc = sslDesc;
 #endif
 }
@@ -1181,11 +1185,15 @@ main(int ac, char **av)
   printf ("#JTC: %p\n", secretp);
   fflush (stdout);
 
-  /* Initialize the OpenSSL library */
-  SSL_library_init();
+  /*
+   * Initialize the key schedules from the private key.
+   */
+  static char ghostKey[16] = "abcdefghijklmno";
+  char * encryptSchedule = malloc (sizeof (rijndael_ctx));
+  char * decryptSchedule = malloc (sizeof (rijndael_ctx));
 
-  /* Create an OpenSSL context to use */
-  SSLContext = SSL_CTX_new (SSLv3_server_method());
+  rijndael_set_key(encryptSchedule, ghostKey, 128, 1);
+  rijndael_set_key(decryptSchedule, ghostKey, 128, 0);
 #endif
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
