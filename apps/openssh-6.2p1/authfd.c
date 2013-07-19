@@ -206,10 +206,24 @@ ssh_get_authentication_connection(void)
 	if (sock < 0)
 		return NULL;
 
+#if 1
+  /*
+   * Create an OpenSSL context and an OpenSSL descriptor and start shaking
+   * hands.
+   */
+  SSL_CTX * SSLContext = SSL_CTX_new (SSLv3_server_method());
+  SSL * sslfd = SSL_new (SSLContext);
+  SSL_set_fd (sslfd, sock);
+  SSL_connect (sslfd);
+#endif
 	auth = xmalloc(sizeof(*auth));
 	auth->fd = sock;
 	buffer_init(&auth->identities);
 	auth->howmany = 0;
+#if 1
+  auth->SSLContext = SSLContext;
+  auth->sslfd = sslfd;
+#endif
 
 	return auth;
 }
