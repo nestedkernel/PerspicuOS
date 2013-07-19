@@ -26,7 +26,7 @@ static inline unsigned char *
 sva_get_key (void) {
   /* Pointer to the key */
   unsigned char * keyp;
-  __asm__ __volatile__ ("int $0x7c\n" : "-a" (keyp));
+  __asm__ __volatile__ ("int $0x7c\n" : "=a" (keyp));
   return keyp;
 }
 #endif
