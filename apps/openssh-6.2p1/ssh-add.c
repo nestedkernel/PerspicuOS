@@ -423,11 +423,6 @@ main(int argc, char **argv)
 
 	OpenSSL_add_all_algorithms();
 
-#if 1
-  /* Initialize SSL */
-  SSL_library_init();
-#endif
-
 	/* At first, get a connection to the authentication agent. */
 	ac = ssh_get_authentication_connection();
 	if (ac == NULL) {

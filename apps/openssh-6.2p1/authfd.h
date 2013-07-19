@@ -16,10 +16,6 @@
 #ifndef AUTHFD_H
 #define AUTHFD_H
 
-#if 1
-#include <openssl/ssl.h>
-#endif
-
 /* Messages for the authentication agent connection. */
 #define SSH_AGENTC_REQUEST_RSA_IDENTITIES	1
 #define SSH_AGENT_RSA_IDENTITIES_ANSWER		2
@@ -68,13 +64,6 @@ typedef struct {
 	int	fd;
 	Buffer	identities;
 	int	howmany;
-#if 1
-  /* OpenSSL Context */
-  SSL_CTX * SSLContext;
-
-  /* OpenSSL "file descriptor" used for encrypted and/or authenticated I/O */
-  SSL * sslfd;
-#endif
 }	AuthenticationConnection;
 
 int	ssh_agent_present(void);

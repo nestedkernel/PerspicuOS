@@ -916,42 +916,6 @@ new_socket(sock_type type, int fd)
    */
   SSL * sslDesc = SSL_new (SSLContext);
   SSL_set_fd (sslDesc, fd);
-
-  /*
-   * Do the SSL connection handshake.
-   */
-  unsigned char nohandshake = 1;
-  do {
-    int ret;
-    int err;
-    switch (ret = SSL_accept (sslDesc)) {
-      /* No error */
-      case 1:
-        nohandshake = 0;
-        break;
-
-      /* Error occurred */
-      case 2:
-        printf ("Error 2: %d\n", SSL_get_error(sslDesc, ret));
-        abort();
-        break;
-
-      default:
-        switch (err = SSL_get_error(sslDesc, ret)) {
-          /* Keep trying */
-          case SSL_ERROR_WANT_READ:
-          case SSL_ERROR_WANT_WRITE:
-            break;
-
-          /* Report an error */
-          default:
-            printf ("Error negative: %d\n", SSL_get_error(sslDesc, ret));
-            abort();
-            break;
-        }
-        break;
-    }
-  } while (nohandshake);
 #endif
 	set_nonblock(fd);
 
