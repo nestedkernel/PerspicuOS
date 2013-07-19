@@ -41,7 +41,7 @@ PATHS= -DSSHDIR=\"$(sysconfdir)\" \
 
 CC=@CC@
 LD=@LD@
-CFLAGS=@CFLAGS@
+CFLAGS=-I$(HOME)/src/sva/SVA/include -I$(HOME)/src/sva/lib/libghost @CFLAGS@
 CPPFLAGS=-I. -I$(srcdir) @CPPFLAGS@ $(PATHS) @DEFS@
 LIBS=@LIBS@
 K5LIBS=@K5LIBS@
@@ -57,7 +57,7 @@ PERL=@PERL@
 SED=@SED@
 ENT=@ENT@
 XAUTH_PATH=@XAUTH_PATH@
-LDFLAGS=-L. -Lopenbsd-compat/ @LDFLAGS@
+LDFLAGS=-L. -Lopenbsd-compat/ -L$(HOME)/src/sva/lib/libghost @LDFLAGS@
 EXEEXT=@EXEEXT@
 MANFMT=@MANFMT@
 
