@@ -64,6 +64,89 @@
 #include "atomicio.h"
 #include "misc.h"
 
+#if 1
+#include <assert.h>
+
+#include <sys/types.h>
+#include <rijndael.h>
+
+size_t
+ssh_ghostread (int fd,
+               unsigned char * buf,
+               size_t size,
+               rijndael_ctx * ctx)
+{
+  /* Buffer for reading encrypted data */
+  static char buffer[4096];
+
+  /* Length of read data */
+  size_t length;
+  size_t cryptLength;
+
+  /* Source and destination pointers */
+  char * src;
+  char * dst;
+
+  /*
+   * Read the data from the untrusted operating system into memory.
+   */
+  assert (size <= 4096);
+  length = read (fd, buffer, size);
+
+  /*
+   * Decrypt the data and store it into ghost memory.
+   */
+  src = buffer;
+  dst = buf;
+  for (cryptLength = length; cryptLength > 0; cryptLength -= 16) {
+    rijndael_decrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+
+  return length;
+}
+
+size_t
+ssh_ghostwrite (int fd,
+                unsigned char * buf,
+                size_t size,
+                rijndael_ctx *ctx)
+{
+  /* Buffer for holding encrypted data for the OS */
+  static char buffer[4096];
+
+  /* Source and destination pointers */
+  char * src;
+  char * dst;
+
+  /* Length of read data */
+  size_t length;
+  size_t cryptLength;
+  size_t totalLength = 0;
+
+  assert (size <= 4096);
+
+  /*
+   * Encrypt the data and store it into ghost memory.
+   */
+  src = buf;
+  dst = buffer;
+  for (cryptLength = size; cryptLength > 0 ; cryptLength -= 16) {
+    rijndael_encrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+
+  /*
+   * Write the data from the untrusted operating system into memory.
+   */
+  do {
+    totalLength += write (fd, buffer, size);
+  } while (totalLength != size);
+  return length;
+}
+#endif
 static int agent_present = 0;
 
 /* helper */
@@ -134,12 +217,21 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 	put_u32(buf, len);
 
 	/* Send the length and then the packet to the agent. */
+#if 0
 	if (atomicio(vwrite, auth->fd, buf, 4) != 4 ||
 	    atomicio(vwrite, auth->fd, buffer_ptr(request),
 	    buffer_len(request)) != buffer_len(request)) {
 		error("Error writing to authentication socket.");
 		return 0;
 	}
+#else
+	if ((ssh_ghostwrite (auth->fd, buf, 4, auth->encryptKey)) != 4 ||
+	    (ssh_ghostwrite (auth->fd, buffer_ptr(request),
+	    buffer_len(request), auth->encryptKey)) != buffer_len(request)) {
+		error("Error writing to authentication socket.");
+		return 0;
+	}
+#endif
 	/*
 	 * Wait for response from the agent.  First read the length of the
 	 * response packet.
@@ -211,6 +303,17 @@ ssh_get_authentication_connection(void)
 	buffer_init(&auth->identities);
 	auth->howmany = 0;
 
+#if 1
+  /*
+   * Get the private key and initialize the key schedule.
+   */
+  static char ghostKey[16] = "abcdefghijklmno";
+  auth->encryptKey = malloc (sizeof (rijndael_ctx));
+  auth->decryptKey = malloc (sizeof (rijndael_ctx));
+
+  rijndael_set_key(auth->encryptKey, ghostKey, 128, 1);
+  rijndael_set_key(auth->decryptKey, ghostKey, 128, 0);
+#endif
 	return auth;
 }
 
@@ -707,82 +810,3 @@ decode_reply(int type)
 	return 0;
 }
 
-#if 1
-
-#include <sys/types.h>
-#include <rijndael.h>
-
-size_t
-ssh_ghostread (int fd,
-               unsigned char * buf,
-               size_t size,
-               rijndael_ctx * ctx)
-{
-  /* Buffer for reading encrypted data */
-  static char buffer[4096];
-
-  /* Length of read data */
-  size_t length;
-  size_t cryptLength;
-
-  /* Source and destination pointers */
-  char * src;
-  char * dst;
-
-  /*
-   * Read the data from the untrusted operating system into memory.
-   */
-  assert (size <= 4096);
-  length = read (fd, buffer, size);
-
-  /*
-   * Decrypt the data and store it into ghost memory.
-   */
-  src = buffer;
-  dst = buf;
-  for (cryptLength = length; cryptLength; cryptLength -= 16) {
-    rijndael_decrypt(ctx, src, dst);
-    src += 16;
-    dst += 16;
-  }
-
-  return length;
-}
-
-size_t
-ssh_ghostwrite (int fd,
-                unsigned char * buf,
-                size_t size,
-                rijndael_ctx *ctx)
-{
-  /* Buffer for holding encrypted data for the OS */
-  static char buffer[4096];
-
-  /* Source and destination pointers */
-  char * src;
-  char * dst;
-
-  /* Length of read data */
-  size_t length;
-  size_t cryptLength;
-
-  assert (size <= 4096);
-
-  /*
-   * Encrypt the data and store it into ghost memory.
-   */
-  src = buf;
-  dst = buffer;
-  for (cryptLength = length; cryptLength; cryptLength -= 16) {
-    rijndael_encrypt(ctx, src, dst);
-    src += 16;
-    dst += 16;
-  }
-
-  /*
-   * Write the data from the untrusted operating system into memory.
-   */
-  length = write (fd, buffer, size);
-  return length;
-}
-#endif

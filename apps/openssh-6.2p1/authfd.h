@@ -16,6 +16,10 @@
 #ifndef AUTHFD_H
 #define AUTHFD_H
 
+#if 1
+#include "rijndael.h"
+#endif
+
 /* Messages for the authentication agent connection. */
 #define SSH_AGENTC_REQUEST_RSA_IDENTITIES	1
 #define SSH_AGENT_RSA_IDENTITIES_ANSWER		2
@@ -64,6 +68,10 @@ typedef struct {
 	int	fd;
 	Buffer	identities;
 	int	howmany;
+#if 1
+  rijndael_ctx * encryptKey;
+  rijndael_ctx * decryptKey;
+#endif
 }	AuthenticationConnection;
 
 int	ssh_agent_present(void);
