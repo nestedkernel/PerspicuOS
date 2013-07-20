@@ -78,6 +78,58 @@ ssh_ghostread (int fd,
 {
   /* Buffer for reading encrypted data */
   static char buffer[4096];
+  unsigned index;
+
+  /* Length of read data */
+  size_t cryptLength = 0;
+  size_t length = 0;
+
+  /* Source and destination pointers */
+  char * src;
+  char * dst;
+
+  /*
+   * Read the data from the untrusted operating system into memory.  Continue
+   * reading until we get all of the data.
+   */
+  assert (size <= 4096);
+  length = read (fd, buffer, size);
+  if ((length == 0) || (length == -1))
+    return length;
+
+  /*
+   * Decrypt the data and store it into ghost memory.
+   */
+  src = buffer;
+  dst = buf;
+  for (cryptLength = 0; cryptLength < length ; cryptLength += 16) {
+    rijndael_decrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+
+  for (index = 0; index < length; ++index) {
+    fprintf (stderr, "%d ", buffer[index]);
+  }
+  fprintf (stderr, "\n");
+
+  for (index = 0; index < length; ++index) {
+    fprintf (stderr, "%d ", buf[index]);
+  }
+  fprintf (stderr, "\n");
+
+  return length;
+}
+
+size_t
+ssh_atomicghostread (int fd,
+                     unsigned char * buf,
+                     size_t size,
+                     rijndael_ctx * ctx)
+{
+  /* Buffer for reading encrypted data */
+  static char buffer[4096];
+  unsigned index;
 
   /* Length of read data */
   size_t length = 0;
@@ -97,6 +149,8 @@ ssh_ghostread (int fd,
   do {
     /* Read the data */
     if ((length = read (fd, p, size)) == -1) {
+      if ((errno == EAGAIN) && (totalLength))
+        return totalLength;
       return length;
     }
 
@@ -110,15 +164,21 @@ ssh_ghostread (int fd,
    */
   src = buffer;
   dst = buf;
-#if 0
-  for (cryptLength = 0; cryptLength < size ; cryptLength += 16) {
+  for (cryptLength = 0; cryptLength < totalLength ; cryptLength += 16) {
     rijndael_decrypt(ctx, src, dst);
     src += 16;
     dst += 16;
   }
-#else
-  memcpy (dst, src, totalLength);
-#endif
+
+  for (index = 0; index < totalLength; ++index) {
+    fprintf (stderr, "%d ", buffer[index]);
+  }
+  fprintf (stderr, "\n");
+
+  for (index = 0; index < totalLength; ++index) {
+    fprintf (stderr, "%d ", buf[index]);
+  }
+  fprintf (stderr, "\n");
 
   return totalLength;
 }
@@ -131,6 +191,7 @@ ssh_ghostwrite (int fd,
 {
   /* Buffer for holding encrypted data for the OS */
   static char buffer[4096];
+  unsigned index;
 
   /* Source and destination pointers */
   char * src;
@@ -148,15 +209,11 @@ ssh_ghostwrite (int fd,
    */
   src = buf;
   dst = buffer;
-#if 0
   for (cryptLength = 0; cryptLength < size ; cryptLength += 16) {
     rijndael_encrypt(ctx, src, dst);
     src += 16;
     dst += 16;
   }
-#else
-  memcpy (dst, src, size);
-#endif
 
   /*
    * Write the data from the untrusted operating system into memory.
@@ -169,6 +226,16 @@ ssh_ghostwrite (int fd,
     totalLength += length;
     p += length;
   } while ((totalLength < size) && (length));
+
+  for (index = 0; index < totalLength; ++index) {
+    fprintf (stderr, "%d ", buf[index]);
+  }
+  fprintf (stderr, "\n");
+
+  for (index = 0; index < totalLength; ++index) {
+    fprintf (stderr, "%d ", buffer[index]);
+  }
+  fprintf (stderr, "\n");
 
   logit ("ghostwrite: Wrote %ld\n", totalLength);
   return totalLength;
@@ -274,7 +341,7 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 	}
 #else
   size_t jtc;
-	if (jtc = ssh_ghostread (auth->fd, buf, 4, auth->decryptKey) != 4) {
+	if (jtc = ssh_atomicghostread (auth->fd, buf, 4, auth->decryptKey) != 4) {
 	    error("Error reading response length from authentication socket: %ld", jtc);
 	    return 0;
 	}
@@ -297,7 +364,7 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 			return 0;
 		}
 #else
-		if (ssh_ghostread (auth->fd, buf, l, auth->decryptKey) != l) {
+		if (ssh_atomicghostread (auth->fd, buf, l, auth->decryptKey) != l) {
 			error("Error reading response from authentication socket.");
 			return 0;
 		}
