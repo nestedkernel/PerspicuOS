@@ -1022,7 +1022,7 @@ static void
 after_select(fd_set *readset,
              fd_set *writeset,
              char * encryptSchedule,
-             char * descryptSchedule)
+             char * decryptSchedule)
 {
 	struct sockaddr_un sunaddr;
 	socklen_t slen;
@@ -1090,8 +1090,12 @@ after_select(fd_set *readset,
 			}
 			if (FD_ISSET(sockets[i].fd, readset)) {
         logit ("ghost: ssh-agent: Start ghost read\n");
+#if 0
 				len = ghost_read(sockets[i].fd, buf, sizeof(buf));
-        logit ("ghost: ssh-agent: End ghost read: %ld\n", len);
+#else
+				len = ssh_ghostread(sockets[i].fd, buf, sizeof(buf), decryptSchedule);
+#endif
+        logit ("ghost: ssh-agent: End ghost read: %ld %d\n", len, errno);
 				if (len == -1 && (errno == EAGAIN ||
 				    errno == EWOULDBLOCK ||
 				    errno == EINTR))
