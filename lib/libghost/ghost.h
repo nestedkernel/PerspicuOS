@@ -7,6 +7,7 @@ extern "C" int _bind(int s, const struct sockaddr *addr, socklen_t addrlen);
 extern "C" int _getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen);
 extern "C" int _pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout, sigset_t * sigmask);
 extern "C" int _open (char *path, int flags, mode_t mode);
+extern "C" int _close (int fd);
 extern "C" ssize_t _readlink(char * path, char * buf, size_t bufsiz);
 extern "C" int _mkdir(char *path, mode_t mode);
 extern "C" int _stat(const char *path, struct stat *sb);
