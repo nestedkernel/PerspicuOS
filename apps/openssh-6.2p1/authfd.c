@@ -108,13 +108,14 @@ ssh_ghostread (int fd,
     dst += 16;
   }
 
+  fprintf (stderr, "Decrypting:\n");
   for (index = 0; index < length; ++index) {
-    fprintf (stderr, "%d ", buffer[index]);
+    fprintf (stderr, "%5d ", buffer[index]);
   }
   fprintf (stderr, "\n");
 
   for (index = 0; index < length; ++index) {
-    fprintf (stderr, "%d ", buf[index]);
+    fprintf (stderr, "%5d ", buf[index]);
   }
   fprintf (stderr, "\n");
 
@@ -170,13 +171,14 @@ ssh_atomicghostread (int fd,
     dst += 16;
   }
 
+  fprintf (stderr, "Decrypting:\n");
   for (index = 0; index < totalLength; ++index) {
-    fprintf (stderr, "%d ", buffer[index]);
+    fprintf (stderr, "%5d ", buffer[index]);
   }
   fprintf (stderr, "\n");
 
   for (index = 0; index < totalLength; ++index) {
-    fprintf (stderr, "%d ", buf[index]);
+    fprintf (stderr, "%5d ", buf[index]);
   }
   fprintf (stderr, "\n");
 
@@ -227,13 +229,14 @@ ssh_ghostwrite (int fd,
     p += length;
   } while ((totalLength < size) && (length));
 
+  fprintf (stderr, "Encrypting:\n");
   for (index = 0; index < totalLength; ++index) {
-    fprintf (stderr, "%d ", buf[index]);
+    fprintf (stderr, "%5d ", buf[index]);
   }
   fprintf (stderr, "\n");
 
   for (index = 0; index < totalLength; ++index) {
-    fprintf (stderr, "%d ", buffer[index]);
+    fprintf (stderr, "%5d ", buffer[index]);
   }
   fprintf (stderr, "\n");
 
