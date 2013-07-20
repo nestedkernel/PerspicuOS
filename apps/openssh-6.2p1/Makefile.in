@@ -41,7 +41,7 @@ PATHS= -DSSHDIR=\"$(sysconfdir)\" \
 
 CC=@CC@
 LD=@LD@
-CFLAGS=-I$(HOME)/src/sva/SVA/include -I$(HOME)/src/sva/lib/libghost @CFLAGS@
+CFLAGS=-g -I$(HOME)/src/sva/SVA/include -I$(HOME)/src/sva/lib/libghost @CFLAGS@
 CPPFLAGS=-I. -I$(srcdir) @CPPFLAGS@ $(PATHS) @DEFS@
 LIBS=@LIBS@
 K5LIBS=@K5LIBS@
