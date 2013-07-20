@@ -80,31 +80,47 @@ ssh_ghostread (int fd,
   static char buffer[4096];
 
   /* Length of read data */
-  size_t length;
-  size_t cryptLength;
+  size_t length = 0;
+  size_t cryptLength = 0;
+  size_t totalLength = 0;
 
   /* Source and destination pointers */
   char * src;
   char * dst;
+  char * p = buffer;
 
   /*
-   * Read the data from the untrusted operating system into memory.
+   * Read the data from the untrusted operating system into memory.  Continue
+   * reading until we get all of the data.
    */
   assert (size <= 4096);
-  length = read (fd, buffer, size);
+  do {
+    /* Read the data */
+    if ((length = read (fd, p, size)) == -1) {
+      return length;
+    }
+
+    /* Increment the length */
+    totalLength += length;
+    p += length;
+  } while (length && (totalLength < size));
 
   /*
    * Decrypt the data and store it into ghost memory.
    */
   src = buffer;
   dst = buf;
-  for (cryptLength = length; cryptLength > 0; cryptLength -= 16) {
+#if 0
+  for (cryptLength = 0; cryptLength < size ; cryptLength += 16) {
     rijndael_decrypt(ctx, src, dst);
     src += 16;
     dst += 16;
   }
+#else
+  memcpy (dst, src, totalLength);
+#endif
 
-  return length;
+  return totalLength;
 }
 
 size_t
@@ -119,9 +135,9 @@ ssh_ghostwrite (int fd,
   /* Source and destination pointers */
   char * src;
   char * dst;
+  char * p = buffer;
 
   /* Length of read data */
-  size_t length;
   size_t cryptLength;
   size_t totalLength = 0;
 
@@ -132,21 +148,33 @@ ssh_ghostwrite (int fd,
    */
   src = buf;
   dst = buffer;
-  for (cryptLength = size; cryptLength > 0 ; cryptLength -= 16) {
+#if 0
+  for (cryptLength = 0; cryptLength < size ; cryptLength += 16) {
     rijndael_encrypt(ctx, src, dst);
     src += 16;
     dst += 16;
   }
+#else
+  memcpy (dst, src, size);
+#endif
 
   /*
    * Write the data from the untrusted operating system into memory.
    */
+  size_t length = 0;
   do {
-    totalLength += write (fd, buffer, size);
-  } while (totalLength != size);
-  return length;
+    if ((length = write (fd, p, size)) == -1) {
+      return length;
+    }
+    totalLength += length;
+    p += length;
+  } while ((totalLength < size) && (length));
+
+  logit ("ghostwrite: Wrote %ld\n", totalLength);
+  return totalLength;
 }
 #endif
+
 static int agent_present = 0;
 
 /* helper */
@@ -225,9 +253,12 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 		return 0;
 	}
 #else
-	if ((ssh_ghostwrite (auth->fd, buf, 4, auth->encryptKey)) != 4 ||
-	    (ssh_ghostwrite (auth->fd, buffer_ptr(request),
+  volatile size_t w1 = 0;
+  volatile size_t w2 = 0;
+	if ((w1 = ssh_ghostwrite (auth->fd, buf, 4, auth->encryptKey)) != 4 ||
+	    (w2 = ssh_ghostwrite (auth->fd, buffer_ptr(request),
 	    buffer_len(request), auth->encryptKey)) != buffer_len(request)) {
+    __asm__ __volatile__ ("int $3\n");
 		error("Error writing to authentication socket.");
 		return 0;
 	}
@@ -236,10 +267,18 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 	 * Wait for response from the agent.  First read the length of the
 	 * response packet.
 	 */
+#if 0
 	if (atomicio(read, auth->fd, buf, 4) != 4) {
 	    error("Error reading response length from authentication socket.");
 	    return 0;
 	}
+#else
+  size_t jtc;
+	if (jtc = ssh_ghostread (auth->fd, buf, 4, auth->decryptKey) != 4) {
+	    error("Error reading response length from authentication socket: %ld", jtc);
+	    return 0;
+	}
+#endif
 
 	/* Extract the length, and check it for sanity. */
 	len = get_u32(buf);
@@ -252,10 +291,17 @@ ssh_request_reply(AuthenticationConnection *auth, Buffer *request, Buffer *reply
 		l = len;
 		if (l > sizeof(buf))
 			l = sizeof(buf);
+#if 0
 		if (atomicio(read, auth->fd, buf, l) != l) {
 			error("Error reading response from authentication socket.");
 			return 0;
 		}
+#else
+		if (ssh_ghostread (auth->fd, buf, l, auth->decryptKey) != l) {
+			error("Error reading response from authentication socket.");
+			return 0;
+		}
+#endif
 		buffer_append(reply, buf, l);
 		len -= l;
 	}

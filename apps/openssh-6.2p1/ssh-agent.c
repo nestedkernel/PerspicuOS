@@ -1060,6 +1060,7 @@ after_select(fd_set *readset,
 					break;
 				}
 				new_socket(AUTH_CONNECTION, sock);
+        logit ("ghost: ssh-agent: New socket working\n");
 			}
 			break;
 		case AUTH_CONNECTION:
@@ -1070,10 +1071,12 @@ after_select(fd_set *readset,
 				    buffer_ptr(&sockets[i].output),
 				    buffer_len(&sockets[i].output));
 #else
+        logit ("ghost: ssh-agent: Start ghost write\n");
 				len = ssh_ghostwrite(sockets[i].fd,
 				    buffer_ptr(&sockets[i].output),
 				    buffer_len(&sockets[i].output),
             encryptSchedule);
+        logit ("ghost: ssh-agent: Done ghost write: %ld\n", len);
 #endif
 				if (len == -1 && (errno == EAGAIN ||
 				    errno == EWOULDBLOCK ||
@@ -1086,7 +1089,9 @@ after_select(fd_set *readset,
 				buffer_consume(&sockets[i].output, len);
 			}
 			if (FD_ISSET(sockets[i].fd, readset)) {
+        logit ("ghost: ssh-agent: Start ghost read\n");
 				len = ghost_read(sockets[i].fd, buf, sizeof(buf));
+        logit ("ghost: ssh-agent: End ghost read: %ld\n", len);
 				if (len == -1 && (errno == EAGAIN ||
 				    errno == EWOULDBLOCK ||
 				    errno == EINTR))
