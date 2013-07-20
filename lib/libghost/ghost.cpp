@@ -71,9 +71,7 @@ ghostinit (void) {
   /*
    * Restrict ourselves to only jumping to the signal handler trampoline.
    */
-  if (getenv ("GHOSTING")) {
-    ghostAllowFunction ((void *)0x7ffffffff000);
-  }
+  ghostAllowFunction ((void *)0x7ffffffff000);
 
   /*
    * Open a log file.
@@ -93,7 +91,9 @@ ghostinit (void) {
 //
 void
 ghostAllowFunction (void * f) {
-  __asm__ __volatile__ ("int $0x7d\n" :: "D" (f));
+  if (getenv ("GHOSTING")) {
+    __asm__ __volatile__ ("int $0x7d\n" :: "D" (f));
+  }
   return;
 }
 
@@ -369,9 +369,11 @@ _open (char *path, int flags, mode_t mode) {
 int
 _close (int fd) {
   int err;
-  err = close (fd);
-  snprintf (logbuf, 128, "#close: %d %d\n", fd, errno);
-  write (logfd, logbuf, strlen (logbuf));
+  if (fd != logfd) {
+    err = close (fd);
+    snprintf (logbuf, 128, "#close: %d %d\n", fd, errno);
+    write (logfd, logbuf, strlen (logbuf));
+  }
   return err;
 }
 
