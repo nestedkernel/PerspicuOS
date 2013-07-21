@@ -331,7 +331,11 @@ main(int argc, char **argv)
 
 		/* copy stdin to iqueue */
 		if (FD_ISSET(in, rset)) {
+#if 0
 			len = read(in, buf, sizeof buf);
+#else
+			len = ghost_read(in, buf, sizeof buf);
+#endif
 			if (len == 0) {
 				debug("read eof");
 				cleanup_exit(0);
@@ -344,7 +348,7 @@ main(int argc, char **argv)
 		}
 		/* send oqueue to stdout */
 		if (FD_ISSET(out, wset)) {
-			len = write(out, buffer_ptr(&oqueue), olen);
+			len = ghost_write(out, buffer_ptr(&oqueue), olen);
 			if (len < 0) {
 				error("write: %s", strerror(errno));
 				cleanup_exit(1);

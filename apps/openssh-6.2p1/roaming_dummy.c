@@ -38,7 +38,7 @@ get_recv_bytes(void)
 ssize_t
 roaming_write(int fd, const void *buf, size_t count, int *cont)
 {
-	return write(fd, buf, count);
+	return ghost_write(fd, buf, count);
 }
 
 ssize_t
@@ -46,7 +46,12 @@ roaming_read(int fd, void *buf, size_t count, int *cont)
 {
 	if (cont)
 		*cont = 0;
+#if 0
 	return read(fd, buf, count);
+#else
+	return ghost_read(fd, buf, count);
+#endif
+
 }
 
 void

@@ -124,10 +124,14 @@ restart:
 	/* No I/O if we are already backgrounded. */
 	if (signo[SIGTTOU] != 1 && signo[SIGTTIN] != 1) {
 		if (!(flags & RPP_STDIN))
-			(void)write(output, prompt, strlen(prompt));
+			(void)ghost_write(output, prompt, strlen(prompt));
 		end = buf + bufsiz - 1;
 		p = buf;
+#if 0
 		while ((nr = read(input, &ch, 1)) == 1 && ch != '\n' && ch != '\r') {
+#else
+		while ((nr = ghost_read(input, &ch, 1)) == 1 && ch != '\n' && ch != '\r') {
+#endif
 			if (p < end) {
 				if ((flags & RPP_SEVENBIT))
 					ch &= 0x7f;
@@ -143,7 +147,7 @@ restart:
 		*p = '\0';
 		save_errno = errno;
 		if (!(term.c_lflag & ECHO))
-			(void)write(output, "\n", 1);
+			(void)ghost_write(output, "\n", 1);
 	}
 
 	/* Restore old terminal settings and signals. */

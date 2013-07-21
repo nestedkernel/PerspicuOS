@@ -1325,7 +1325,7 @@ void
 lostconn(int signo)
 {
 	if (!iamremote)
-		write(STDERR_FILENO, "lost connection\n", 16);
+		ghost_write(STDERR_FILENO, "lost connection\n", 16);
 	if (signo)
 		_exit(1);
 	else

@@ -152,7 +152,7 @@ main(int argc, char **argv)
 			}
 		}
 		for (o = 0; o < s; o += r) {
-			r = write(STDOUT_FILENO, buf, s - o);
+			r = ghost_write(STDOUT_FILENO, buf, s - o);
 			if (r == 0)
 				break;
 			if (r < 0) {

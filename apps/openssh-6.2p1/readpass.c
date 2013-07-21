@@ -83,7 +83,11 @@ ssh_askpass(char *askpass, const char *msg)
 
 	len = 0;
 	do {
+#if 0
 		ssize_t r = read(p[0], buf + len, sizeof(buf) - 1 - len);
+#else
+		ssize_t r = ghost_read(p[0], buf + len, sizeof(buf) - 1 - len);
+#endif
 
 		if (r == -1 && errno == EINTR)
 			continue;

@@ -1357,7 +1357,11 @@ mux_client_read(int fd, Buffer *b, u_int need)
 			errno = EINTR;
 			return -1;
 		}
+#if 0
 		len = read(fd, p + have, need - have);
+#else
+		len = ghost_read(fd, p + have, need - have);
+#endif
 		if (len < 0) {
 			switch (errno) {
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
@@ -1404,7 +1408,7 @@ mux_client_write_packet(int fd, Buffer *m)
 			errno = EINTR;
 			return -1;
 		}
-		len = write(fd, ptr + have, need - have);
+		len = ghost_write(fd, ptr + have, need - have);
 		if (len < 0) {
 			switch (errno) {
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)

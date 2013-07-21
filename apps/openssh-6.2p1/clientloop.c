@@ -455,7 +455,11 @@ client_check_initial_eof_on_stdin(void)
 		enter_non_blocking();
 
 		/* Check for immediate EOF on stdin. */
+#if 0
 		len = read(fileno(stdin), buf, 1);
+#else
+		len = ghost_read(fileno(stdin), buf, 1);
+#endif
 		if (len == 0) {
 			/*
 			 * EOF.  Record that we have seen it and send
@@ -1319,7 +1323,11 @@ client_process_input(fd_set *readset)
 	/* Read input from stdin. */
 	if (FD_ISSET(fileno(stdin), readset)) {
 		/* Read as much as possible. */
+#if 0
 		len = read(fileno(stdin), buf, sizeof(buf));
+#else
+		len = ghost_read(fileno(stdin), buf, sizeof(buf));
+#endif
 		if (len < 0 &&
 		    (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK))
 			return;		/* we'll try again later */
@@ -1375,7 +1383,7 @@ client_process_output(fd_set *writeset)
 	/* Write buffered output to stdout. */
 	if (FD_ISSET(fileno(stdout), writeset)) {
 		/* Write as much data as possible. */
-		len = write(fileno(stdout), buffer_ptr(&stdout_buffer),
+		len = ghost_write(fileno(stdout), buffer_ptr(&stdout_buffer),
 		    buffer_len(&stdout_buffer));
 		if (len <= 0) {
 			if (errno == EINTR || errno == EAGAIN ||
@@ -1399,7 +1407,7 @@ client_process_output(fd_set *writeset)
 	/* Write buffered output to stderr. */
 	if (FD_ISSET(fileno(stderr), writeset)) {
 		/* Write as much data as possible. */
-		len = write(fileno(stderr), buffer_ptr(&stderr_buffer),
+		len = ghost_write(fileno(stderr), buffer_ptr(&stderr_buffer),
 		    buffer_len(&stderr_buffer));
 		if (len <= 0) {
 			if (errno == EINTR || errno == EAGAIN ||

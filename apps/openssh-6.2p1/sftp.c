@@ -215,7 +215,7 @@ cmd_interrupt(int signo)
 	const char msg[] = "\rInterrupt  \n";
 	int olderrno = errno;
 
-	write(STDERR_FILENO, msg, sizeof(msg) - 1);
+	ghost_write(STDERR_FILENO, msg, sizeof(msg) - 1);
 	interrupted = 1;
 	errno = olderrno;
 }

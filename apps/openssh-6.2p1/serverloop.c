@@ -148,7 +148,7 @@ static void
 notify_parent(void)
 {
 	if (notify_pipe[1] != -1)
-		write(notify_pipe[1], "", 1);
+		ghost_write(notify_pipe[1], "", 1);
 }
 static void
 notify_prepare(fd_set *readset)
@@ -162,7 +162,11 @@ notify_done(fd_set *readset)
 	char c;
 
 	if (notify_pipe[0] != -1 && FD_ISSET(notify_pipe[0], readset))
+#if 0
 		while (read(notify_pipe[0], &c, 1) != -1)
+#else
+		while (ghost_read(notify_pipe[0], &c, 1) != -1)
+#endif
 			debug2("notify_done: reading");
 }
 
@@ -451,7 +455,11 @@ process_input(fd_set *readset)
 	/* Read and buffer any available stderr data from the program. */
 	if (!fderr_eof && FD_ISSET(fderr, readset)) {
 		errno = 0;
+#if 0
 		len = read(fderr, buf, sizeof(buf));
+#else
+		len = ghost_read(fderr, buf, sizeof(buf));
+#endif
 		if (len < 0 && (errno == EINTR || ((errno == EAGAIN ||
 		    errno == EWOULDBLOCK) && !child_terminated))) {
 			/* do nothing */
@@ -483,7 +491,7 @@ process_output(fd_set *writeset)
 	if (!compat20 && fdin != -1 && FD_ISSET(fdin, writeset)) {
 		data = buffer_ptr(&stdin_buffer);
 		dlen = buffer_len(&stdin_buffer);
-		len = write(fdin, data, dlen);
+		len = ghost_write(fdin, data, dlen);
 		if (len < 0 &&
 		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) {
 			/* do nothing */

@@ -1613,7 +1613,11 @@ channel_handle_rfd(Channel *c, fd_set *readset, fd_set *writeset)
 	force = c->isatty && c->detach_close && c->istate != CHAN_INPUT_CLOSED;
 	if (c->rfd != -1 && (force || FD_ISSET(c->rfd, readset))) {
 		errno = 0;
+#if 0
 		len = read(c->rfd, buf, sizeof(buf));
+#else
+		len = ghost_read(c->rfd, buf, sizeof(buf));
+#endif
 		if (len < 0 && (errno == EINTR ||
 		    ((errno == EAGAIN || errno == EWOULDBLOCK) && !force)))
 			return 1;
@@ -1684,7 +1688,7 @@ channel_handle_wfd(Channel *c, fd_set *readset, fd_set *writeset)
 
 		if (c->datagram) {
 			/* ignore truncated writes, datagrams might get lost */
-			len = write(c->wfd, buf, dlen);
+			len = ghost_write(c->wfd, buf, dlen);
 			xfree(data);
 			if (len < 0 && (errno == EINTR || errno == EAGAIN ||
 			    errno == EWOULDBLOCK))
@@ -1704,7 +1708,7 @@ channel_handle_wfd(Channel *c, fd_set *readset, fd_set *writeset)
 			dlen = MIN(dlen, 8*1024);
 #endif
 
-		len = write(c->wfd, buf, dlen);
+		len = ghost_write(c->wfd, buf, dlen);
 		if (len < 0 &&
 		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
 			return 1;
@@ -1756,7 +1760,7 @@ channel_handle_efd(Channel *c, fd_set *readset, fd_set *writeset)
 		if (c->extended_usage == CHAN_EXTENDED_WRITE &&
 		    FD_ISSET(c->efd, writeset) &&
 		    buffer_len(&c->extended) > 0) {
-			len = write(c->efd, buffer_ptr(&c->extended),
+			len = ghost_write(c->efd, buffer_ptr(&c->extended),
 			    buffer_len(&c->extended));
 			debug2("channel %d: written %d to efd %d",
 			    c->self, len, c->efd);
@@ -1775,7 +1779,11 @@ channel_handle_efd(Channel *c, fd_set *readset, fd_set *writeset)
 		    (c->extended_usage == CHAN_EXTENDED_READ ||
 		    c->extended_usage == CHAN_EXTENDED_IGNORE) &&
 		    (c->detach_close || FD_ISSET(c->efd, readset))) {
+#if 0
 			len = read(c->efd, buf, sizeof(buf));
+#else
+			len = ghost_read(c->efd, buf, sizeof(buf));
+#endif
 			debug2("channel %d: read %d from efd %d",
 			    c->self, len, c->efd);
 			if (len < 0 && (errno == EINTR || ((errno == EAGAIN ||
@@ -1839,7 +1847,11 @@ read_mux(Channel *c, u_int need)
 
 	if (buffer_len(&c->input) < need) {
 		rlen = need - buffer_len(&c->input);
+#if 0
 		len = read(c->rfd, buf, MIN(rlen, CHAN_RBUF));
+#else
+		len = ghost_read(c->rfd, buf, MIN(rlen, CHAN_RBUF));
+#endif
 		if (len <= 0) {
 			if (errno != EINTR && errno != EAGAIN) {
 				debug2("channel %d: ctl read<=0 rfd %d len %d",
@@ -1890,7 +1902,7 @@ channel_post_mux_client(Channel *c, fd_set *readset, fd_set *writeset)
 
 	if (c->wfd != -1 && FD_ISSET(c->wfd, writeset) &&
 	    buffer_len(&c->output) > 0) {
-		len = write(c->wfd, buffer_ptr(&c->output),
+		len = ghost_write(c->wfd, buffer_ptr(&c->output),
 		    buffer_len(&c->output));
 		if (len < 0 && (errno == EINTR || errno == EAGAIN))
 			return;
@@ -1962,7 +1974,7 @@ channel_post_output_drain_13(Channel *c, fd_set *readset, fd_set *writeset)
 
 	/* Send buffered output data to the socket. */
 	if (FD_ISSET(c->sock, writeset) && buffer_len(&c->output) > 0) {
-		len = write(c->sock, buffer_ptr(&c->output),
+		len = ghost_write(c->sock, buffer_ptr(&c->output),
 			    buffer_len(&c->output));
 		if (len <= 0)
 			buffer_clear(&c->output);

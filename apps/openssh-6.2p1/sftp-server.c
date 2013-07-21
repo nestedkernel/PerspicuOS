@@ -665,7 +665,7 @@ process_write(void)
 			error("process_write: seek failed");
 		} else {
 /* XXX ATOMICIO ? */
-			ret = write(fd, data, len);
+			ret = ghost_write(fd, data, len);
 			if (ret < 0) {
 				error("process_write: write failed");
 				status = errno_to_portable(errno);
@@ -1546,7 +1546,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 		}
 		/* send oqueue to stdout */
 		if (FD_ISSET(out, wset)) {
-			len = write(out, buffer_ptr(&oqueue), olen);
+			len = ghost_write(out, buffer_ptr(&oqueue), olen);
 			if (len < 0) {
 				error("write: %s", strerror(errno));
 				sftp_server_cleanup_exit(1);
