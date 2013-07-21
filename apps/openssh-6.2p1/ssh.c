@@ -1550,7 +1550,7 @@ load_public_identity_files(void)
 		xfree(keys);
 	}
 #endif /* ENABLE_PKCS11 */
-#if 1
+#if 0
 	if ((pw = getpwuid(original_real_uid)) == NULL)
 		fatal("load_public_identity_files: getpwuid failed");
 #else
@@ -1558,7 +1558,7 @@ load_public_identity_files(void)
 	if ((pw = ghost_getpwuid(original_real_uid)) == NULL)
 		fatal("load_public_identity_files: getpwuid failed");
 #endif
-  pw = malloc (sizeof (struct password));
+  pw = malloc (sizeof (struct passwd));
   pw->pw_uid = 0;
   pw->pw_gid = 0;
   pw->pw_name = "root";
