@@ -195,6 +195,7 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 	 * port, bind our own socket to a privileged port.
 	 */
 	if (privileged) {
+    debug("Try to get priviged port.");
 		int p = IPPORT_RESERVED - 1;
 		PRIV_START;
 		sock = rresvport_af(&p, ai->ai_family);
@@ -211,7 +212,9 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 		error("socket: %.100s", strerror(errno));
 		return -1;
 	}
+  debug("Created soket.");
 	fcntl(sock, F_SETFD, FD_CLOEXEC);
+  debug("Did fcntl.");
 
 	/* Bind the socket to an alternative local IP address */
 	if (options.bind_address == NULL)
@@ -224,17 +227,29 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 	hints.ai_flags = AI_PASSIVE;
 	gaierr = getaddrinfo(options.bind_address, NULL, &hints, &res);
 	if (gaierr) {
+    debug("getaddrinfo failed.");
 		error("getaddrinfo: %s: %s", options.bind_address,
 		    ssh_gai_strerror(gaierr));
 		close(sock);
 		return -1;
 	}
+#if 0
 	if (bind(sock, res->ai_addr, res->ai_addrlen) < 0) {
+    debug("bind failed.");
 		error("bind: %s: %s", options.bind_address, strerror(errno));
 		close(sock);
 		freeaddrinfo(res);
 		return -1;
 	}
+#else
+	if (_bind(sock, res->ai_addr, res->ai_addrlen) < 0) {
+    debug("bind failed.");
+		error("bind: %s: %s", options.bind_address, strerror(errno));
+		close(sock);
+		freeaddrinfo(res);
+		return -1;
+	}
+#endif
 	freeaddrinfo(res);
 	return sock;
 }
@@ -251,12 +266,20 @@ timeout_connect(int sockfd, const struct sockaddr *serv_addr,
 	gettimeofday(&t_start, NULL);
 
 	if (*timeoutp <= 0) {
+#if 0
 		result = connect(sockfd, serv_addr, addrlen);
+#else
+		result = ghost_connect(sockfd, serv_addr, addrlen);
+#endif
 		goto done;
 	}
 
 	set_nonblock(sockfd);
+#if 0
 	rc = connect(sockfd, serv_addr, addrlen);
+#else
+	rc = ghost_connect(sockfd, serv_addr, addrlen);
+#endif
 	if (rc == 0) {
 		unset_nonblock(sockfd);
 		result = 0;
@@ -273,7 +296,11 @@ timeout_connect(int sockfd, const struct sockaddr *serv_addr,
 	ms_to_timeval(&tv, *timeoutp);
 
 	for (;;) {
+#if 0
 		rc = select(sockfd + 1, NULL, fdset, NULL, &tv);
+#else
+		rc = ghost_select(sockfd + 1, NULL, fdset, NULL, &tv);
+#endif
 		if (rc != -1 || errno != EINTR)
 			break;
 	}
@@ -486,8 +513,13 @@ ssh_exchange_identification(int timeout_ms)
 				gettimeofday(&t_start, NULL);
 				ms_to_timeval(&t_remaining, remaining);
 				FD_SET(connection_in, fdset);
+#if 0
 				rc = select(connection_in + 1, fdset, NULL,
 				    fdset, &t_remaining);
+#else
+				rc = ghost_select(connection_in + 1, fdset, NULL,
+				    fdset, &t_remaining);
+#endif
 				ms_subtract_diff(&t_start, &remaining);
 				if (rc == 0 || remaining <= 0)
 					fatal("Connection timed out during "
