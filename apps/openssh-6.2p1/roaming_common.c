@@ -136,12 +136,19 @@ buf_append(const char *buf, size_t count)
 	}
 }
 
+extern ssize_t ghost_read(int d, void *buf, size_t nbytes);
+extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
+
 ssize_t
 roaming_write(int fd, const void *buf, size_t count, int *cont)
 {
 	ssize_t ret;
 
+#if 0
 	ret = write(fd, buf, count);
+#else
+	ret = ghost_write(fd, buf, count);
+#endif
 	if (ret > 0 && !resume_in_progress) {
 		write_bytes += ret;
 		if (out_buf_size > 0)
@@ -163,7 +170,11 @@ roaming_write(int fd, const void *buf, size_t count, int *cont)
 ssize_t
 roaming_read(int fd, void *buf, size_t count, int *cont)
 {
+#if 0
 	ssize_t ret = read(fd, buf, count);
+#else
+	ssize_t ret = ghost_read(fd, buf, count);
+#endif
 	if (ret > 0) {
 		if (!resume_in_progress) {
 			read_bytes += ret;
@@ -211,11 +222,21 @@ resend_bytes(int fd, u_int64_t *offset)
 		fatal("Needed to resend more data than in the cache");
 	if (out_last < needed) {
 		int chunkend = needed - out_last;
+#if 0
 		atomicio(vwrite, fd, out_buf + out_buf_size - chunkend,
 		    chunkend);
 		atomicio(vwrite, fd, out_buf, out_last);
+#else
+		atomicio(gwrite, fd, out_buf + out_buf_size - chunkend,
+		    chunkend);
+		atomicio(gwrite, fd, out_buf, out_last);
+#endif
 	} else {
+#if 0
 		atomicio(vwrite, fd, out_buf + (out_last - needed), needed);
+#else
+		atomicio(gwrite, fd, out_buf + (out_last - needed), needed);
+#endif
 	}
 }
 
