@@ -1093,7 +1093,8 @@ after_select(fd_set *readset,
 #if 0
 				len = ghost_read(sockets[i].fd, buf, sizeof(buf));
 #else
-				len = ssh_ghostread(sockets[i].fd, buf, sizeof(buf), decryptSchedule);
+				ssh_ghostread(sockets[i].fd, buf, 4, encryptSchedule);
+				len = ssh_ghostread(sockets[i].fd, buf+4, sizeof(buf) - 4, decryptSchedule);
 #endif
         logit ("ghost: ssh-agent: End ghost read: %ld %d\n", len, errno);
 				if (len == -1 && (errno == EAGAIN ||
