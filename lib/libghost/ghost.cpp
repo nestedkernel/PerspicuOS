@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <pwd.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -256,7 +257,27 @@ ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
 }
 
 int
+_connect(int s, const struct sockaddr *addr, socklen_t addrlen) {
+  __asm__ __volatile__ ("nop");
+  int ret;
+  unsigned char * framep = tradsp;
+  struct sockaddr * newaddr = (struct sockaddr *) allocate (addrlen);
+  memcpy (newaddr, addr, addrlen);
+
+  // Perform the system call
+  ret = connect (s, newaddr, addrlen);
+
+  snprintf (logbuf, 128, "#connect: %d %d\n", ret, errno);
+  write (logfd, logbuf, strlen (logbuf));
+
+  // Restore the stack pointer
+  tradsp = framep;
+  return ret;
+}
+
+int
 _bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
+  __asm__ __volatile__ ("nop");
   int ret;
   unsigned char * framep = tradsp;
   struct sockaddr * newaddr = (struct sockaddr *) allocate (addrlen);
@@ -565,11 +586,21 @@ _clock_gettime(clockid_t clock_id, struct timespec *tp) {
   return ret;
 }
 
+struct passwd *
+ghost_getpwuid (uid_t uid) {
+  static struct passwd pw;
+  struct passwd * result;
+  static char buffer[1024];
+  int ret = getpwuid_r (uid, &pw, buffer, sizeof (buffer), &result);
+  return ((ret == 0) ? &pw : 0);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Define weak aliases to make the wrappers appear as the actual system call
 //////////////////////////////////////////////////////////////////////////////
 
 void accept () __attribute__ ((weak, alias ("_accept")));
+void connect () __attribute__ ((weak, alias ("_connect")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 
