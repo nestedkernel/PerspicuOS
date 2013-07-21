@@ -525,6 +525,7 @@ tilde_expand_filename(const char *filename, uid_t uid)
 	filename++;
 
 	path = strchr(filename, '/');
+#if 0
 	if (path != NULL && path > filename) {		/* ~user/path */
 		slash = path - filename;
 		if (slash > sizeof(user) - 1)
@@ -534,7 +535,12 @@ tilde_expand_filename(const char *filename, uid_t uid)
 		if ((pw = getpwnam(user)) == NULL)
 			fatal("tilde_expand_filename: No such user %s", user);
 	} else if ((pw = getpwuid(uid)) == NULL)	/* ~/path */
-		fatal("tilde_expand_filename: No such uid %ld", (long)uid);
+		fatal("tilde_expand_filename: %s: No such uid %ld", filename, (long)uid);
+#else
+  struct passwd mypwd;
+  pw = &mypwd;
+  pw->pw_dir = "/root";
+#endif
 
 	if (strlcpy(ret, pw->pw_dir, sizeof(ret)) >= sizeof(ret))
 		fatal("tilde_expand_filename: Path too long");
