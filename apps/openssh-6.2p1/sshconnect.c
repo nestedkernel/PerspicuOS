@@ -212,13 +212,15 @@ ssh_create_socket(int privileged, struct addrinfo *ai)
 		error("socket: %.100s", strerror(errno));
 		return -1;
 	}
-  debug("Created soket.");
+  debug("Created socket %d", sock);
 	fcntl(sock, F_SETFD, FD_CLOEXEC);
   debug("Did fcntl.");
 
 	/* Bind the socket to an alternative local IP address */
-	if (options.bind_address == NULL)
+	if (options.bind_address == NULL) {
+    debug("Return now.");
 		return sock;
+  }
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = ai->ai_family;
@@ -265,7 +267,11 @@ timeout_connect(int sockfd, const struct sockaddr *serv_addr,
 
 	gettimeofday(&t_start, NULL);
 
+#if 0
 	if (*timeoutp <= 0) {
+#else
+  if (1) {
+#endif
 #if 0
 		result = connect(sockfd, serv_addr, addrlen);
 #else
@@ -421,8 +427,8 @@ ssh_connect(const char *host, struct sockaddr_storage * hostaddr,
 				memcpy(hostaddr, ai->ai_addr, ai->ai_addrlen);
 				break;
 			} else {
-				debug("connect to address %s port %s: %s",
-				    ntop, strport, strerror(errno));
+				debug("connect to socket %d address %s port %s: %s",
+				    sock, ntop, strport, strerror(errno));
 				close(sock);
 				sock = -1;
 			}
