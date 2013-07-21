@@ -249,6 +249,11 @@ main(int ac, char **av)
 	struct servent *sp;
 	Forward fwd;
 
+#if 1
+  /* JTC: Do the Ghost Thing! */
+  extern void ghostinit(void);
+  ghostinit();
+#endif
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
 
@@ -297,7 +302,21 @@ main(int ac, char **av)
 	}
 #endif
 	/* Get user data. */
+#if 0
 	pw = getpwuid(original_real_uid);
+#else
+  logit("original_real_uid = %d", original_real_uid);
+	/* pw = ghost_getpwuid(original_real_uid); */
+  pw = malloc (sizeof (struct passwd));
+  pw->pw_uid = 0;
+  pw->pw_gid = 0;
+  pw->pw_name = "root";
+  pw->pw_dir = "/root";
+  pw->pw_class = "";
+  pw->pw_gecos = "";
+  pw->pw_shell = "/bin/sh";
+  pw->pw_passwd = "";
+#endif
 	if (!pw) {
 		logit("You don't exist, go away!");
 		exit(255);
@@ -1531,8 +1550,20 @@ load_public_identity_files(void)
 		xfree(keys);
 	}
 #endif /* ENABLE_PKCS11 */
+#if 1
 	if ((pw = getpwuid(original_real_uid)) == NULL)
 		fatal("load_public_identity_files: getpwuid failed");
+#else
+#if 0
+	if ((pw = ghost_getpwuid(original_real_uid)) == NULL)
+		fatal("load_public_identity_files: getpwuid failed");
+#endif
+  pw = malloc (sizeof (struct password));
+  pw->pw_uid = 0;
+  pw->pw_gid = 0;
+  pw->pw_name = "root";
+  pw->pw_dir = "/root";
+#endif
 	pwname = xstrdup(pw->pw_name);
 	pwdir = xstrdup(pw->pw_dir);
 	if (gethostname(thishost, sizeof(thishost)) == -1)

@@ -41,9 +41,10 @@ PATHS= -DSSHDIR=\"$(sysconfdir)\" \
 
 CC=@CC@
 LD=@LD@
-CFLAGS=-g -I$(HOME)/src/sva/SVA/include -I$(HOME)/src/sva/lib/libghost @CFLAGS@
+CFLAGS=-g -static -I$(HOME)/src/sva/SVA/include -I$(HOME)/src/sva/lib/libghost @CFLAGS@
 CPPFLAGS=-I. -I$(srcdir) @CPPFLAGS@ $(PATHS) @DEFS@
-LIBS=@LIBS@
+#LIBS=@LIBS@ -lghost /usr/obj2/usr/home/criswell/src/virginBSD/lib/libc/libc.a
+LIBS=@LIBS@ -lghost /usr/home/criswell/src/virginBSD/lib/libc/libc.a
 K5LIBS=@K5LIBS@
 GSSLIBS=@GSSLIBS@
 SSHLIBS=@SSHLIBS@
@@ -153,7 +154,7 @@ ssh-add$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-add.o
 	$(LD) -o $@ ssh-add.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
 
 ssh-agent$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-agent.o ssh-pkcs11-client.o
-	$(LD) -o $@ ssh-agent.o ssh-pkcs11-client.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) -lghost -lssl
+	$(LD) -o $@ ssh-agent.o ssh-pkcs11-client.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) -lssl
 
 ssh-keygen$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-keygen.o
 	$(LD) -o $@ ssh-keygen.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
