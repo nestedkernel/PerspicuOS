@@ -21,6 +21,9 @@ typedef struct {
 	u_int	 alloc;		/* Number of bytes allocated for data. */
 	u_int	 offset;	/* Offset of first byte containing data. */
 	u_int	 end;		/* Offset of last byte containing data. */
+#if 1
+  u_char ghost; /* Flags whether memory is ghost or traditional */
+#endif
 }       Buffer;
 
 void	 buffer_init(Buffer *);

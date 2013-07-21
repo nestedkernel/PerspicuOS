@@ -40,7 +40,27 @@ buffer_init(Buffer *buffer)
 	buffer->alloc = len;
 	buffer->offset = 0;
 	buffer->end = 0;
+#if 1
+  buffer->ghost = 1;
+#endif
 }
+
+#if 1
+/* Allocate traditional memory for the buffer */
+void
+buffer_init_traditional(Buffer *buffer)
+{
+	const u_int len = 4096;
+
+	buffer->alloc = 0;
+	buffer->buf = mmap (0, len, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
+	buffer->alloc = len;
+	buffer->offset = 0;
+	buffer->end = 0;
+  buffer->ghost = 0;
+}
+#endif
+
 
 /* Frees any memory used for the buffer. */
 
@@ -50,7 +70,12 @@ buffer_free(Buffer *buffer)
 	if (buffer->alloc > 0) {
 		memset(buffer->buf, 0, buffer->alloc);
 		buffer->alloc = 0;
+#if 0
 		xfree(buffer->buf);
+#else
+    if (buffer->ghost)
+      xfree(buffer->buf);
+#endif
 	}
 }
 
