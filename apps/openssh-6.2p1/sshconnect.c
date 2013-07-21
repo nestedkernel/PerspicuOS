@@ -62,6 +62,10 @@
 #include "ssh2.h"
 #include "version.h"
 
+#if 1
+extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
+#endif
+
 char *client_version_string = NULL;
 char *server_version_string = NULL;
 
@@ -473,8 +477,13 @@ send_client_banner(int connection_out, int minor1)
 		xasprintf(&client_version_string, "SSH-%d.%d-%.100s\n",
 		    PROTOCOL_MAJOR_1, minor1, SSH_VERSION);
 	}
+#if 0
 	if (roaming_atomicio(vwrite, connection_out, client_version_string,
 	    strlen(client_version_string)) != strlen(client_version_string))
+#else
+	if (roaming_atomicio(gwrite, connection_out, client_version_string,
+	    strlen(client_version_string)) != strlen(client_version_string))
+#endif
 		fatal("write: %.100s", strerror(errno));
 	chop(client_version_string);
 	debug("Local version string %.100s", client_version_string);

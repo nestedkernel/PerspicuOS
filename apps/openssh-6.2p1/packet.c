@@ -1087,9 +1087,15 @@ packet_read_seqnr(u_int32_t *seqnr_p)
 				ms_to_timeval(&timeout, ms_remain);
 				gettimeofday(&start, NULL);
 			}
+#if 0
 			if ((ret = select(active_state->connection_in + 1, setp,
 			    NULL, NULL, timeoutp)) >= 0)
 				break;
+#else
+			if ((ret = ghost_select(active_state->connection_in + 1, setp,
+			    NULL, NULL, timeoutp)) >= 0)
+				break;
+#endif
 			if (errno != EAGAIN && errno != EINTR &&
 			    errno != EWOULDBLOCK)
 				break;
@@ -1748,9 +1754,15 @@ packet_write_wait(void)
 				ms_to_timeval(&timeout, ms_remain);
 				gettimeofday(&start, NULL);
 			}
+#if 0
 			if ((ret = select(active_state->connection_out + 1,
 			    NULL, setp, NULL, timeoutp)) >= 0)
 				break;
+#else
+			if ((ret = ghost_select(active_state->connection_out + 1,
+			    NULL, setp, NULL, timeoutp)) >= 0)
+				break;
+#endif
 			if (errno != EAGAIN && errno != EINTR &&
 			    errno != EWOULDBLOCK)
 				break;
