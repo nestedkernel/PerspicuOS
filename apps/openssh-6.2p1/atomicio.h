@@ -38,6 +38,7 @@ atomicio6(ssize_t (*f) (int, void *, size_t), int fd, void *_s, size_t n,
 size_t	atomicio(ssize_t (*)(int, void *, size_t), int, void *, size_t);
 
 #define vwrite (ssize_t (*)(int, void *, size_t))write
+#define gwrite (ssize_t (*)(int, void *, size_t))ghost_write
 
 /*
  * ensure all of data on socket comes through. f==readv || f==writev
