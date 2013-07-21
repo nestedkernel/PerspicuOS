@@ -365,7 +365,11 @@ wait_until_can_do_something(fd_set **readsetp, fd_set **writesetp, int *maxfdp,
 	}
 
 	/* Wait for something to happen, or the timeout to expire. */
+#if 0
 	ret = select((*maxfdp)+1, *readsetp, *writesetp, NULL, tvp);
+#else
+	ret = ghost_select((*maxfdp)+1, *readsetp, *writesetp, NULL, tvp);
+#endif
 
 	if (ret == -1) {
 		memset(*readsetp, 0, *nallocp);

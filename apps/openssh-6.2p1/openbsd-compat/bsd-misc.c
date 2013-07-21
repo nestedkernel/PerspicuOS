@@ -143,7 +143,11 @@ int nanosleep(const struct timespec *req, struct timespec *rem)
 
 	TIMESPEC_TO_TIMEVAL(&time2wait, req)
 	(void) gettimeofday(&tstart, NULL);
+#if 0
 	rc = select(0, NULL, NULL, NULL, &time2wait);
+#else
+	rc = ghost_select(0, NULL, NULL, NULL, &time2wait);
+#endif
 	if (rc == -1) {
 		saverrno = errno;
 		(void) gettimeofday (&tstop, NULL);

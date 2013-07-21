@@ -542,9 +542,15 @@ conloop(void)
 	memcpy(r, read_wait, read_wait_nfdset * sizeof(fd_mask));
 	memcpy(e, read_wait, read_wait_nfdset * sizeof(fd_mask));
 
+#if 0
 	while (select(maxfd, r, NULL, e, &seltime) == -1 &&
 	    (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK))
 		;
+#else
+	while (ghost_select(maxfd, r, NULL, e, &seltime) == -1 &&
+	    (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK))
+		;
+#endif
 
 	for (i = 0; i < maxfd; i++) {
 		if (FD_ISSET(i, e)) {

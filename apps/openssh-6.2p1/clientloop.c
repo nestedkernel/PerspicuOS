@@ -111,6 +111,9 @@
 #include "msg.h"
 #include "roaming.h"
 
+#if 1
+extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
+#endif
 /* import options */
 extern Options options;
 
@@ -651,7 +654,11 @@ client_wait_until_can_do_something(fd_set **readsetp, fd_set **writesetp,
 		tvp = &tv;
 	}
 
+#if 0
 	ret = select((*maxfdp)+1, *readsetp, *writesetp, NULL, tvp);
+#else
+	ret = ghost_select((*maxfdp)+1, *readsetp, *writesetp, NULL, tvp);
+#endif
 	if (ret < 0) {
 		char buf[100];
 
@@ -678,11 +685,21 @@ client_suspend_self(Buffer *bin, Buffer *bout, Buffer *berr)
 {
 	/* Flush stdout and stderr buffers. */
 	if (buffer_len(bout) > 0)
+#if 0
 		atomicio(vwrite, fileno(stdout), buffer_ptr(bout),
 		    buffer_len(bout));
+#else
+		atomicio(gwrite, fileno(stdout), buffer_ptr(bout),
+		    buffer_len(bout));
+#endif
 	if (buffer_len(berr) > 0)
+#if 0
 		atomicio(vwrite, fileno(stderr), buffer_ptr(berr),
 		    buffer_len(berr));
+#else
+		atomicio(gwrite, fileno(stderr), buffer_ptr(berr),
+		    buffer_len(berr));
+#endif
 
 	leave_raw_mode(options.request_tty == REQUEST_TTY_FORCE);
 
@@ -1707,8 +1724,13 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 
 	/* Output any buffered data for stdout. */
 	if (buffer_len(&stdout_buffer) > 0) {
+#if 0
 		len = atomicio(vwrite, fileno(stdout),
 		    buffer_ptr(&stdout_buffer), buffer_len(&stdout_buffer));
+#else
+		len = atomicio(gwrite, fileno(stdout),
+		    buffer_ptr(&stdout_buffer), buffer_len(&stdout_buffer));
+#endif
 		if (len < 0 || (u_int)len != buffer_len(&stdout_buffer))
 			error("Write failed flushing stdout buffer.");
 		else
@@ -1717,8 +1739,13 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 
 	/* Output any buffered data for stderr. */
 	if (buffer_len(&stderr_buffer) > 0) {
+#if 0
 		len = atomicio(vwrite, fileno(stderr),
 		    buffer_ptr(&stderr_buffer), buffer_len(&stderr_buffer));
+#else
+		len = atomicio(gwrite, fileno(stderr),
+		    buffer_ptr(&stderr_buffer), buffer_len(&stderr_buffer));
+#endif
 		if (len < 0 || (u_int)len != buffer_len(&stderr_buffer))
 			error("Write failed flushing stderr buffer.");
 		else

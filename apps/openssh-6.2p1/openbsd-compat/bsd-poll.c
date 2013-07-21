@@ -85,7 +85,11 @@ poll(struct pollfd *fds, nfds_t nfds, int timeout)
 		tvp = &tv;
 	}
 
+#if 0
 	ret = select(maxfd + 1, readfds, writefds, exceptfds, tvp);
+#else
+	ret = ghost_select(maxfd + 1, readfds, writefds, exceptfds, tvp);
+#endif
 	saved_errno = errno;
 
 	/* scan through select results and set poll() flags */
