@@ -5,12 +5,20 @@
 #
 
 # Create the directory in which postmark will do its business
+echo "Removing HD Postmark Files"
+rm -rf /postmark-files
+echo "Removing SSD Postmark Files"
+rm -rf /usr/postmark-files
+
+echo "Creating directories for experiments"
 mkdir -p /postmark-files
 mkdir -p /usr/postmark-files
 
 # Run postmark on the hard disk
-postmark < PMHDInput > PMHDResults
+echo "Running Postmark on HD"
+postmark < PMHDInput | tee PMHDResults
 
 # Run postmark on the SSD
-postmark < PMSSDInput > PMSSDResults
+echo "Running Postmark on SSD"
+postmark < PMSSDInput | tee PMSSDResults
 
