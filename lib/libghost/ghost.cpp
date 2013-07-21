@@ -257,7 +257,7 @@ ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
 }
 
 int
-_connect(int s, const struct sockaddr *addr, socklen_t addrlen) {
+ghost_connect(int s, const struct sockaddr *addr, socklen_t addrlen) {
   __asm__ __volatile__ ("nop");
   int ret;
   unsigned char * framep = tradsp;
@@ -600,8 +600,9 @@ ghost_getpwuid (uid_t uid) {
 //////////////////////////////////////////////////////////////////////////////
 
 void accept () __attribute__ ((weak, alias ("_accept")));
-void connect () __attribute__ ((weak, alias ("_connect")));
+void connect () __attribute__ ((weak, alias ("ghost_connect")));
 void bind () __attribute__ ((weak, alias ("_bind")));
+void ghost_bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 
 int select () __attribute__ ((weak, alias ("ghost_select")));
