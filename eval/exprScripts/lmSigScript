@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# Number of repetitions
+REPS=1000
+
+# Location of LMBench
+DIR=/usr/local/lib/lmbench/bin/amd64-freebsd9.0
+
+# Location of directories and files needed by test
+FSDIR=$1
+
+#
+# Remove old files.
+#
+echo "Removing old results"
+rm -f installSig catchSig protSig
+
+echo "Using files from $FSDIR"
+
+# Signal handler install
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_sig -N $REPS install $FSDIR/pgfile 2>&1 | tee -a installSig
+done
+
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_sig -N $REPS catch $FSDIR/pgfile 2>&1 | tee -a catchSig
+done
+
+#for i in 1 2 3 4 5 6 7 8 9 10
+#do
+#  $DIR/lat_sig -N $REPS prot $FSDIR/pgfile 2>&1 | tee -a protSig
+#done

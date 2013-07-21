@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# Number of repetitions
+REPS=1000
+
+# Location of LMBench
+DIR=/usr/local/lib/lmbench/bin/amd64-freebsd9.0
+
+# Location of directories and files needed by test
+FSDIR=$1
+
+#
+# Remove old files.
+#
+echo "Removing old results"
+rm -f nullSyscall
+rm -f openSyscall
+rm -f forkSyscall execSyscall
+rm -f fsSyscall mmapSyscall pgSyscall
+
+echo "Using files from $FSDIR"
+
+# System call latency
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_syscall -N $REPS null 2>&1 | tee -a nullSyscall
+done
+
+# Open/Close Test
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_syscall -N $REPS open 2>&1 | tee -a openSyscall
+done
+
+# fork
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_proc -N $REPS fork 2>&1 | tee -a forkSyscall
+done
+
+# fork+exec
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_proc -N $REPS exec 2>&1 | tee -a execSyscall
+done
+
+# Context switching Test
+#for i in 1 2 3 4 5 6 7 8 9 10
+#do
+#  $DIR/lat_ctx -N $REPS 0k 2 2>&1 | tee -a ctx
+#done
+
+
+# Creating/remove files
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  echo "Running lat_fs: $i"
+  $DIR/lat_fs $FSDIR/tmp 2>&1 | tee -a fsSyscall
+done
+
+# mmap
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  echo "Running lat_mmap: $i"
+  $DIR/lat_mmap -N $REPS 1m $FSDIR/file 2>&1 | tee -a mmapSyscall
+done
+
+# pagefault
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  echo "Running lat_pagefault: $i"
+  $DIR/lat_pagefault -N $REPS $FSDIR/pgfile 2>&1 | tee -a pgSyscall
+done
+

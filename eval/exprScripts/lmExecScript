@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Number of repetitions
+REPS=1000
+
+# Location of LMBench
+DIR=/usr/local/lib/lmbench/bin/amd64-freebsd9.0
+
+rm -f forkSyscall execSyscall
+
+# fork
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_proc -N $REPS fork 2>&1 | tee -a forkSyscall
+done
+
+# fork+exec
+for i in 1 2 3 4 5 6 7 8 9 10
+do
+  $DIR/lat_proc -N $REPS exec 2>&1 | tee -a execSyscall
+done
+
+# Context switching Test
+#for i in 1 2 3 4 5 6 7 8 9 10
+#do
+#  $DIR/lat_ctx -N $REPS 0k 2 2>&1 | tee -a ctx
+#done
+
+
