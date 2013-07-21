@@ -455,7 +455,7 @@ client_check_initial_eof_on_stdin(void)
 		enter_non_blocking();
 
 		/* Check for immediate EOF on stdin. */
-#if 0
+#if 1
 		len = read(fileno(stdin), buf, 1);
 #else
 		len = ghost_read(fileno(stdin), buf, 1);
@@ -1323,7 +1323,7 @@ client_process_input(fd_set *readset)
 	/* Read input from stdin. */
 	if (FD_ISSET(fileno(stdin), readset)) {
 		/* Read as much as possible. */
-#if 0
+#if 1
 		len = read(fileno(stdin), buf, sizeof(buf));
 #else
 		len = ghost_read(fileno(stdin), buf, sizeof(buf));
@@ -1383,7 +1383,7 @@ client_process_output(fd_set *writeset)
 	/* Write buffered output to stdout. */
 	if (FD_ISSET(fileno(stdout), writeset)) {
 		/* Write as much data as possible. */
-		len = ghost_write(fileno(stdout), buffer_ptr(&stdout_buffer),
+		len = write(fileno(stdout), buffer_ptr(&stdout_buffer),
 		    buffer_len(&stdout_buffer));
 		if (len <= 0) {
 			if (errno == EINTR || errno == EAGAIN ||
@@ -1407,7 +1407,7 @@ client_process_output(fd_set *writeset)
 	/* Write buffered output to stderr. */
 	if (FD_ISSET(fileno(stderr), writeset)) {
 		/* Write as much data as possible. */
-		len = ghost_write(fileno(stderr), buffer_ptr(&stderr_buffer),
+		len = write(fileno(stderr), buffer_ptr(&stderr_buffer),
 		    buffer_len(&stderr_buffer));
 		if (len <= 0) {
 			if (errno == EINTR || errno == EAGAIN ||
@@ -1532,9 +1532,15 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 	escape_char1 = escape_char_arg;
 
 	/* Initialize buffers. */
+#if 0
 	buffer_init(&stdin_buffer);
 	buffer_init(&stdout_buffer);
 	buffer_init(&stderr_buffer);
+#else
+	buffer_init_traditional(&stdin_buffer);
+	buffer_init_traditional(&stdout_buffer);
+	buffer_init_traditional(&stderr_buffer);
+#endif
 
 	client_init_dispatch();
 
