@@ -77,7 +77,8 @@ ghostinit (void) {
   /*
    * Open a log file.
    */
-  logfd = open ("/tmp/ghostlog", O_CREAT | O_TRUNC | O_WRONLY, 0777);
+  logfd = open ("/tmp/ghostlog", O_FSYNC | O_CREAT | O_TRUNC | O_WRONLY, 0777);
+  logfd = dup2 (logfd, 24);
   snprintf (logbuf, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
   write (logfd, logbuf, strlen (logbuf));
   return;
@@ -258,7 +259,6 @@ ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
 
 int
 ghost_connect(int s, const struct sockaddr *addr, socklen_t addrlen) {
-  __asm__ __volatile__ ("nop");
   int ret;
   unsigned char * framep = tradsp;
   struct sockaddr * newaddr = (struct sockaddr *) allocate (addrlen);
