@@ -69,6 +69,13 @@
 #include "misc.h"
 #include "atomicio.h"
 
+#if 1
+#include "rijndael.h"
+#include "sva/userghost.h"
+
+extern ssize_t ghost_read(int d, void *buf, size_t nbytes);
+#endif
+
 #define MAX_KEY_FILE_SIZE	(1024 * 1024)
 
 /* Version identification string for SSH v1 identity files. */
@@ -340,7 +347,7 @@ key_load_file(int fd, const char *filename, Buffer *blob)
 		    filename == NULL ? "" : " ");
 		return 0;
 	}
-#if 0
+#if 1
 	buffer_clear(blob);
 #else
   /*
@@ -351,7 +358,11 @@ key_load_file(int fd, const char *filename, Buffer *blob)
   buffer_init_traditional (blob);
 #endif
 	for (;;) {
+#if 0
 		if ((len = atomicio(read, fd, buf, sizeof(buf))) == 0) {
+#else
+		if ((len = atomicio(ghost_read, fd, buf, sizeof(buf))) == 0) {
+#endif
 			if (errno == EPIPE)
 				break;
 			debug("%s: read from key file %.200s%sfailed: %.100s",
@@ -380,17 +391,38 @@ key_load_file(int fd, const char *filename, Buffer *blob)
 
 #if 1
   /* Decrypt the blob */
-  static char ghostKey[16] = "abcdefghijklmno";
+  static char * ghostKey;
+  /* static char internalKey[16] = "abcdefghijklmno"; */
+  static char internalKey[16] = "abcdefghijklmno"; /* Be wrong for testing */
+  if (getenv ("GHOSTING")) {
+    ghostKey = sva_get_key ();
+  } else {
+    ghostKey = internalKey;
+  }
+  debug ("JTC: %c %c\n", ghostKey[0], ghostKey[2]);
+  unsigned cryptLength;
   char * decryptSchedule = malloc (sizeof (rijndael_ctx));
   rijndael_set_key(decryptSchedule, ghostKey, 128, 0);
 
-  src = buffer;
-  dst = buf;
-  for (cryptLength = 0; cryptLength < length ; cryptLength += 16) {
-    rijndael_decrypt(ctx, src, dst);
+  Buffer decrypted;
+  buffer_init (&decrypted);
+
+  unsigned char * src = buffer_ptr (blob);
+  unsigned char * dst = buffer_ptr (&decrypted);
+  for (cryptLength = 0; cryptLength < buffer_len (blob) ; cryptLength += 16) {
+    rijndael_decrypt(decryptSchedule, src, dst);
     src += 16;
     dst += 16;
+    decrypted.end += 16;
   }
+
+  /* Return the encrypted buffer */
+  *blob = decrypted;
+  debug ("JTC: key: ");
+  for (cryptLength = 0; cryptLength < buffer_len (blob) ; cryptLength += 1) {
+    debug ("%x ", buffer_ptr (blob) + cryptLength);
+  }
+  debug ("\n");
 #endif
 	return 1;
 }
