@@ -1319,7 +1319,11 @@ load_identity_file(char *filename, int userprovided)
 	int perm_ok = 0, quit, i;
 	struct stat st;
 
+#if 0
 	if (stat(filename, &st) < 0) {
+#else
+	if (ghost_stat(filename, &st) < 0) {
+#endif
 		(userprovided ? logit : debug3)("no such identity: %s: %s",
 		    filename, strerror(errno));
 		return NULL;

@@ -719,9 +719,13 @@ key_load_private_type(int type, const char *filename, const char *passphrase,
 	Key *ret;
 	Buffer buffer;
 
+#if 0
 	fd = open(filename, O_RDONLY);
+#else
+	fd = ghost_open(filename, O_RDONLY);
+#endif
 	if (fd < 0) {
-		debug("could not open key file '%s': %s", filename,
+		debug("could not open key file 1: '%s': %s", filename,
 		    strerror(errno));
 		if (perm_ok != NULL)
 			*perm_ok = 0;
@@ -780,9 +784,13 @@ key_load_private(const char *filename, const char *passphrase,
 	Buffer buffer;
 	int fd;
 
+#if 0
 	fd = open(filename, O_RDONLY);
+#else
+	fd = ghost_open(filename, O_RDONLY);
+#endif
 	if (fd < 0) {
-		debug("could not open key file '%s': %s", filename,
+		debug("could not open key file 2: '%s': %s", filename,
 		    strerror(errno));
 		return NULL;
 	}
@@ -961,7 +969,7 @@ key_in_file(Key *key, const char *filename, int strict_type)
 			debug("%s: keyfile \"%s\" missing", __func__, filename);
 			return 0;
 		} else {
-			error("%s: could not open keyfile \"%s\": %s", __func__,
+			error("%s: could not open keyfile 3: \"%s\": %s", __func__,
 			    filename, strerror(errno));
 			return -1;
 		}
