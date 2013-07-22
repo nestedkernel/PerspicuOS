@@ -155,7 +155,17 @@ restart:
 	if (newlen > BUFFER_MAX_LEN)
 		fatal("buffer_append_space: alloc %u not supported",
 		    newlen);
+#if 0
 	buffer->buf = xrealloc(buffer->buf, 1, newlen);
+#else
+  if (buffer->ghost) {
+    buffer->buf = xrealloc(buffer->buf, 1, newlen);
+  } else {
+    char * p = mmap (0, newlen, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
+    memcpy (p, buffer->buf, buffer->alloc);
+    buffer->buf = p;
+  }
+#endif
 	buffer->alloc = newlen;
 	goto restart;
 	/* NOTREACHED */
