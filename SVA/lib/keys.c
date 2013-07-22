@@ -106,7 +106,6 @@ installKey (sva_key_t * keyp, intptr_t size) {
   //
   // Return a pointer to the key in ghost memory.
   //
-  printf ("SVA: installKey: Returning %lx for size %lx\n", ghostKey, size);
   return (sva_key_t *) ghostKey;
 }
 
@@ -146,7 +145,6 @@ getThreadSecret (void) {
   sva_icontext_t * icp = cpup->newCurrentIC; 
 
   /* Set the rax register with the pointer to the secret key */
-  printf ("SVA: getThreadSecret: %lx\n", tSecret);
   icp->rax = (uintptr_t) tSecret;
   return;
 }
