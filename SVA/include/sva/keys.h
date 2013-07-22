@@ -39,7 +39,7 @@
  * Description: encapsulates an sva key, which is a character array.
  */
 typedef struct sva_key_t {
-    char key[256];
+    char key[16];
 } sva_key_t;
 
 /*

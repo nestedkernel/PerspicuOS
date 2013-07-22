@@ -37,11 +37,7 @@
  */
 
 /* Default key value and data structures storing the keys */
-#if 0
-char * dummy256KeyPtr = "a2nwP12YVfud1u300wF955JHmHvZ5886";  
-#else
-char * dummy256KeyPtr = "abcdefghijklmnopqrstuvwxyz123456";  
-#endif
+char * dummy256KeyPtr = "abcdefghijklmno";  
 
 /* 
  * First printable character. This is used to differ the keys a bit before we
