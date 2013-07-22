@@ -37,7 +37,11 @@
  */
 
 /* Default key value and data structures storing the keys */
+#if 0
 char * dummy256KeyPtr = "a2nwP12YVfud1u300wF955JHmHvZ5886";  
+#else
+char * dummy256KeyPtr = "abcdefghijklmnopqrstuvwxyz123456";  
+#endif
 
 /* 
  * First printable character. This is used to differ the keys a bit before we
@@ -83,7 +87,7 @@ void init_thread_key (struct SVAThread * thread) {
  *  size - The size of the key in bytes.
  */
 sva_key_t *
-installKey (sva_key_t * keyp, uintptr_t size) {
+installKey (sva_key_t * keyp, intptr_t size) {
   // SVA ghost memory allocator function
   extern unsigned char * ghostMalloc (intptr_t size);
 
@@ -102,6 +106,7 @@ installKey (sva_key_t * keyp, uintptr_t size) {
   //
   // Return a pointer to the key in ghost memory.
   //
+  printf ("SVA: installKey: Returning %lx for size %lx\n", ghostKey, size);
   return (sva_key_t *) ghostKey;
 }
 
@@ -141,7 +146,9 @@ getThreadSecret (void) {
   sva_icontext_t * icp = cpup->newCurrentIC; 
 
   /* Set the rax register with the pointer to the secret key */
+  printf ("SVA: getThreadSecret: %lx\n", tSecret);
   icp->rax = (uintptr_t) tSecret;
+  return;
 }
 
 /* Array of cached translations */

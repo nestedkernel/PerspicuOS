@@ -1499,7 +1499,8 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    * Now that ghost memory has been reinitialized, install the key for this
    * bitcode file into the ghost memory.
    */
-  threadp->ghostKey = installKey (transp->key, sizeof (sva_key_t));
+  extern sva_key_t * installKey (sva_key_t * keyp, intptr_t size);
+  threadp->ghostKey = installKey (&(transp->key), sizeof (sva_key_t));
 
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
