@@ -340,7 +340,16 @@ key_load_file(int fd, const char *filename, Buffer *blob)
 		    filename == NULL ? "" : " ");
 		return 0;
 	}
+#if 0
 	buffer_clear(blob);
+#else
+  /*
+   * Make a traditional buffer for reading in the data and then use a
+   * ghost buffer for holding the decrypted result.
+   */
+  buffer_free (blob);
+  buffer_init_traditional (blob);
+#endif
 	for (;;) {
 		if ((len = atomicio(read, fd, buf, sizeof(buf))) == 0) {
 			if (errno == EPIPE)
@@ -369,6 +378,20 @@ key_load_file(int fd, const char *filename, Buffer *blob)
 		return 0;
 	}
 
+#if 1
+  /* Decrypt the blob */
+  static char ghostKey[16] = "abcdefghijklmno";
+  char * decryptSchedule = malloc (sizeof (rijndael_ctx));
+  rijndael_set_key(decryptSchedule, ghostKey, 128, 0);
+
+  src = buffer;
+  dst = buf;
+  for (cryptLength = 0; cryptLength < length ; cryptLength += 16) {
+    rijndael_decrypt(ctx, src, dst);
+    src += 16;
+    dst += 16;
+  }
+#endif
 	return 1;
 }
 
