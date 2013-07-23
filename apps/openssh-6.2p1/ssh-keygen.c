@@ -54,6 +54,12 @@
 #include "atomicio.h"
 #include "krl.h"
 
+#if 1
+extern int ghost_open (char *path, int flags, ...);
+extern ssize_t ghost_read(int d, void *buf, size_t nbytes);
+extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
+extern int ghost_stat(char *path, struct stat *sb);
+#endif
 /* Number of bits in the RSA/DSA key.  This value can be set on the command line. */
 #define DEFAULT_BITS		2048
 #define DEFAULT_BITS_DSA	1024
@@ -347,8 +353,13 @@ do_convert_to(struct passwd *pw)
 
 	if (!have_identity)
 		ask_filename(pw, "Enter file in which the key is");
+#if 0
 	if (stat(identity_file, &st) < 0)
 		fatal("%s: %s: %s", __progname, identity_file, strerror(errno));
+#else
+	if (ghost_stat(identity_file, &st) < 0)
+		fatal("%s: %s: %s", __progname, identity_file, strerror(errno));
+#endif
 	if ((k = key_load_public(identity_file, NULL)) == NULL) {
 		if ((k = load_identity(identity_file)) == NULL) {
 			fprintf(stderr, "load failed\n");
@@ -934,7 +945,11 @@ do_gen_all_hostkeys(struct passwd *pw)
 		key_free(private);
 		arc4random_stir();
 		strlcat(identity_file, ".pub", sizeof(identity_file));
+#if 0
 		fd = open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#else
+		fd = ghost_open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#endif
 		if (fd == -1) {
 			printf("Could not save your public key in %s\n",
 			    identity_file);
@@ -1396,7 +1411,11 @@ do_change_comment(struct passwd *pw)
 	key_free(private);
 
 	strlcat(identity_file, ".pub", sizeof(identity_file));
+#if 0
 	fd = open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#else
+	fd = ghost_open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#endif
 	if (fd == -1) {
 		printf("Could not save your public key in %s\n", identity_file);
 		exit(1);
@@ -1626,7 +1645,11 @@ do_ca_sign(struct passwd *pw, int argc, char **argv)
 		xasprintf(&out, "%s-cert.pub", tmp);
 		xfree(tmp);
 
+#if 0
 		if ((fd = open(out, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1)
+#else
+		if ((fd = ghost_open(out, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1)
+#endif
 			fatal("Could not open \"%s\" for writing: %s", out,
 			    strerror(errno));
 		if ((f = fdopen(fd, "w")) == NULL)
@@ -1906,7 +1929,11 @@ load_krl(const char *path, struct ssh_krl **krlp)
 	int fd;
 
 	buffer_init(&krlbuf);
+#if 0
 	if ((fd = open(path, O_RDONLY)) == -1)
+#else
+	if ((fd = ghost_open(path, O_RDONLY)) == -1)
+#endif
 		fatal("open %s: %s", path, strerror(errno));
 	if (!key_load_file(fd, path, &krlbuf))
 		fatal("Unable to load KRL");
@@ -2082,10 +2109,20 @@ do_gen_krl(struct passwd *pw, int updating, int argc, char **argv)
 	buffer_init(&kbuf);
 	if (ssh_krl_to_blob(krl, &kbuf, NULL, 0) != 0)
 		fatal("Couldn't generate KRL");
+#if 0
 	if ((fd = open(identity_file, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1)
 		fatal("open %s: %s", identity_file, strerror(errno));
+#else
+	if ((fd = ghost_open(identity_file, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1)
+		fatal("open %s: %s", identity_file, strerror(errno));
+#endif
+#if 0
 	if (atomicio(vwrite, fd, buffer_ptr(&kbuf), buffer_len(&kbuf)) !=
 	    buffer_len(&kbuf))
+#else
+	if (atomicio(gwrite, fd, buffer_ptr(&kbuf), buffer_len(&kbuf)) !=
+	    buffer_len(&kbuf))
+#endif
 		fatal("write %s: %s", identity_file, strerror(errno));
 	close(fd);
 	buffer_free(&kbuf);
@@ -2200,6 +2237,9 @@ main(int argc, char **argv)
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
 	sanitise_stdfd();
 
+#if 1
+	ghostinit ();
+#endif
 	__progname = ssh_get_progname(argv[0]);
 
 	OpenSSL_add_all_algorithms();
@@ -2208,7 +2248,14 @@ main(int argc, char **argv)
 	seed_rng();
 
 	/* we need this for the home * directory.  */
+#if 0
 	pw = getpwuid(getuid());
+#else
+  pw = malloc (sizeof (struct passwd));
+  pw->pw_uid = 0;
+  pw->pw_name = "root";
+  pw->pw_dir = "/root";
+#endif
 	if (!pw) {
 		printf("You don't exist, go away!\n");
 		exit(1);
@@ -2635,7 +2682,11 @@ passphrase_again:
 		printf("Your identification has been saved in %s.\n", identity_file);
 
 	strlcat(identity_file, ".pub", sizeof(identity_file));
+#if 0
 	fd = open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#else
+	fd = ghost_open(identity_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#endif
 	if (fd == -1) {
 		printf("Could not save your public key in %s\n", identity_file);
 		exit(1);

@@ -74,6 +74,7 @@
 #include "sva/userghost.h"
 
 extern ssize_t ghost_read(int d, void *buf, size_t nbytes);
+extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
 #endif
 
 #define MAX_KEY_FILE_SIZE	(1024 * 1024)
@@ -231,8 +232,13 @@ key_save_private_blob(Buffer *keybuf, const char *filename)
 		error("open %s failed: %s.", filename, strerror(errno));
 		return 0;
 	}
+#if 0
 	if (atomicio(vwrite, fd, buffer_ptr(keybuf),
 	    buffer_len(keybuf)) != buffer_len(keybuf)) {
+#else
+	if (atomicio(gwrite, fd, buffer_ptr(keybuf),
+	    buffer_len(keybuf)) != buffer_len(keybuf)) {
+#endif
 		error("write to key file %s failed: %s", filename,
 		    strerror(errno));
 		close(fd);
