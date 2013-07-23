@@ -10,7 +10,7 @@ extern "C" int _open (char *path, int flags, mode_t mode);
 extern "C" int _close (int fd);
 extern "C" ssize_t _readlink(char * path, char * buf, size_t bufsiz);
 extern "C" int _mkdir(char *path, mode_t mode);
-extern "C" int _stat(const char *path, struct stat *sb);
+extern "C" int _stat(char *path, struct stat *sb);
 extern "C" int _fstat(int fd, struct stat *sb);
 extern "C" ssize_t _read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t _write(int d, void *buf, size_t nbytes);
@@ -25,5 +25,7 @@ extern "C" ssize_t ghost_read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t ghost_write(int d, void *buf, size_t nbytes);
 extern "C" sig_t ghost_signal (int sig, sig_t func);
 extern "C" int ghost_sigaction (int sig, struct sigaction * act, struct sigaction * oact);
+extern "C" int ghost_open (char *path, int flags, mode_t mode);
+extern "C" int ghost_stat(char *path, struct stat *sb);
 
 extern "C" void ghostAllowFunction (void * f);

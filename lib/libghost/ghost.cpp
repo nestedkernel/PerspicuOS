@@ -67,7 +67,7 @@ ghostinit (void) {
   /*
    * Initialize the traditional memory stack pointer.
    */
-  tradsp = tradBuffer + tradlen;
+  tradsp = tradBuffer + (tradlen - 1);
 
   /*
    * Restrict ourselves to only jumping to the signal handler trampoline.
@@ -78,7 +78,9 @@ ghostinit (void) {
    * Open a log file.
    */
   logfd = open ("/tmp/ghostlog", O_FSYNC | O_CREAT | O_TRUNC | O_WRONLY, 0777);
+#if 0
   logfd = dup2 (logfd, 24);
+#endif
   snprintf (logbuf, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
   write (logfd, logbuf, strlen (logbuf));
   return;
@@ -177,7 +179,7 @@ allocAndCopy (char * data) {
     // Copy the data into the traditional memory.
     //
     copy = (char *)(tradsp);
-    strcpy (copy, data);
+    copy = strcpy (copy, data);
   }
   return copy;
 }
@@ -377,6 +379,7 @@ _open (char *path, int flags, mode_t mode) {
   unsigned char * framep = tradsp;
 
   char * newpath = allocAndCopy (path);
+  if (!newpath) abort();
   int fd = open (newpath, flags, mode);
 
   snprintf (logbuf, 128, "#open: %s: %d %d\n", newpath, fd, errno);
@@ -385,6 +388,11 @@ _open (char *path, int flags, mode_t mode) {
   // Restore the stack pointer
   tradsp = framep;
   return fd;
+}
+
+int
+ghost_open (char *path, int flags, mode_t mode) {
+  return _open (path, flags, mode);
 }
 
 int
@@ -459,6 +467,11 @@ _stat(char *path, struct stat *sb) {
   // Restore the stack pointer
   tradsp = framep;
   return ret;
+}
+
+int
+ghost_stat(char *path, struct stat *sb) {
+  return _stat (path, sb);
 }
 
 ssize_t
@@ -599,14 +612,16 @@ ghost_getpwuid (uid_t uid) {
 // Define weak aliases to make the wrappers appear as the actual system call
 //////////////////////////////////////////////////////////////////////////////
 
-void accept () __attribute__ ((weak, alias ("_accept")));
+void accept () __attribute__ ((weak, alias ("ghost_accept")));
 void connect () __attribute__ ((weak, alias ("ghost_connect")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void ghost_bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
 
 int select () __attribute__ ((weak, alias ("ghost_select")));
+#if 0
 int pselect () __attribute__ ((weak, alias ("_pselect")));
+#endif
 
 void open () __attribute__ ((weak, alias ("_open")));
 void close () __attribute__ ((weak, alias ("_close")));
@@ -617,5 +632,5 @@ void fstat () __attribute__ ((weak, alias ("_fstat")));
 ssize_t read () __attribute__ ((weak, alias ("_read")));
 void write () __attribute__ ((weak, alias ("_write")));
 void clock_gettime () __attribute__ ((weak, alias ("_clock_gettime")));
-void signal () __attribute__ ((weak, alias ("_signal")));
-void sigaction () __attribute__ ((weak, alias ("_sigaction")));
+void signal () __attribute__ ((weak, alias ("ghost_signal")));
+void sigaction () __attribute__ ((weak, alias ("ghost_sigaction")));
