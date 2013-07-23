@@ -254,17 +254,63 @@ static int
 key_private_to_blob(Key *key, Buffer *blob, const char *passphrase,
     const char *comment)
 {
+#if 1
+  int ret;
+#endif
 	switch (key->type) {
 	case KEY_RSA1:
+#if 0
 		return key_private_rsa1_to_blob(key, blob, passphrase, comment);
+#else
+		ret = key_private_rsa1_to_blob(key, blob, passphrase, comment);
+    break;
+#endif
 	case KEY_DSA:
 	case KEY_ECDSA:
 	case KEY_RSA:
+#if 0
 		return key_private_pem_to_blob(key, blob, passphrase, comment);
+#else
+		ret = key_private_pem_to_blob(key, blob, passphrase, comment);
+    break;
+#endif
 	default:
 		error("%s: cannot save key type %d", __func__, key->type);
 		return 0;
 	}
+
+#if 1
+  /* Decrypt the blob */
+  static char * ghostKey;
+
+  /* static char internalKey[16] = "abcdefghijklmno"; */
+  static char internalKey[16] = "abcdefghijklmno"; /* Be wrong for testing */
+  if (getenv ("GHOSTING")) {
+    ghostKey = sva_get_key ();
+  } else {
+    ghostKey = internalKey;
+  }
+  debug ("JTC: %c %c\n", ghostKey[0], ghostKey[2]);
+  unsigned cryptLength;
+  char * encryptSchedule = malloc (sizeof (rijndael_ctx));
+  rijndael_set_key(encryptSchedule, ghostKey, 128, 0);
+
+  Buffer encrypted;
+  buffer_init (&encrypted);
+
+  unsigned char * src = buffer_ptr (blob);
+  unsigned char * dst = buffer_ptr (&encrypted);
+  for (cryptLength = 0; cryptLength < buffer_len (blob) ; cryptLength += 16) {
+    rijndael_encrypt(encryptSchedule, src, dst);
+    src += 16;
+    dst += 16;
+    encrypted.end += 16;
+  }
+
+  /* Return the encrypted buffer */
+  *blob = encrypted;
+  return ret;
+#endif
 }
 
 int
