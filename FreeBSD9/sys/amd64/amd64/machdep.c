@@ -2735,6 +2735,129 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
   return;
 }
 
+/*
+ * Function: cpu_throw_sva()
+ *
+ * Description:
+ *  This is a replacement for the architecture-dependent context-switch
+ *  function, cpu_throw().  This version uses SVA to do the context switching.
+ */
+void
+cpu_throw_sva (struct thread * old, struct thread * new, struct mtx * mtx)
+{
+  /* Context switch result */
+  uintptr_t didSwap;
+  uintptr_t rsp;
+
+#if 0
+  printf ("SVA: switch: [%d:%d](%lx/%d) -> [%d:%d](%lx:%d)\n",
+          old->td_proc->p_pid, old->td_tid, old->svaID, old->sva,
+          new->td_proc->p_pid, new->td_tid, new->svaID, new->sva);
+  printf ("SVA: switch: %p %p\n", old->td_lock, new->td_lock);
+#endif
+
+  /*
+   * Tell the new process which process was running before it.
+   */
+  new->prev = old;
+  new->mtx = mtx;
+
+  /*
+   * Use SVA to context switch from the old thread to the new thread.
+   */
+  if (new->sva) {
+    /*
+     * Mark that the old process is about to have SVA state saved for it.
+     */
+    old->sva = 1;
+
+    /*
+     * Release the old thread (I think this does some unlocking stuff when
+     * sharing page tables).
+     */
+    if ((old->td_pcb->pcb_cr3) == (new->td_pcb->pcb_cr3)) {
+      /* Release the old thread */
+      mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
+    } else {
+#if SVA_DEBUG
+      printf("-- Calling sva load pagetable...\n");
+#endif
+      /*
+       * Switch to the new page table.
+       */
+      sva_mm_load_pgtable (new->td_pcb->pcb_cr3);
+
+#if SVA_DEBUG
+      printf("-- Finished sva load pagetable...\n");
+#endif
+
+      /*
+       * Fetch the pmap (physical page mapping) structure from the per-CPU
+       * data structure.
+       */
+      struct pmap * pmap = PCPU_GET(curpmap);
+
+      /*
+       * Change the flag in pmap based on the current active CPU.
+       */
+      unsigned int cpuid = PCPU_GET(cpuid);
+      __asm__ __volatile__ ("lock btrl %1, %0\n"
+                            : "=m" (pmap->pm_active)
+                            : "r" (cpuid));
+
+      /* Release the old thread */
+      mtx = __sync_lock_test_and_set (&(old->td_lock), mtx);
+
+      /*
+       * Set the flag in the new process's pmap structure.
+       */
+      __asm__ __volatile__ ("lock btsl %1, %0\n"
+                            : "=m" (new->td_proc->p_vmspace->vm_pmap.pm_active)
+                            : "r" (cpuid));
+
+      PCPU_SET (curpmap, &(new->td_proc->p_vmspace->vm_pmap));
+    }
+
+#if defined(SCHED_ULE) && defined(SMP)
+    panic ("SVA: SMP Swap Start\n");
+    /* Do some locking blocking stuff for the ULE scheduler */
+    extern struct mtx blocked_lock;
+    while (old->td_lock == &blocked_lock) {
+      __asm__ __volatile__ ("pause");
+    }
+    printf ("SVA: SMP Swap End\n");
+#endif
+
+    /*
+     * Update the FreeBSD per-cpu data structure to know which thread is
+     * running on this CPU.
+     */
+    PCPU_SET (curthread, new);
+
+    /*
+     * Swap to the new state.
+     */
+    didSwap = sva_swap_integer (new->svaID, &(old->svaID));
+  } else {
+#if 0
+    /* Do an old style context switch */
+    old->sva = 0;
+    cpu_switch(old, new, mtx);
+    printf ("SVA: Returned to kernel from FreeBSD!\n");
+    return 0;
+#else
+    panic ("SVA: Should not do old context switch anymore!\n");
+#endif
+  }
+
+  /*
+   * Release the old thread as we don't need it anymore.
+   */
+  printf ("FreeBSD: Releasing %x\n", curthread->prev->svaID);
+  sva_release_stack (curthread->prev->svaID);
+  return;
+}
+
 #ifdef KDB
 
 /*

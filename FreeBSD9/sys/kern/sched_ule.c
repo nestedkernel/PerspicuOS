@@ -2607,7 +2607,7 @@ sched_throw(struct thread *td)
 #if 0
 	cpu_throw(td, newtd);		/* doesn't return */
 #else
-	cpu_switch_sva(td, newtd, td->td_lock);		/* doesn't return */
+	cpu_throw_sva(td, newtd, td->td_lock);		/* doesn't return */
 #endif
 }
 

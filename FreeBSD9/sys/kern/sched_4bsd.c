@@ -1591,7 +1591,7 @@ sched_throw(struct thread *td)
 #if 0
 	cpu_throw(td, choosethread());	/* doesn't return */
 #else
-  cpu_switch_sva (td, choosethread(), td->td_lock);
+  cpu_throw_sva (td, choosethread(), td->td_lock);
 #endif
 }
 
