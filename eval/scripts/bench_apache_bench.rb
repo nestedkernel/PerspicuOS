@@ -14,19 +14,20 @@ resultsFile = File.new(opts.dataDir + "/" + opts.runType + opts.fileExt, "a")
 
 opts.trials.times {|t| 
     puts "Running trial #{t} for all files"
-    i = 1; e = 0;
-    while i < 4096
-        outFileName = "#{i}kb.#{opts.runType}.data"
-        filepath = "#{opts.dataDir}/#{outFileName}"
+    11.times{ |i|
+        fileSize = 2**i
+        fileSize = 2**9
+        outFileName = "#{fileSize}kb.#{opts.runType}#{opts.fileExt}"
+        filepath = "#{opts.dataDir}#{outFileName}"
         puts filepath
-        cmd = "ab -n 5000 -c 25 http://trypticon.cs.illinois.edu/downloads/#{i}kb.zero"
+        cmd = "ab -n 10000 -c 100 http://trypticon.cs.illinois.edu/downloads/#{fileSize}kb.rand"
         puts "\nExecuting test for: ",cmd,"\n"
         out = `#{cmd}`
         File.open(filepath, "a") { |f|
             f.puts out
         }
+        resultsFile << "\n***** SCRIPT ****** Benchmarking: #{outFileName}\n"
         resultsFile << out
-        i = 2**e; e += 1;
-    end
+    }
 }
 resultsFile.close
