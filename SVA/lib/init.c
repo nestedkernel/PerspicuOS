@@ -449,6 +449,9 @@ sva_init_primary () {
   /* Initialize the processor ID */
   init_procID();
 
+  extern void init_threads(void);
+  init_threads();
+
   /* Initialize the IDT of the primary processor */
   init_interrupt_table(0);
   init_idt (0);

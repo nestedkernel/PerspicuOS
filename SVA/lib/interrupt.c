@@ -78,6 +78,14 @@ struct CPUState CPUState[numProcessors] __attribute__((aligned(16)));
 /* Pre-allocate a large number of SVA Threads */
 struct SVAThread Threads[4096] __attribute__ ((aligned (16)));
 
+void
+init_threads(void) {
+  for (unsigned index = 0; index < 4096; ++index) {
+    Threads[index].used = 0;
+  }
+  return;
+}
+
 /*
  * Function: findNextFreeThread()
  *
@@ -86,7 +94,7 @@ struct SVAThread Threads[4096] __attribute__ ((aligned (16)));
  */
 struct SVAThread *
 findNextFreeThread (void) {
-  for (signed int index = 0; index < 4096; ++index) {
+  for (unsigned int index = 0; index < 4096; ++index) {
     if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
       /*
        * Remember which thread is the one we've grabbed.
