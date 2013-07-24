@@ -1,0 +1,552 @@
+[lmbench3.0 results for FreeBSD 9.0-RELEASE FreeBSD 9.0-RELEASE #1 r11051: Mon Apr 1 17:39:08 CDT 2013 root@trypticon:/usr/obj/usr/home/dautenh1/projects/sva/FreeBSD9-orig/sys/SVA amd64]
+[LMBENCH_VER: ]
+[BENCHMARK_HARDWARE: NO]
+[BENCHMARK_OS: YES]
+[ALL: 512 1k 2k 4k 8k 16k 32k 64k 128k 256k 512k 1m 2m 4m 8m 16m 32m 64m 128m 256m 512m 1024m 2048m]
+[DISKS: ]
+[DISK_DESC: ]
+[ENOUGH: 5000]
+[FAST: ]
+[FASTMEM: NO]
+[FILE: /var/tmp/XXX]
+[FSDIR: /var/tmp]
+[HALF: 512 1k 2k 4k 8k 16k 32k 64k 128k 256k 512k 1m 2m 4m 8m 16m 32m 64m 128m 256m 512m 1024m]
+[INFO: INFO]
+[LINE_SIZE: ]
+[LOOP_O: 0.00000000]
+[MB: 2867]
+[MHZ: 3057 MHz, 0.3271 nanosec clock]
+[MOTHERBOARD: ]
+[NETWORKS: ]
+[PROCESSORS: ]
+[REMOTE: ]
+[SLOWFS: NO]
+[OS: amd64-freebsd9.0]
+[SYNC_MAX: 1]
+[LMBENCH_SCHED: DEFAULT]
+[TIMING_O: 0]
+[LMBENCH VERSION: lmbench-3alpha4]
+[USER: ]
+[HOSTNAME: ]
+[NODENAME: ]
+[SYSNAME: FreeBSD]
+[PROCESSOR: amd64]
+[MACHINE: amd64]
+[RELEASE: 9.0-RELEASE]
+[VERSION: FreeBSD 9.0-RELEASE #1 r11051: Mon Apr 1 17:39:08 CDT 2013 root@trypticon:/usr/obj/usr/home/dautenh1/projects/sva/FreeBSD9-orig/sys/SVA ]
+[Tue Jul 16 18:54:55 CDT 2013]
+[ 6:54PM up 1:08, 0 users, load averages: 0.92, 0.94, 0.97]
+[net: Name    Mtu Network       Address              Ipkts Ierrs Idrop    Opkts Oerrs  Coll]
+[net: usbus     0 <Link#1>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#2>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#3>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#4>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: bge0*  1500 <Link#5>      14:fe:b5:dd:ae:a8        0     0     0        0     0     0]
+ifconfig: interface bge0* does not exist
+[net: usbus     0 <Link#6>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#7>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#8>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: usbus     0 <Link#9>                               0     0     0        0     0     0]
+ifconfig: interface usbus does not exist
+[net: lo0*  16384 <Link#10>                              0     0     0        0     0     0]
+ifconfig: interface lo0* does not exist
+[mount: /dev/ada0p2 on / (ufs, local, journaled soft-updates)]
+[mount: devfs on /dev (devfs, local, multilabel)]
+Simple syscall: 0.0995 microseconds
+Simple read: 0.1692 microseconds
+Simple write: 0.1401 microseconds
+Simple stat: 1.6447 microseconds
+Simple fstat: 0.2677 microseconds
+Simple open/close: 2.1637 microseconds
+Select on 10 fd's: 0.4528 microseconds
+Select on 100 fd's: 8.9869 microseconds
+Select on 250 fd's: 23.1597 microseconds
+Select on 500 fd's: 46.7627 microseconds
+bind: Can't assign requested address
+bind: Can't assign requested address
+bind: Can't assign requested address
+bind: Can't assign requested address
+Signal handler installation: 0.1610 microseconds
+Signal handler overhead: 1.2088 microseconds
+Pipe latency: 2.0031 microseconds
+AF_UNIX sock stream latency: 2.6506 microseconds
+Process fork+exit: 42.2823 microseconds
+Process fork+execve: 121.2609 microseconds
+Process fork+/bin/sh -c: 655.1111 microseconds
+File /var/tmp/XXX write bandwidth: 80096 KB/sec
+lat_pagefault: /var/tmp/XXX too small
+lat_pagefault: /var/tmp/XXX too small
+
+"mappings
+0.524288 5.709
+1.048576 8.877
+2.097152 16
+4.194304 29
+8.388608 57
+16.777216 113
+33.554432 224
+67.108864 461
+134.217728 931
+268.435456 1864
+536.870912 3719
+1073.741824 7396
+2147.483648 14814
+
+"File system latency
+0k	693	126529	126367
+1k	404	73069	85441
+4k	410	72056	85488
+10k	295	58695	82768
+
+bind: Can't assign requested address
+bind: Can't assign requested address
+lat_rpc: svc_tli_create: could not bind to anonymous port
+cannot create udp service.
+bind: Can't assign requested address
+bind: Can't assign requested address
+bind: Can't assign requested address
+connect: Network is unreachable
+connect: Network is unreachable
+connect: Can't assign requested address
+connect: Can't assign requested address
+localhost: RPC: Port mapper failure - RPC: Unable to send
+localhost: RPC: Port mapper failure - RPC: Unable to send
+Segmentation fault (core dumped)
+connect: Can't assign requested address
+connect: Can't assign requested address
+
+Socket bandwidth using localhost
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+
+connect: Can't assign requested address
+connect: Can't assign requested address
+connect: Can't assign requested address
+AF_UNIX sock stream bandwidth: 3307.97 MB/sec
+Pipe bandwidth: 10545.51 MB/sec
+
+"read bandwidth
+0.000512 720.55
+0.001024 1317.66
+0.002048 2357.46
+0.004096 3770.67
+0.008192 5450.86
+0.016384 6049.90
+0.032768 6523.78
+0.065536 6815.65
+0.131072 6845.95
+0.262144 6570.39
+0.524288 6467.99
+1.05 6455.11
+2.10 6437.63
+4.19 6400.26
+8.39 6304.85
+16.78 4567.09
+33.55 4369.64
+67.11 4356.59
+134.22 4349.25
+268.44 4313.88
+536.87 4316.03
+1073.74 2803.75
+2147.48 2745.65
+
+"read open2close bandwidth
+0.000512 142.50
+0.001024 279.00
+0.002048 535.08
+0.004096 1016.15
+0.008192 1801.30
+0.016384 2754.07
+0.032768 4071.48
+0.065536 4822.64
+0.131072 5536.56
+0.262144 5785.05
+0.524288 6072.10
+1.05 6246.03
+2.10 6327.93
+4.19 6340.06
+8.39 6302.49
+16.78 4562.13
+33.55 4378.19
+67.11 4348.68
+134.22 4329.19
+268.44 4320.41
+536.87 4325.63
+1073.74 2804.45
+2147.48 2744.61
+
+
+"Mmap read bandwidth
+0.000512 18193.38
+0.001024 14831.79
+0.002048 13396.08
+0.004096 12780.74
+0.008192 12492.20
+0.016384 12354.37
+0.032768 12280.54
+0.065536 12233.07
+0.131072 12213.74
+0.262144 11801.00
+0.524288 11391.32
+1.05 11376.95
+2.10 11368.73
+4.19 11487.05
+8.39 11404.21
+16.78 6703.74
+33.55 6412.08
+67.11 6413.92
+134.22 6417.60
+268.44 6397.87
+536.87 6398.10
+1073.74 6392.92
+2147.48 6267.46
+
+"Mmap read open2close bandwidth
+0.000512 95.78
+0.001024 186.68
+0.002048 374.31
+0.004096 720.74
+0.008192 1305.08
+0.016384 2202.69
+0.032768 3261.04
+0.065536 4245.49
+0.131072 5101.10
+0.262144 5374.36
+0.524288 4867.77
+1.05 5137.28
+2.10 5286.30
+4.19 5409.39
+8.39 5290.83
+16.78 3921.28
+33.55 3806.08
+67.11 3819.51
+134.22 3848.43
+268.44 3836.60
+536.87 3775.28
+1073.74 3732.33
+2147.48 3655.27
+
+
+"libc bcopy unaligned
+0.000512 15803.02
+0.001024 23887.77
+0.002048 32093.54
+0.004096 38747.99
+0.008192 43232.41
+0.016384 44726.61
+0.032768 20084.38
+0.065536 20451.13
+0.131072 20125.32
+0.262144 15961.59
+0.524288 13152.47
+1.05 13147.69
+2.10 13170.70
+4.19 13168.93
+8.39 4124.19
+16.78 3730.76
+33.55 3768.04
+67.11 3695.63
+134.22 3683.05
+268.44 3709.57
+536.87 3680.35
+1073.74 3581.46
+
+"libc bcopy aligned
+0.000512 15803.55
+0.001024 24448.14
+0.002048 32593.24
+0.004096 39107.86
+0.008192 43458.65
+0.016384 44924.84
+0.032768 20251.90
+0.065536 20203.47
+0.131072 20102.77
+0.262144 15353.34
+0.524288 13154.86
+1.05 13142.91
+2.10 13170.15
+4.19 13166.35
+8.39 4051.82
+16.78 3640.49
+33.55 3717.53
+67.11 3645.44
+134.22 3717.53
+268.44 3711.41
+536.87 3711.03
+1073.74 3580.51
+
+Memory bzero bandwidth
+0.000512 13488.33
+0.001024 21580.94
+0.002048 29943.30
+0.004096 37137.32
+0.008192 42214.24
+0.016384 45304.20
+0.032768 46824.22
+0.065536 20035.11
+0.131072 19301.36
+0.262144 18814.39
+0.524288 18532.52
+1.05 18406.06
+2.10 18352.47
+4.19 18305.75
+8.39 18299.09
+16.78 8646.56
+33.55 7868.32
+67.11 7897.02
+134.22 7896.09
+268.44 7910.98
+536.87 7903.88
+1073.74 7883.91
+2147.48 7807.67
+
+"unrolled bcopy unaligned
+0.000512 11420.41
+0.001024 11875.46
+0.002048 12012.17
+0.004096 12133.70
+0.008192 12169.48
+0.016384 11917.54
+0.032768 8988.55
+0.065536 8961.07
+0.131072 8931.29
+0.262144 7717.12
+0.524288 7718.42
+1.05 7714.27
+2.10 7742.65
+4.19 7762.92
+8.39 3095.43
+16.78 2908.67
+33.55 2757.37
+67.11 2704.91
+134.22 2694.49
+268.44 2724.54
+536.87 2642.22
+1073.74 2609.86
+
+"unrolled partial bcopy unaligned
+0.000512 38158.74
+0.001024 45023.24
+0.002048 45681.71
+0.004096 47868.46
+0.008192 48048.69
+0.016384 42769.86
+0.032768 18806.14
+0.065536 18793.50
+0.131072 18669.44
+0.262144 11339.56
+0.524288 11342.09
+1.05 11342.09
+2.10 11407.90
+4.19 11346.18
+8.39 3149.47
+16.78 2597.49
+33.55 2802.27
+67.11 2768.75
+134.22 2672.75
+268.44 2726.64
+536.87 2689.72
+1073.74 2667.18
+
+Memory read bandwidth
+0.000512 7697.57
+0.001024 7340.39
+0.002048 7707.29
+0.004096 7737.80
+0.008192 7734.24
+0.016384 7741.11
+0.032768 7743.43
+0.065536 7693.98
+0.131072 7700.30
+0.262144 7691.85
+0.524288 7441.39
+1.05 7447.27
+2.10 7445.95
+4.19 7426.18
+8.39 7424.86
+16.78 5569.20
+33.55 5495.32
+67.11 5472.91
+134.22 5482.97
+268.44 5490.71
+536.87 5487.07
+1073.74 5473.14
+2147.48 5445.67
+
+Memory partial read bandwidth
+0.000512 43456.43
+0.001024 46019.34
+0.002048 46966.30
+0.004096 47588.32
+0.008192 47945.06
+0.016384 47719.70
+0.032768 47382.13
+0.065536 32541.03
+0.131072 32535.60
+0.262144 32404.11
+0.524288 24306.00
+1.05 24275.23
+2.10 24253.29
+4.19 24562.92
+8.39 24570.35
+16.78 9491.17
+33.55 9028.50
+67.11 8950.24
+134.22 8893.30
+268.44 8861.30
+536.87 8902.59
+1073.74 8818.94
+2147.48 8485.83
+
+Memory write bandwidth
+0.000512 12222.30
+0.001024 12223.98
+0.002048 12226.11
+0.004096 12224.16
+0.008192 12214.15
+0.016384 12221.76
+0.032768 12208.04
+0.065536 11494.41
+0.131072 11499.22
+0.262144 11488.76
+0.524288 10869.50
+1.05 10869.96
+2.10 10864.13
+4.19 10875.46
+8.39 10876.64
+16.78 5561.82
+33.55 4924.34
+67.11 4997.68
+134.22 4942.29
+268.44 4912.80
+536.87 4843.48
+1073.74 4799.45
+2147.48 4476.33
+
+Memory partial write bandwidth
+0.000512 48887.33
+0.001024 48895.53
+0.002048 48878.56
+0.004096 48887.00
+0.008192 48895.91
+0.016384 48889.23
+0.032768 46482.75
+0.065536 30079.25
+0.131072 29821.80
+0.262144 28974.84
+0.524288 16906.42
+1.05 16888.03
+2.10 16882.26
+4.19 16888.83
+8.39 16889.81
+16.78 5878.49
+33.55 5174.96
+67.11 5123.21
+134.22 5143.43
+268.44 5091.04
+536.87 5022.93
+1073.74 4941.99
+2147.48 4858.22
+
+Memory partial read/write bandwidth
+0.000512 15805.87
+0.001024 15963.10
+0.002048 16048.53
+0.004096 16088.02
+0.008192 16108.85
+0.016384 16121.04
+0.032768 16124.79
+0.065536 15529.23
+0.131072 15512.61
+0.262144 15442.73
+0.524288 13171.16
+1.05 13163.62
+2.10 13165.98
+4.19 13189.64
+8.39 13189.64
+16.78 5687.19
+33.55 5170.17
+67.11 5023.12
+134.22 5016.92
+268.44 4975.82
+536.87 4942.79
+1073.74 4860.85
+2147.48 4564.91
+
+
+
+"size=0k ovr=0.43
+2 0.66
+4 0.68
+8 0.70
+16 0.77
+24 0.83
+32 0.89
+64 1.00
+96 1.04
+
+"size=4k ovr=0.78
+2 0.65
+4 0.70
+8 0.79
+16 0.89
+24 1.38
+32 1.43
+64 1.53
+96 1.57
+
+"size=8k ovr=1.12
+2 0.67
+4 0.69
+8 0.83
+16 0.99
+24 1.70
+32 1.80
+64 1.98
+96 2.01
+
+"size=16k ovr=1.79
+2 0.66
+4 0.76
+8 0.96
+16 1.28
+24 2.42
+32 2.46
+64 2.43
+96 2.47
+
+"size=32k ovr=3.16
+2 0.70
+4 0.84
+8 1.24
+16 1.74
+24 3.72
+32 3.74
+64 3.77
+96 3.77
+
+"size=64k ovr=5.84
+2 0.73
+4 1.24
+8 1.53
+16 2.15
+24 6.44
+32 6.48
+64 6.44
+96 6.79
+
+
+[Tue Jul 16 18:59:56 CDT 2013]
