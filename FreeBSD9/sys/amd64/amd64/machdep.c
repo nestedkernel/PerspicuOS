@@ -2732,6 +2732,14 @@ cpu_switch_sva (struct thread * old, struct thread * new, struct mtx * mtx)
     panic ("SVA: Should not do old context switch anymore!\n");
 #endif
   }
+
+  /*
+   * If the process that we took off the processor is a zombie, get rid of its
+   * SVA state.  It will never go on the CPU again.
+   */
+  if (curthread->prev->td_proc->p_state == PRS_ZOMBIE) {
+    sva_release_stack (curthread->prev->svaID);
+  }
   return;
 }
 
