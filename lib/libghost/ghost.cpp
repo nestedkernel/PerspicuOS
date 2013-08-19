@@ -631,6 +631,9 @@ _clock_gettime(clockid_t clock_id, struct timespec *tp) {
 
 int
 gethostname(char * name, size_t namelen) {
+  // Record the current traditional stack frame pointer
+  unsigned char * framep = tradsp;
+
   //
   // Allocate space for the arguments.
   //
@@ -649,10 +652,14 @@ gethostname(char * name, size_t namelen) {
   //
   if (sysctl(mib, 2, name, newnamelen, NULL, 0) == -1) {
     if (errno == ENOMEM)
-            errno = ENAMETOOLONG;
-        return (-1);
+      errno = ENAMETOOLONG;
+    // Restore the stack pointer
+    tradsp = framep;
+    return (-1);
   }
 
+  // Restore the stack pointer
+  tradsp = framep;
   return (0);
 }
 
