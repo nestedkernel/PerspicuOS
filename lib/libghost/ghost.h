@@ -16,6 +16,7 @@ extern "C" ssize_t _read(int d, void *buf, size_t nbytes);
 extern "C" ssize_t _write(int d, void *buf, size_t nbytes);
 extern "C" int _clock_gettime(clockid_t clock_id, struct timespec *tp);
 extern "C" struct passwd * ghost_getpwuid (uid_t uid);
+extern "C" int gethostname(char * name, size_t namelen);
 
 extern "C" int ghost_connect(int s, const struct sockaddr *addr, socklen_t addrlen);
 extern "C" int ghost_accept (int s, struct sockaddr * addr, socklen_t * addrlen);
