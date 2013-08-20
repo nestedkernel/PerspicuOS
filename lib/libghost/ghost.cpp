@@ -54,6 +54,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <netdb.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -663,6 +664,51 @@ gethostname(char * name, size_t namelen) {
   return (0);
 }
 
+int
+ghost_getaddrinfo (char *hostname, char *servname,
+              struct addrinfo *hints, struct addrinfo **res) {
+  // Record the current traditional stack frame pointer
+  unsigned char * framep = tradsp;
+
+  //
+  // Copy the input arguments into traditional memory.
+  //
+  char * newhostname = allocAndCopy (hostname);
+  char * newservname = allocAndCopy (servname);
+  struct addrinfo * newhints = allocAndCopy (hints);
+
+  //
+  // Allocate a place to store the linked list of addrinfo's in traditional
+  // memory.
+  //
+  struct addrinfo ** newres = (struct addrinfo **) allocate (sizeof (struct addrinfo *));
+
+  //
+  // Do the call
+  //
+  printf ("#JTC: getaddrinfo(): 1\n");
+  fflush (stdout);
+  int ret = getaddrinfo (newhostname, newservname, newhints, newres);
+  printf ("#JTC: getaddrinfo(): 2\n");
+  fflush (stdout);
+
+  //
+  // Copy the output pointer into the caller's res.
+  //
+  if ((!ret) && (res)){
+    *res = *newres;
+  }
+
+  printf ("#JTC: getaddrinfo(): 2\n");
+  fflush (stdout);
+
+  //
+  // Deallocate traditional memory and return.
+  //
+  tradsp = framep;
+  return ret;
+}
+
 struct passwd *
 ghost_getpwuid (uid_t uid) {
   static struct passwd pw;
@@ -681,6 +727,7 @@ void connect () __attribute__ ((weak, alias ("ghost_connect")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void ghost_bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
+void getaddrinfo () __attribute__ ((weak, alias ("ghost_getaddrinfo")));
 
 int select () __attribute__ ((weak, alias ("ghost_select")));
 #if 0
