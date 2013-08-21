@@ -665,6 +665,36 @@ gethostname(char * name, size_t namelen) {
 }
 
 int
+_getsockname(int s,
+             struct sockaddr * name,
+             socklen_t * namelen) {
+  //
+  // Save the current traditional stack pointer.
+  //
+  unsigned char * framep = tradsp;
+
+  //
+  // Allocate traditional memory for the socket address and for the length.
+  //
+  struct sockaddr * newname = (struct sockaddr *) allocate (*namelen);
+  socklen_t * newlen = allocate (namelen);
+  newlen = namelen;
+
+  //
+  // Get the address of the socket.
+  //
+  int ret = getsockname (s, newname, newlen);
+  memcpy (name, newname, *newlen);
+  *namelen = *newlen;
+
+  //
+  // Deallocate traditional memory and return.
+  //
+  tradsp = framep;
+  return ret;
+}
+
+int
 ghost_getaddrinfo (char *hostname, char *servname,
               struct addrinfo *hints, struct addrinfo **res) {
   // Record the current traditional stack frame pointer
@@ -676,17 +706,12 @@ ghost_getaddrinfo (char *hostname, char *servname,
   char * newhostname = allocAndCopy (hostname);
   char * newservname = allocAndCopy (servname);
   struct addrinfo * newhints = allocAndCopy (hints);
-
-  //
-  // Allocate a place to store the linked list of addrinfo's in traditional
-  // memory.
-  //
-  struct addrinfo ** newres = (struct addrinfo **) allocate (sizeof (struct addrinfo *));
+  struct addrinfo ** newres = allocAndCopy (res);
 
   //
   // Do the call
   //
-  printf ("#JTC: getaddrinfo(): 1\n");
+  printf ("#JTC: getaddrinfo(): 1: %s %s %p %p\n", newhostname, newservname, newhints, newres);
   fflush (stdout);
   int ret = getaddrinfo (newhostname, newservname, newhints, newres);
   printf ("#JTC: getaddrinfo(): 2\n");
@@ -699,7 +724,7 @@ ghost_getaddrinfo (char *hostname, char *servname,
     *res = *newres;
   }
 
-  printf ("#JTC: getaddrinfo(): 2\n");
+  printf ("#JTC: getaddrinfo(): 3\n");
   fflush (stdout);
 
   //
@@ -727,6 +752,7 @@ void connect () __attribute__ ((weak, alias ("ghost_connect")));
 void bind () __attribute__ ((weak, alias ("_bind")));
 void ghost_bind () __attribute__ ((weak, alias ("_bind")));
 void getsockopt () __attribute__ ((weak, alias ("_getsockopt")));
+void getsockname () __attribute__ ((weak, alias ("_getsockname")));
 void getaddrinfo () __attribute__ ((weak, alias ("ghost_getaddrinfo")));
 
 int select () __attribute__ ((weak, alias ("ghost_select")));

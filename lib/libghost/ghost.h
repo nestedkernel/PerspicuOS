@@ -30,4 +30,6 @@ extern "C" int ghost_sigaction (int sig, struct sigaction * act, struct sigactio
 extern "C" int ghost_open (char *path, int flags, mode_t mode);
 extern "C" int ghost_stat(char *path, struct stat *sb);
 
+extern "C" int _getsockname(int s, struct sockaddr * name, socklen_t * namelen);
+
 extern "C" void ghostAllowFunction (void * f);
