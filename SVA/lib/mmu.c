@@ -103,7 +103,13 @@ struct PTInfo {
 };
 
 
-/* Memory to use for missing pages in the page table */
+/*
+ * Structure: PTPages
+ *
+ * Description:
+ *  This table records information on pages fetched from the operating system
+ *  that the SVA VM will use for its own purposes.
+ */
 struct PTInfo PTPages[1024];
 
 /*
@@ -1544,9 +1550,11 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * Get the PTE entry (or add it if it is not present).
    */
   pte_t * pte = get_pteVaddr (pde, vaddr);
+#if 0
   if (isPresent (pte)) {
-    panic ("SVA: mapSecurePage: PTE is present!\n");
+    panic ("SVA: mapSecurePage: PTE is present: %p!\n", pte);
   }
+#endif
 
   /*
    * Modify the PTE to install the physical to virtual page mapping.
@@ -1787,12 +1795,12 @@ sva_mm_load_pgtable (void * pg) {
 
     /*
      * Load the new page table and enable paging in the CR0 register.
-    */
+     */
     __asm__ __volatile__ ("movq %1, %%cr3\n"
-            "movl %%cr0, %0\n"
-            "orl  $0x80000000, %0\n"
-            "movl %0, %%cr0\n"
-            : "=r" (cr0)
+                          "movl %%cr0, %0\n"
+                          "orl  $0x80000000, %0\n"
+                          "movl %0, %%cr0\n"
+                          : "=r" (cr0)
             : "r" (pg) : "memory");
     
 #if DEBUG >= 5
