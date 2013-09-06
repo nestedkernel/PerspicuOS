@@ -394,7 +394,13 @@ static __inline void
 load_cr3(u_long data)
 {
 
+#if 0
 	__asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory");
+#else
+  /* SVA: Use the intrinsic */
+  extern void sva_mm_load_pgtable (void * p);
+  sva_mm_load_pgtable ((void *)data);
+#endif
 }
 
 static __inline u_long
