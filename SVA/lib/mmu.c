@@ -30,18 +30,25 @@
  */
 /* Used to denote unimplemented code */
 #define NOT_YET_IMPLEMENTED 0   
+
 /* Code that is under test and may cause issues */
 #define UNDER_TEST          1   
+
 /* Used to temporarily disable code for any reason */
 #define TMP_DISABLED        0   
+
 /* Used to denote obsolete code that hasn't been deleted yet */
 #define OBSOLETE            0   
+
 /* Denotes code that is in for some type of testing but is only temporary */
 #define TMP_TEST_CODE       1
+
 /* Denotes whether or not we are activating read only protection */
 #define ACTIVATE_PROT       0
+
 /* Define whether to enable DEBUG blocks #if statements */
 #define DEBUG               0
+
 /* Define whether or not the mmu_init code assumes virtual addresses */
 #define USE_VIRT            0
 
@@ -156,12 +163,14 @@ init_mmu () {
  */
 static inline void
 protect_paging(void) {
+#if ACTIVATE_PROT
   /* The flag value for enabling page protection */
   const uintptr_t flag = 0x00010000;
   uintptr_t value = 0;
   __asm__ __volatile ("movq %%cr0,%0\n": "=r" (value));
   value |= flag;
   __asm__ __volatile ("movq %0,%%cr0\n": :"r" (value));
+#endif
   return;
 }
 
@@ -1779,56 +1788,65 @@ void llva_check_pagetable(pgd_t* pgd) {
  */
 void
 sva_mm_load_pgtable (void * pg) {
-    /* Control Register 0 value (which is used to enable paging) */
-    unsigned int cr0;
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned long rflags = sva_enter_critical();
+
+  /* Control Register 0 Value (which is used to enable paging) */
+  unsigned int cr0;
 
 #if DEBUG >= 5
-    printf("##### SVA<sva_mm_load_pgtable> new entry value: 0x%lx,", pg);
-    print_regs();
-#endif 
-#if 0
-    /* 
-     * Unset page protection so that we can write to cr3
-     */
-    unprotect_paging();
+  printf("##### SVA<sva_mm_load_pgtable> new entry value: 0x%lx,", pg);
+  print_regs();
 #endif 
 
-    /*
-     * Load the new page table and enable paging in the CR0 register.
-     */
-    __asm__ __volatile__ ("movq %1, %%cr3\n"
-                          "movl %%cr0, %0\n"
-                          "orl  $0x80000000, %0\n"
-                          "movl %0, %%cr0\n"
-                          : "=r" (cr0)
-            : "r" (pg) : "memory");
+  /* 
+   * Unset page protection so that we can write to cr3 and can write into
+   * the top-level page-table page if necessary.
+   */
+  unprotect_paging();
+
+  /*
+   * Load the new page table and enable paging in the CR0 register.
+   */
+  __asm__ __volatile__ ("movq %1, %%cr3\n"
+                        "movl %%cr0, %0\n"
+                        "orl  $0x80000000, %0\n"
+                        "movl %0, %%cr0\n"
+                        : "=r" (cr0)
+          : "r" (pg) : "memory");
     
 #if DEBUG >= 5
-    print_regs();
+  print_regs();
 #endif
+
+  /*
+   * Ensure that the secure memory region is still mapped within the current
+   * set of page tables.
+   */
+  struct SVAThread * threadp = getCPUState()->currentThread;
+  if (threadp->secmemSize) {
+    /*
+     * Get a pointer into the page tables for the secure memory region.
+     */
+    pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
 
     /*
-     * Make sure that the secure memory region is still mapped within the current
-     * set of page tables.
+     * Restore the PML4E entry for the secure memory region.
      */
-    struct SVAThread * threadp = getCPUState()->currentThread;
-    if (threadp->secmemSize) {
-        /*
-         * Get a pointer into the page tables for the secure memory region.
-         */
-        pml4e_t * secmemp = (pml4e_t *) getVirtual (get_pagetable() + secmemOffset);
+    *secmemp = threadp->secmemPML4e;
+  }
 
-        /*
-         * Restore the PML4E entry for the secure memory region.
-         */
-        *secmemp = threadp->secmemPML4e;
-    }
+  /*
+   * Mark the page table pages as read-only again.
+   */
+  protect_paging();
 
-#if 0
-    protect_paging();
-#endif
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 
-    return;
+  return;
 }
 
 /*
