@@ -131,8 +131,8 @@ struct PTInfo PTPages[1024];
  *  Pointer to the page_desc for this frame
  */
 page_desc_t * getPageDescPtr(unsigned long mapping) {
-    unsigned long frameIndex = (mapping & PG_FRAME) / pageSize;
-    return &page_desc[frameIndex];
+  unsigned long frameIndex = (mapping & PG_FRAME) / pageSize;
+  return &page_desc[frameIndex];
 }
 
 /*
@@ -143,6 +143,7 @@ page_desc_t * getPageDescPtr(unsigned long mapping) {
  */
 void 
 init_mmu () {
+  return;
 }
 
 /*
@@ -220,28 +221,27 @@ static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     
 #if ACTIVATE_PROT
-    /* Disable page protection so we can write to the referencing table entry */
-    unprotect_paging();
+  /* Disable page protection so we can write to the referencing table entry */
+  unprotect_paging();
 #endif
     
 #if DEBUG >= 5
-    printf("##### SVA<page_entry_store>: pre-write ");
-    printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
+  printf("##### SVA<page_entry_store>: pre-write ");
+  printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
 #endif
     
     /* Write the new value to the page_entry */
     *page_entry = newVal;
 
 #if DEBUG >= 5
-    printf("##### SVA<page_entry_store>: post-write ");
-    printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
+  printf("##### SVA<page_entry_store>: post-write ");
+  printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
 #endif
 
 #if ACTIVATE_PROT
-    /* Reenable page protection */
-    protect_paging();
+  /* Reenable page protection */
+  protect_paging();
 #endif
-
 }
 
 /*
@@ -2288,31 +2288,29 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
  */
 void
 sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags = sva_enter_critical();
-
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 4
-    printf("##### SVA<declare_leaf_page>: frameAddr: %p, pte: %p, *pte: 0x%lx\n", 
-            frameAddr, pte, *pte);
+  printf("##### SVA<declare_leaf_page>: frameAddr: %p, pte: %p, *pte: 0x%lx\n", 
+         frameAddr, pte, *pte);
 #endif
 
-    /* Mark this page frame as LEAF page frame */
-    pgDesc->type = PG_LEAF;
-    
-    /* 
-     * Initialize the page data and page entry. Note that we pass a general
-     * page_entry_t to the function as it enables reuse of code for each of the
-     * entry declaration functions. 
-     */
-    //init_page_entry(frameAddr, (page_entry_t *) pte);
+  /* Mark this page frame as LEAF page frame */
+  pgDesc->type = PG_LEAF;
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* 
+   * Initialize the page data and page entry. Note that we pass a general
+   * page_entry_t to the function as it enables reuse of code for each of the
+   * entry declaration functions. 
+   */
+  //init_page_entry(frameAddr, (page_entry_t *) pte);
+
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 /*
@@ -2330,40 +2328,38 @@ sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
  */
 void
 sva_declare_l1_page (unsigned long frameAddr, uintptr_t vaddr) {
+  /* Get the entry controlling the permissions for this pml4 PTP */
+  page_entry_t *pge = get_pgeVaddr(vaddr);;
 
-    /* Get the entry controlling the permissions for this pml4 PTP */
-    page_entry_t *pge = get_pgeVaddr(vaddr);;
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags = sva_enter_critical();
-
-#if DEBUG >= 4
-    printf("<<<<\n   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
-            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
-#endif
-
-    /*
-     * Mark this page frame as an L1 page frame.
-     */
-    pgDesc->type = PG_L1;
-    
-    /* 
-     * Initialize the page data and page entry. Note that we pass a general
-     * page_entry_t to the function as it enables reuse of code for each of the
-     * entry declaration functions. 
-     */
-    init_page_entry(frameAddr, pge);
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 4
-    printf("   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
-            frameAddr, pge, *pge);
+  printf("<<<<\n   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+         frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
+#endif
+  /*
+   * Mark this page frame as an L1 page frame.
+   */
+  pgDesc->type = PG_L1;
+
+  /* 
+   * Initialize the page data and page entry. Note that we pass a general
+   * page_entry_t to the function as it enables reuse of code for each of the
+   * entry declaration functions. 
+   */
+  init_page_entry(frameAddr, pge);
+
+#if DEBUG >= 4
+  printf("   SVA:declare_l1_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+          frameAddr, pge, *pge);
 #endif
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 #if 0
@@ -2412,45 +2408,43 @@ void llva_remove_l1_page(pte_t * pteptr) {
  *              created l2 page
  */
 void sva_declare_l2_page(unsigned long frameAddr, uintptr_t vaddr) {
-    
-    /* Get the entry controlling the permissions for this pml4 PTP */
-    page_entry_t *pge = get_pgeVaddr(vaddr);;
+  /* Get the entry controlling the permissions for this pml4 PTP */
+  page_entry_t *pge = get_pgeVaddr(vaddr);;
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(frameAddr);
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags = sva_enter_critical();
-
-#if DEBUG >= 4
-    printf("<<<<\n   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
-            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
-#endif
-
-    /*
-     * TODO: Will this frame be zeroed out by some type of paging out process
-     * or function? If not we need to zero out the page_desc being accessed
-     * here. What I mean is that if this frame was previously used for another
-     * page table page then we need to make sure the data has been zeroed out.
-     */
-
-    /* Setup metadata tracking for this new page */
-    pgDesc->type = PG_L2;
-
-    /* 
-     * Initialize the page data and page entry. Note that we pass a general
-     * page_entry_t to the function as it enables reuse of code for each of the
-     * entry declaration functions. 
-     */
-    init_page_entry(frameAddr, pge);
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 4
-    printf("   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
-            frameAddr, pge, *pge);
+  printf("<<<<\n   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+         frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
+#endif
+  /*
+   * TODO: Will this frame be zeroed out by some type of paging out process
+   * or function? If not we need to zero out the page_desc being accessed
+   * here. What I mean is that if this frame was previously used for another
+   * page table page then we need to make sure the data has been zeroed out.
+   */
+
+  /* Setup metadata tracking for this new page */
+  pgDesc->type = PG_L2;
+
+  /* 
+   * Initialize the page data and page entry. Note that we pass a general
+   * page_entry_t to the function as it enables reuse of code for each of the
+   * entry declaration functions. 
+   */
+  init_page_entry(frameAddr, pge);
+
+#if DEBUG >= 4
+  printf("   SVA:declare_l2_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+          frameAddr, pge, *pge);
 #endif
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 #if 0
@@ -2499,39 +2493,38 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
  */
 void
 sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
+  /* Get the entry controlling the permissions for this pml4 PTP */
+  page_entry_t *pge = get_pgeVaddr(vaddr);;
 
-    /* Get the entry controlling the permissions for this pml4 PTP */
-    page_entry_t *pge = get_pgeVaddr(vaddr);;
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-    /* Disable interrupts so that we appear to execute as a single instruction */
-    unsigned long rflags = sva_enter_critical();
+  /* Disable interrupts so that we appear to execute as a single instruction */
+  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
-    print_regs();
-    printf("<<<<\n   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
-            frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
+  print_regs();
+  printf("<<<<\n   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx, pgetype %d\n", 
+          frameAddr, pge, *pge, getPageDescPtr(*pge)->type);
 #endif
 
-    /* Mark this page frame as an L3 page frame */
-    pgDesc->type = PG_L3;
-    
-    /* 
-     * Initialize the page data and page entry. Note that we pass a general
-     * page_entry_t to the function as it enables reuse of code for each of the
-     * entry declaration functions. 
-     */
-    init_page_entry(frameAddr, (page_entry_t *) pge);
-    
-#if DEBUG >= 2
-    printf("   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
-            frameAddr, pge, *pge);
-#endif
+  /* Mark this page frame as an L3 page frame */
+  pgDesc->type = PG_L3;
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* 
+   * Initialize the page data and page entry. Note that we pass a general
+   * page_entry_t to the function as it enables reuse of code for each of the
+   * entry declaration functions. 
+   */
+  init_page_entry(frameAddr, (page_entry_t *) pge);
+
+  #if DEBUG >= 2
+  printf("   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
+          frameAddr, pge, *pge);
+  #endif
+
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 /*
@@ -2551,54 +2544,54 @@ sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
 void
 sva_declare_l4_page (unsigned long frameAddr, uintptr_t vaddr) {
 
-    /* Get the entry controlling the permissions for this pml4 PTP */
-    page_entry_t *pml4PE = get_pgeVaddr(vaddr);;
+  /* Get the entry controlling the permissions for this pml4 PTP */
+  page_entry_t *pml4PE = get_pgeVaddr(vaddr);;
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(frameAddr);
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags = sva_enter_critical();
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
-    print_regs();
-    printf("<<<<\n   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx, ptetype %d\n", 
-            frameAddr, pml4PE, *pml4PE, getPageDescPtr(*pml4PE)->type);
+  print_regs();
+  printf("<<<<\n   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx, ptetype %d\n", 
+          frameAddr, pml4PE, *pml4PE, getPageDescPtr(*pml4PE)->type);
 #endif
 
 #if NOT_YET_IMPLEMENTED
-    /* 
-     * Assert that this is a new L4, if not die. We don't want declaring an L4
-     * with and existing mapping
-     */
-    SVA_ASSERT(pgRefCount(pgDesc) == 0, 
-            "MMU: attempted to declare an L4 that is already mapped.");
+  /* 
+   * Assert that this is a new L4, if not die. We don't want declaring an L4
+   * with and existing mapping
+   */
+  SVA_ASSERT(pgRefCount(pgDesc) == 0, 
+          "MMU: attempted to declare an L4 that is already mapped.");
 
-    /* 
-     * We need to make sure that this is valid declaration of a page, as we
-     * modify the page type here. 
-     */
-    if (valid_declare_page(pgDesc)) 
+  /* 
+   * We need to make sure that this is valid declaration of a page, as we
+   * modify the page type here. 
+   */
+  if (valid_declare_page(pgDesc)) 
 #endif
-    {
-        /* Mark this page frame as an L4 page frame */
-        pgDesc->type = PG_L4;
+  {
+      /* Mark this page frame as an L4 page frame */
+      pgDesc->type = PG_L4;
 
-        /* 
-         * Initialize the page data and page entry. Note that we pass a general
-         * page_entry_t to the function as it enables reuse of code for each of the
-         * entry declaration functions. 
-         */
-        init_page_entry(frameAddr, (page_entry_t *) pml4PE);
-    }
+      /* 
+       * Initialize the page data and page entry. Note that we pass a general
+       * page_entry_t to the function as it enables reuse of code for each of the
+       * entry declaration functions. 
+       */
+      init_page_entry(frameAddr, (page_entry_t *) pml4PE);
+  }
 
 #if DEBUG >= 2
-    printf("   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx\n>>>>\n", 
-            frameAddr, pml4PE, *pml4PE);
+  printf("   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx\n>>>>\n", 
+          frameAddr, pml4PE, *pml4PE);
 #endif
 
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 #if 0
