@@ -1494,8 +1494,8 @@ pmap_kremove(vm_offset_t va)
 
     pte = vtopte(va);
 #ifdef SVA_MMU
-    /* Clear the pte entry */
-    sva_remove_mapping(pte);
+		/* Clear the pte entry */
+		sva_remove_mapping(pte);
 #else
     pte_clear(pte);
 #endif
@@ -2582,15 +2582,15 @@ pmap_collect(pmap_t locked_pmap, struct vpgqueues *vpq)
 			pte = pmap_pde_to_pte(pde, va);
 
 #ifdef SVA_MMU
-            /* 
-             * To emulate the proper behavior here we first read the pte value then
-             * do an update mapping to remove the mapping. Pass in a value of zero
-             * to remove the mapping.
-             */
-            tpte = *pte;
-            sva_remove_mapping(pte);
+			/* 
+			 * To emulate the proper behavior here we first read the pte value then
+			 * do an update mapping to remove the mapping. Pass in a value of zero
+			 * to remove the mapping.
+			 */
+			tpte = *pte;
+			sva_remove_mapping(pte);
 #else
-            tpte = pte_load_clear(pte);
+			tpte = pte_load_clear(pte);
 #endif
 			KASSERT((tpte & PG_W) == 0,
 			    ("pmap_collect: wired pte %#lx", tpte));
@@ -3081,9 +3081,9 @@ pmap_remove_pde(pmap_t pmap, pd_entry_t *pdq, vm_offset_t sva,
 	    ("pmap_remove_pde: sva is not 2mpage aligned"));
 
 #ifdef SVA_MMU
-    /* Store the current mapping and then remove the page mapping */
+	/* Store the current mapping and then remove the page mapping */
 	oldpde = *pdq;
-    sva_remove_mapping(pdq);
+	sva_remove_mapping(pdq);
 #else
 	oldpde = pte_load_clear(pdq);
 #endif
@@ -3144,13 +3144,13 @@ pmap_remove_pte(pmap_t pmap, pt_entry_t *ptq, vm_offset_t va,
 	PMAP_LOCK_ASSERT(pmap, MA_OWNED);
 
 #ifdef SVA_MMU
-    /* 
-     * To emulate the proper behavior here we first read the pte value then do
-     * an update mapping to remove the mapping. Pass in a value of zero to
-     * remove the mapping.
-     */
+	/* 
+	 * To emulate the proper behavior here we first read the pte value then do
+	 * an update mapping to remove the mapping. Pass in a value of zero to
+	 * remove the mapping.
+	 */
 	oldpte = *ptq;
-    sva_remove_mapping(ptq);
+	sva_remove_mapping(ptq);
 #else
 	oldpte = pte_load_clear(ptq);
 #endif
@@ -3374,15 +3374,15 @@ pmap_remove_all(vm_page_t m)
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
 
 #ifdef SVA_MMU
-        /* 
-         * To emulate the proper behavior here we first read the pte value then
-         * do an update mapping to remove the mapping. Pass in a value of zero
-         * to remove the mapping.
-         */
-        tpte = *pte;
-        sva_remove_mapping(pte);
+		/* 
+		 * To emulate the proper behavior here we first read the pte value then
+		 * do an update mapping to remove the mapping. Pass in a value of zero
+		 * to remove the mapping.
+		 */
+		tpte = *pte;
+		sva_remove_mapping(pte);
 #else
-        tpte = pte_load_clear(pte);
+		tpte = pte_load_clear(pte);
 #endif
 
 		if (tpte & PG_W)
@@ -4694,10 +4694,10 @@ pmap_remove_pages(pmap_t pmap)
 					(uintmax_t)tpte));
 
 #ifdef SVA_MMU
-                /* Clear the pte entry */
-                sva_remove_mapping(pte);
+				/* Clear the pte entry */
+				sva_remove_mapping(pte);
 #else
-                pte_clear(pte);
+				pte_clear(pte);
 #endif
 
 				/*
