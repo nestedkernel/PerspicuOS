@@ -111,7 +111,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
-#define SVA_DEBUG 1
+#define SVA_DEBUG 0
 #endif
 
 #include <sys/param.h>
@@ -2465,16 +2465,16 @@ pmap_growkernel(vm_offset_t addr)
 		newpdir = (pd_entry_t) (paddr | PG_V | PG_RW | PG_A | PG_M);
 
 #ifdef SVA_MMU
-        /* 
-         * Declare the l1 page to SVA. This will initialize paging structures
-         * and make the page table page as read only
-         */
-        sva_declare_l1_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
+		/* 
+		 * Declare the l1 page to SVA. This will initialize paging structures
+		 * and make the page table page as read only
+		 */
+		sva_declare_l1_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
 
-        /*
-         * Update the mapping in the level 2 entry.
-         */
-        sva_update_l2_mapping(pde, newpdir);
+		/*
+		 * Update the mapping in the level 2 entry.
+		 */
+		sva_update_l2_mapping(pde, newpdir);
 #else
 		pde_store(pde, newpdir);
 #endif
