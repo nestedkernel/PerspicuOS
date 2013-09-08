@@ -2153,43 +2153,42 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 		pd = &pd[ptepindex & ((1ul << NPDEPGSHIFT) - 1)];
 
 #if 0//SVA_DEBUG
-        printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
-        printf("%p, contents: 0x%lx\n", pd, *pd); 
+		printf("<<< FBSD __pmap_allocatepte: pre declare va-pentry: ");
+		printf("%p, contents: 0x%lx\n", pd, *pd); 
 #endif
 
 #ifdef SVA_MMU
-        /* 
-         * Declare the l1 page to SVA. This will initialize paging structures
-         * and make the page table entry referencing the new page as read only.
-         */
+		/* 
+		 * Declare the l1 page to SVA. This will initialize paging structures
+		 * and make the page table entry referencing the new page as read only.
+		 */
 #if 0
-        printf("Pre dec l1: pde: %p, old mapping: 0x%lx\n", 
-                pd, *pd);
+		printf("Pre dec l1: pde: %p, old mapping: 0x%lx\n", 
+						pd, *pd);
 #endif
 
-        sva_declare_l1_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
+		sva_declare_l1_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
 
 #if 0
-        printf("Post dec l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n", 
-                pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
-                    | PG_A | PG_M));
+		printf("Post dec l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n", 
+						pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
+								| PG_A | PG_M));
 #endif
-
-        /* Update the l2 mapping to the requested value */
-        sva_update_l2_mapping(pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U |
-                    PG_RW | PG_V | PG_A | PG_M));
+		/* Update the l2 mapping to the requested value */
+		sva_update_l2_mapping(pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U |
+								PG_RW | PG_V | PG_A | PG_M));
 
 #if 0
-        printf("Post up l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n",
-                pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
-                    | PG_A | PG_M));
-        *pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
-        printf("Post pde: %p, new mapping: 0x%lx\n", pd, *pd);
-        panic ("");
+		printf("Post up l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n",
+						pd, *pd, (pd_entry_t) (VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V
+								| PG_A | PG_M));
+		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+		printf("Post pde: %p, new mapping: 0x%lx\n", pd, *pd);
+		panic ("");
 #endif
 
 #else  /* !SVA_DEBUG */
-        *pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
+		*pd = VM_PAGE_TO_PHYS(m) | PG_U | PG_RW | PG_V | PG_A | PG_M;
 #endif 
 
 #if 0//SVA_DEBUG
@@ -2426,16 +2425,16 @@ pmap_growkernel(vm_offset_t addr)
 			paddr = VM_PAGE_TO_PHYS(nkpg);
 
 #ifdef SVA_MMU
-            /* 
-             * Declare the l2 page to SVA. This will initialize paging
-             * structures and make the page table page as read only
-             */
-            sva_declare_l2_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
+			/* 
+			 * Declare the l2 page to SVA. This will initialize paging
+			 * structures and make the page table page as read only
+			 */
+			sva_declare_l2_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
 
-            /*
-             * SVA update the mappings to the newly created page table page
-             */
-            sva_update_l3_mapping(pdpe, (paddr | PG_V | PG_RW | PG_A | PG_M));
+			/*
+			 * SVA update the mappings to the newly created page table page
+			 */
+			sva_update_l3_mapping(pdpe, (paddr | PG_V | PG_RW | PG_A | PG_M));
 #else
 			*pdpe = (pdp_entry_t)
 				(paddr | PG_V | PG_RW | PG_A | PG_M);
@@ -5305,8 +5304,8 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 	 */
 	for (pde = firstpde; pde < firstpde + NPDEPG; pde++) {
 #ifdef SVA_MMU
-        /* SVA update the mapping to the newly created pde */
-        sva_update_l2_mapping(pde, newpde);
+		/* SVA update the mapping to the newly created pde */
+		sva_update_l2_mapping(pde, newpde);
 #else
 		*pde = newpde;
 #endif
@@ -5317,8 +5316,8 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 	 * Demote the mapping.
 	 */
 #ifdef SVA_MMU
-    /* Update the l3 mappings to the newly created page table page */
-    sva_update_l3_mapping(pdpe, newpdpe);
+	/* Update the l3 mappings to the newly created page table page */
+	sva_update_l3_mapping(pdpe, newpdpe);
 #else
 	*pdpe = newpdpe;
 #endif
