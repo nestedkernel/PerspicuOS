@@ -2174,9 +2174,6 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
           printf("%sInitializing leaf entry: pteaddr: %p, mapping: 0x%lx\n",
                   indent, nextEntry, *nextEntry);
 #endif
-#if NOT_YET_IMPLEMENTED
-          init_leaf_page_from_mapping(*nextEntry);
-#endif
       } else {
 #if DEBUG_INIT >= 2
       printf("%sProcessing:pte addr: %p, newPgAddr: %p, mapping: 0x%lx\n",
@@ -2765,46 +2762,6 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
 
 #endif
 
-/*
- * Function: init_leaf_page_from_mapping
- *
- * Description:
- *  This function serves to perform a function like declare_leaf_page for leaf
- *  pages. The most important aspect of the declare functions are to zero out
- *  the page and establish read only protection on pages. In this system, we
- *  know that leaf pages are only going to be data. We make this assumption
- *  because all kernel code pages are initialized statically and assumed to
- *  reside in memory at the time of SVA's mmu_init function, which is where
- *  they are labled. We also know that application code pages are initialized
- *  into secure memory regions, which enables their protection from the kernel
- *  via secure memory checks. Thus, the only pages we must manage are data
- *  pages, which have no restrictions on page start up state.
- *
- * Inputs:
- *  pteptr - The location within the L1 page in which the new translation
- *           should be place.
- *  val    - The new translation to insert into the page table.
- */
-void 
-init_leaf_page_from_mapping (page_entry_t mapping) {
-    /* Get the page descriptor for the new entry */
-    page_desc_t * newPg = getPageDescPtr(mapping); 
-
-#if DEBUG >= 5
-    printf("newPg ptr: %p, mapping: %lx\n",newPg, mapping);
-#endif
-
-#if 0
-    /* Mark the page type as either user or kernel data */
-    /* TODO debug this to see why it causes a bug when setting */
-    if(mapping & PG_U) {
-        newPg->type = PG_TUDATA;
-    } else {
-        newPg->type = PG_TKDATA;
-    }
-#endif
-}
-
 /* 
  * Function: sva_update_mapping()
  *
@@ -2885,7 +2842,6 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
 #endif
 
   /* TODO: bug in init_leaf_page */
-  init_leaf_page_from_mapping(val);
   __update_mapping(pteptr,val);
 
 #if DEBUG >= 4
