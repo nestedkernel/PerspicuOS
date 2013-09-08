@@ -164,14 +164,12 @@ init_mmu () {
  */
 static inline void
 protect_paging(void) {
-#if ACTIVATE_PROT
   /* The flag value for enabling page protection */
   const uintptr_t flag = 0x00010000;
   uintptr_t value = 0;
   __asm__ __volatile ("movq %%cr0,%0\n": "=r" (value));
   value |= flag;
   __asm__ __volatile ("movq %0,%%cr0\n": :"r" (value));
-#endif
   return;
 }
 
@@ -191,6 +189,36 @@ unprotect_paging(void) {
   __asm__ __volatile("movq %%cr0,%0\n": "=r"(value));
   value &= flag;
   __asm__ __volatile("movq %0,%%cr0\n": : "r"(value));
+}
+
+/*
+ * Function: canBeDeclared()
+ *
+ * Description:
+ *  Determine if the page described by the specified page descriptor can be
+ *  declared as a page table page.
+ */
+static inline unsigned char
+canBeDeclared (page_desc_t * pgDesc) {
+  unsigned char canDeclare = 1;
+  switch (pgDesc->type) {
+    case PG_L1:
+    case PG_L2:
+    case PG_L3:
+    case PG_L4:
+    case PG_LEAF:
+    case PG_TKDATA:
+    case PG_TUDATA:
+    case PG_CODE:
+    case PG_SVA:
+    case PG_GHOST:
+      canDeclare = 0;
+      break;
+    default:
+      break;
+  }
+
+  return canDeclare;
 }
 
 /* Functions for aiding in declare and updating of page tables */
@@ -910,37 +938,37 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
  */
 static inline void 
 init_page_entry (unsigned long frameAddr, page_entry_t *page_entry) {
-    page_desc_t *pg = getPageDescPtr(frameAddr);
-    page_entry_t newMapping = *page_entry;
+  page_desc_t *pg = getPageDescPtr(frameAddr);
+  page_entry_t newMapping = *page_entry;
 
-    /* Zero page */
-    //unprotect_paging();
-    //**** TODO: figure out why on the declare l3 we need to unprotect here. 
-    memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
-    //protect_paging();
+  /*
+   * Initialize the contents of the page to zero.  This will ensure that no
+   * existing page translations which have not been vetted exist within the
+   * page.
+   */
+  memset (getVirtual (frameAddr), 0, X86_PAGE_SIZE);
 
 #if UNDER_TEST
 #if ACTIVATE_PROT
-    /*
-     * If this should be marked as a read only page, set the RO flag of the pde
-     * referencing this new page. This is an update type operation. A value of
-     * 0 in bit position 2 configures for no writes.
-     */
-    if (readOnlyPageType(pg))
-    {
-        newMapping = setMappingReadOnly(newMapping);
+  /*
+   * If this should be marked as a read only page, set the RO flag of the pde
+   * referencing this new page. This is an update type operation. A value of
+   * 0 in bit position 2 configures for no writes.
+   */
+  if (readOnlyPageType(pg)) {
+    newMapping = setMappingReadOnly(newMapping);
 
-        /* Perform the actual store of the value to the page_entry */
-        page_entry_store(page_entry, newMapping);
-    }
+    /* Perform the actual store of the value to the page_entry */
+    page_entry_store(page_entry, newMapping);
+  }
 #endif
 
 #else
-    /* TODO:
-     * In the end we want to use this to insert the new declared PTPs so they
-     * pass validation as they are real PTP updates. 
-     */
-    __update_mapping(page_entry, *page_entry);
+  /* TODO:
+   * In the end we want to use this to insert the new declared PTPs so they
+   * pass validation as they are real PTP updates. 
+   */
+  __update_mapping(page_entry, *page_entry);
 #endif
 }
 
@@ -1069,7 +1097,6 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
   sva_exit_critical (rflags);
 }
 
-#if UNDER_TEST
 /*
  * Function: __clean_and_restore_ptp
  *
@@ -1083,28 +1110,39 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
  *  pte in the DMAP region. This is due to the fact that access to the PTPs is
  *  managed via that region as only one VA is given to each PTP. 
  *
- *  *** FIXME: THIS FUNCTION IS STILL UNDER CONSTRUCTION ***
- *
  * Inputs:
  *  - pageEntryPtr  : A pointer to a pte that points to the given read only
  *                    page. 
  */
 static inline void 
-__clean_and_restore_ptp (pte_t * pageEntryPtr){
+__clean_and_restore_ptp (pte_t * pageEntryPtr) {
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(getPhysicalAddr (pageEntryPtr));
 
-    /* TODO: Add VG metadata management stuff here */
+  /*
+   * Check that there are no references to this page (i.e., there is no page
+   * table entry that refers to this physical page frame).  If there is a
+   * mapping, then someone is still using it as a page table page).
+   */
+  if (pgDesc->count) {
+    panic ("SVA: sva_remove_mapping: Still referenced: %lx\n", pageEntryPtr);
+  }
 
-    /* TODO: Make page writeable */
+  /*
+   * Mark the page frame as an unused page.
+   */
+  pgDesc->type = PG_UNUSED;
 
-    /* Unprotect paging so that we can zero out the data */
-    unprotect_paging();
+  /*
+   * Make the page writeable again.  Be sure to disable page protection since
+   * page table pages are not writeable.
+   */
+  unprotect_paging();
+  __update_mapping (pageEntryPtr, setMappingReadWrite (*pageEntryPtr));
+  protect_paging();
 
-    /* Zero out the page contents */
-    memset (getVirtual (*pageEntryPtr & PG_FRAME), 0, X86_PAGE_SIZE);
-
-    protect_paging();
+  return;
 }
-#endif
 
 /* Functions for finding the virtual address of page table components */
 
@@ -2493,14 +2531,14 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
  */
 void
 sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
+  /* Disable interrupts so that we appear to execute as a single instruction */
+  unsigned long rflags = sva_enter_critical();
+
   /* Get the entry controlling the permissions for this pml4 PTP */
   page_entry_t *pge = get_pgeVaddr(vaddr);;
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-  /* Disable interrupts so that we appear to execute as a single instruction */
-  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
   print_regs();
@@ -2518,10 +2556,10 @@ sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
    */
   init_page_entry(frameAddr, (page_entry_t *) pge);
 
-  #if DEBUG >= 2
+#if DEBUG >= 2
   printf("   SVA:declare_l3_page: frameAddr: %p, pge: %p, *pge: 0x%lx\n>>>>\n", 
           frameAddr, pge, *pge);
-  #endif
+#endif
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
@@ -2543,15 +2581,14 @@ sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
  */
 void
 sva_declare_l4_page (unsigned long frameAddr, uintptr_t vaddr) {
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
   /* Get the entry controlling the permissions for this pml4 PTP */
-  page_entry_t *pml4PE = get_pgeVaddr(vaddr);;
+  page_entry_t *pml4PE = get_pgeVaddr(vaddr);
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
 
 #if DEBUG >= 2
   print_regs();
@@ -2559,36 +2596,87 @@ sva_declare_l4_page (unsigned long frameAddr, uintptr_t vaddr) {
           frameAddr, pml4PE, *pml4PE, getPageDescPtr(*pml4PE)->type);
 #endif
 
-#if NOT_YET_IMPLEMENTED
   /* 
-   * Assert that this is a new L4, if not die. We don't want declaring an L4
-   * with and existing mapping
+   * Assert that this is a new L4. We don't want to declare an L4 with and
+   * existing mapping
    */
-  SVA_ASSERT(pgRefCount(pgDesc) == 0, 
-          "MMU: attempted to declare an L4 that is already mapped.");
-
-  /* 
-   * We need to make sure that this is valid declaration of a page, as we
-   * modify the page type here. 
-   */
-  if (valid_declare_page(pgDesc)) 
+#if 0
+  SVA_ASSERT(pgRefCount(pgDesc) == 0, "MMU: L4 reference count non-zero.");
 #endif
-  {
-      /* Mark this page frame as an L4 page frame */
-      pgDesc->type = PG_L4;
 
-      /* 
-       * Initialize the page data and page entry. Note that we pass a general
-       * page_entry_t to the function as it enables reuse of code for each of the
-       * entry declaration functions. 
-       */
-      init_page_entry(frameAddr, (page_entry_t *) pml4PE);
+  /* 
+   * We need to make sure that this page is not being used for some other
+   * purpose which would prevent it from being used as a page table page.
+   * Check for that before modifying the page.
+   */
+  if (canBeDeclared(pgDesc)) {
+    /* Mark this page frame as an L4 page frame */
+    pgDesc->type = PG_L4;
+
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr, (page_entry_t *) pml4PE);
   }
 
 #if DEBUG >= 2
   printf("   SVA:declare_l4_page: frameAddr: %p, pml4PE: %p, *pml4PE: 0x%lx\n>>>>\n", 
           frameAddr, pml4PE, *pml4PE);
 #endif
+
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
+}
+
+/*
+ * Function: sva_remove_l4_page()
+ *
+ * Description:
+ *  This function informs the SVA VM that the system software no longer wants
+ *  to use the specified page as an L4 page table page.
+ *
+ * Inputs:
+ *  vaddr - The virtual address of the L4 page table page.
+ */
+void
+sva_remove_l4_page (uintptr_t vaddr) {
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
+
+  /* Get the entry controlling the permissions for this pml4 PTP */
+  page_entry_t *pml4PE = get_pgeVaddr(vaddr);
+
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(getPhysicalAddr (vaddr));
+
+  /*
+   * Make sure that this is an L4 page.  We don't want the system software to
+   * trick us.
+   */
+  if (pgDesc->type != PG_L4) {
+    panic ("SVA: sva_remove_l4_page: Not an L4 page: %lx\n", vaddr);
+  }
+
+  /*
+   * Check that there are no references to this page (i.e., there is no page
+   * table entry that refers to this physical page frame).  If there is a
+   * mapping, then someone is still using it as an L4 page.
+   */
+  if (pgDesc->count) {
+    panic ("SVA: sva_remove_l4_page: L4 page still referenced: %lx\n", vaddr);
+  }
+
+  /*
+   * Mark the page frame as an unused page.
+   */
+  pgDesc->type = PG_UNUSED;
+
+  /*
+   * Make the page writeable again.
+   */
+  __update_mapping (pml4PE, setMappingReadWrite (*pml4PE));
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
@@ -2739,39 +2827,38 @@ sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
  * Function: sva_remove_mapping()
  *
  * Description:
- *  This function updates the entry to the page table page, and is agnostic to
+ *  This function updates the entry to the page table page and is agnostic to
  *  the level of page table. The particular needs for each page table level are
  *  handled in the __update_mapping function. The primary function here is to
  *  set the mapping to zero, if the page was a PTP then zero it's data and set
  *  it to writeable.
  *
  * Inputs:
- *  pteptr - The location within the page tabel page for which the translation
+ *  pteptr - The location within the page table page for which the translation
  *           should be removed.
  */
 void
 sva_remove_mapping(page_entry_t * pteptr) {
+  /* Disable interrupts so that we appear to execute as a single instruction. */
+  unsigned long rflags = sva_enter_critical();
 
-    /* Get the page_desc for the newly declared l4 page frame */
-    page_desc_t *pgDesc = getPageDescPtr(*pteptr);
+  /* Get the page_desc for the newly declared l4 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(*pteptr);
 
-    /* Disable interrupts so that we appear to execute as a single instruction. */
-    unsigned long rflags = sva_enter_critical();
+  /* Update the page table mapping to zero */
+  __update_mapping(pteptr, ZERO_MAPPING);
 
-    /* Verify the update the page table mapping to zero */
-    __update_mapping(pteptr, ZERO_MAPPING);
+  /* 
+   * If the page is a read only type then we need to zero it and mark it as
+   * writeable again. This function also releases the virtual ghost data
+   * structures for the page. 
+   */
+  if (readOnlyPageType(pgDesc)) {
+    __clean_and_restore_ptp (pteptr);
+  }
 
-    /* 
-     * If the page is a read only type then we need to zero it and mark it as
-     * writeable again. This function also releases the virtual ghost data
-     * structures for the page. 
-     */
-    if (readOnlyPageType(pgDesc)) {
-        __clean_and_restore_ptp(pteptr);
-    }
-    
-    /* Restore interrupts */
-    sva_exit_critical (rflags);
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
 }
 
 /* 
@@ -2792,20 +2879,20 @@ sva_remove_mapping(page_entry_t * pteptr) {
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
 #if DEBUG >= 4
-    printf("<<<<\n\tSVA:  pre-update_l1_page: pte: %p, *pte: 0x%lx, newMapping: 0x%lx\n",
-            pteptr, *pteptr, val);
-    print_regs();
+  printf("<<<<\n\tSVA:  pre-update_l1_page: pte: %p, *pte: 0x%lx, newMapping: 0x%lx\n",
+         pteptr, *pteptr, val);
+  print_regs();
 #endif
 
-    /* TODO: bug in init_leaf_page */
-    init_leaf_page_from_mapping(val);
-    __update_mapping(pteptr,val);
+  /* TODO: bug in init_leaf_page */
+  init_leaf_page_from_mapping(val);
+  __update_mapping(pteptr,val);
 
 #if DEBUG >= 4
-    printf("\tSVA: post-update_l1_page: pte: %p, *pte: 0x%lx\n>>>>\n", 
-            pteptr, *pteptr);
+  printf("\tSVA: post-update_l1_page: pte: %p, *pte: 0x%lx\n>>>>\n", 
+          pteptr, *pteptr);
 #endif
-
+  return;
 }
 
 /*

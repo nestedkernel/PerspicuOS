@@ -108,7 +108,11 @@ SVA_NOOP_ASSERT (int res, char * st) {
   if (!res) res++;
 }
 
+#if 0
 #define SVA_ASSERT(res,string) if(!res) panic(string)
+#else
+#define SVA_ASSERT(res,string) __asm__ __volatile__ ("nop\n");
+#endif
 
 /*
  *****************************************************************************
@@ -415,9 +419,26 @@ pageVA(page_desc_t pg){
  *  the system has the write protection enabled then the value of this bit is
  *  considered.
  */
-static inline page_entry_t setMappingReadOnly (page_entry_t mapping) { 
-    return (mapping & ~PG_RW); 
+static inline page_entry_t
+setMappingReadOnly (page_entry_t mapping) { 
+  return (mapping & ~PG_RW); 
 }
+
+/*
+ * Description:
+ *  This function takes a page table mapping and set's the flag to read/write. 
+ * 
+ * Inputs:
+ *  - mapping: the mapping to which to add read/write permission
+ *
+ * Return:
+ *  - A new mapping set with read/write permission
+ */
+static inline page_entry_t
+setMappingReadWrite (page_entry_t mapping) { 
+  return (mapping | PG_RW); 
+}
+
 
 /*
  *****************************************************************************
@@ -511,17 +532,16 @@ static inline int isCodePG (page_desc_t *page){ return page->code; }
  *  - 1 denotes a read only page
  */
 static inline int
-readOnlyPageType(page_desc_t *pg){
-    return  0
-            || pg->type == PG_L4    
+readOnlyPageType(page_desc_t *pg) {
+  return  (pg->type == PG_L4)
 #if 0
-            || pg->type == PG_L3
-            || pg->type == PG_L1 
-            || pg->type == PG_L2
-            || pg->type == PG_CODE
-            || pg->type == PG_SVA 
+           || (pg->type == PG_L3)
+           || (pg->type == PG_L1)
+           || (pg->type == PG_L2)
+           || (pg->type == PG_CODE)
+           || (pg->type == PG_SVA)
 #endif
-            ;
+           ;
 }
 
 /*
