@@ -108,11 +108,7 @@ SVA_NOOP_ASSERT (int res, char * st) {
   if (!res) res++;
 }
 
-#if 0
 #define SVA_ASSERT(res,string) if(!res) panic(string)
-#else
-#define SVA_ASSERT(res,string) __asm__ __volatile__ ("nop\n");
-#endif
 
 /*
  *****************************************************************************
