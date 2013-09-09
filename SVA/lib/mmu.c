@@ -2308,47 +2308,6 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
 }
 
 /*
- * Intrinsic: sva_declare_leaf_page()
- *
- * Description:
- *  This intrinsic marks the specified physical frame as a leaf page frame It
- *  will zero out the contents of the page frame so that stale mappings within
- *  the frame are not used by the MMU.
- *
- * Inputs:
- *  frameAddr - The address of the physical page frame that will be used as a
- *          leaf page frame.
- *  *pte  - the virtual address of the pte referencing this new create leaf
- *          page
- */
-void
-sva_declare_leaf_page (unsigned long frameAddr, pte_t *pte) {
-  /* Get the page_desc for the newly declared l4 page frame */
-  page_desc_t *pgDesc = getPageDescPtr(frameAddr);
-
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
-
-#if DEBUG >= 4
-  printf("##### SVA<declare_leaf_page>: frameAddr: %p, pte: %p, *pte: 0x%lx\n", 
-         frameAddr, pte, *pte);
-#endif
-
-  /* Mark this page frame as LEAF page frame */
-  pgDesc->type = PG_LEAF;
-
-  /* 
-   * Initialize the page data and page entry. Note that we pass a general
-   * page_entry_t to the function as it enables reuse of code for each of the
-   * entry declaration functions. 
-   */
-  //init_page_entry(frameAddr, (page_entry_t *) pte);
-
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
-}
-
-/*
  * Intrinsic: sva_declare_l1_page()
  *
  * Description:
