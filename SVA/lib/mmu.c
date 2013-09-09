@@ -2323,7 +2323,7 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
 void
 sva_declare_l1_page (unsigned long frameAddr, uintptr_t vaddr) {
   /* Get the entry controlling the permissions for this pml4 PTP */
-  page_entry_t *pge = get_pgeVaddr(vaddr);;
+  page_entry_t *pge = get_pgeVaddr(vaddr);
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2403,7 +2403,7 @@ void llva_remove_l1_page(pte_t * pteptr) {
  */
 void sva_declare_l2_page(unsigned long frameAddr, uintptr_t vaddr) {
   /* Get the entry controlling the permissions for this pml4 PTP */
-  page_entry_t *pge = get_pgeVaddr(vaddr);;
+  page_entry_t *pge = get_pgeVaddr(vaddr);
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2491,7 +2491,7 @@ sva_declare_l3_page (unsigned long frameAddr, uintptr_t vaddr) {
   unsigned long rflags = sva_enter_critical();
 
   /* Get the entry controlling the permissions for this pml4 PTP */
-  page_entry_t *pge = get_pgeVaddr(vaddr);;
+  page_entry_t *pge = get_pgeVaddr(vaddr);
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
