@@ -355,7 +355,7 @@ is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vadd
  *  This function assesses a potential page table update for a valid mapping.
  *
  *  NOTE: This function assumes that the page being mapped in has already been
- *  declared and has it's intial page metadata captured as defined in the
+ *  declared and has its intial page metadata captured as defined in the
  *  initial mapping of the page.
  *
  * Inputs:
@@ -364,11 +364,11 @@ is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vadd
  *                 to the underlying mapping.
  *
  * Return:
- *  The value to be written to the pte. Note that in this function we check
+ *  0  - The update is not valid and should not be performed.
+ *  ~0 - The update is valid and can be performed.
  */
 static inline unsigned long
-pt_update_is_valid(page_entry_t *page_entry, page_entry_t newVal){
-
+pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     /* Collect associated information for the existing mapping */
     unsigned long origPA = *page_entry & PG_FRAME;
     unsigned long origFrame = origPA >> PAGESHIFT;
@@ -2835,19 +2835,27 @@ sva_remove_mapping(page_entry_t * pteptr) {
  */
 void
 sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
-#if DEBUG >= 4
-  printf("<<<<\n\tSVA:  pre-update_l1_page: pte: %p, *pte: 0x%lx, newMapping: 0x%lx\n",
-         pteptr, *pteptr, val);
-  print_regs();
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned long rflags = sva_enter_critical();
+
+  /*
+   * Ensure that the PTE pointer points to an L1 page table.  If it does not,
+   * then report an error.
+   */
+#if 0
+  page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pteptr));
+  SVA_ASSERT (ptDesc->type == PG_L1, "SVA: MMU: update_l1 not an L1\n");
 #endif
 
-  /* TODO: bug in init_leaf_page */
-  __update_mapping(pteptr,val);
+  /*
+   * Update the page table with the new mapping.
+   */
+  __update_mapping(pteptr, val);
 
-#if DEBUG >= 4
-  printf("\tSVA: post-update_l1_page: pte: %p, *pte: 0x%lx\n>>>>\n", 
-          pteptr, *pteptr);
-#endif
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
   return;
 }
 
