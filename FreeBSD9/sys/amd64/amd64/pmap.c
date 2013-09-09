@@ -1888,7 +1888,7 @@ pmap_pinit(pmap_t pmap)
     printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
     printf("Virtual Address: pml4: %p, *pml4: %p\n", pmap->pm_pml4, *pmap->pm_pml4);
 #endif
-    sva_declare_l4_page(VM_PAGE_TO_PHYS(pml4pg), pmap->pm_pml4);
+    sva_declare_l4_page(VM_PAGE_TO_PHYS(pml4pg));
 #endif
 
 	/* Wire in kernel global address entries. */
@@ -2031,7 +2031,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
          * Declare the l3 page to SVA. This will initialize paging structures
          * and make the page table page as read only
          */
-        sva_declare_l3_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
+        sva_declare_l3_page(VM_PAGE_TO_PHYS(m));
 
         /*
          * Update the l4 mappings to the newly created page table page
@@ -2082,7 +2082,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
          * Declare the l2 page to SVA. This will initialize paging structures
          * and make the page table page as read only
          */
-        sva_declare_l2_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
+        sva_declare_l2_page(VM_PAGE_TO_PHYS(m));
 
         /*
          * Update the l3 mappings to the newly created page table page
@@ -2167,7 +2167,7 @@ _pmap_allocpte(pmap_t pmap, vm_pindex_t ptepindex, int flags)
 						pd, *pd);
 #endif
 
-		sva_declare_l1_page(VM_PAGE_TO_PHYS(m), PHYS_TO_DMAP(VM_PAGE_TO_PHYS(m)));
+		sva_declare_l1_page(VM_PAGE_TO_PHYS(m));
 
 #if 0
 		printf("Post dec l1: pde: %p, old mapping: 0x%lx, new mapping: 0x%lx\n", 
@@ -2429,7 +2429,7 @@ pmap_growkernel(vm_offset_t addr)
 			 * Declare the l2 page to SVA. This will initialize paging
 			 * structures and make the page table page as read only
 			 */
-			sva_declare_l2_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
+			sva_declare_l2_page(paddr);
 
 			/*
 			 * SVA update the mappings to the newly created page table page
@@ -2468,7 +2468,7 @@ pmap_growkernel(vm_offset_t addr)
 		 * Declare the l1 page to SVA. This will initialize paging structures
 		 * and make the page table page as read only
 		 */
-		sva_declare_l1_page(paddr, PHYS_TO_DMAP(VM_PAGE_TO_PHYS(nkpg)));
+		sva_declare_l1_page(paddr);
 
 		/*
 		 * Update the mapping in the level 2 entry.
