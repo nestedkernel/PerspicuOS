@@ -97,8 +97,8 @@ void register_x86_trap (int number, void *trap);
 static void fptrap (void);
 #if 0
 static void init_debug (void);
-static void init_mmu (void);
 #endif
+extern void init_mmu (void);
 void init_fpu ();
 static void init_dispatcher ();
 
@@ -457,9 +457,7 @@ sva_init_primary () {
   init_idt (0);
   init_dispatcher ();
 
-#if 0
   init_mmu ();
-#endif
   init_fpu ();
 #if 0
   llva_reset_counters();
