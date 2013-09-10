@@ -2336,14 +2336,14 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
  *              Level 1 page frame.
  */
 void
-sva_declare_l1_page (unsigned long frameAddr) {
+sva_declare_l1_page (uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-#if 0
+#if 1
   /*
    * Make sure that this is already an L1 page, an unused page, or a kernel
    * data page.
@@ -2421,7 +2421,7 @@ void llva_remove_l1_page(pte_t * pteptr) {
  *              Level 2 page frame.
  */
 void
-sva_declare_l2_page (unsigned long frameAddr) {
+sva_declare_l2_page (uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2492,7 +2492,7 @@ void llva_remove_l2_page(pgd_t * pgdptr) {
  *              Level 3 page frame.
  */
 void
-sva_declare_l3_page (unsigned long frameAddr) {
+sva_declare_l3_page (uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction */
   unsigned long rflags = sva_enter_critical();
 
@@ -2526,7 +2526,7 @@ sva_declare_l3_page (unsigned long frameAddr) {
  *              Level 4 page frame.
  */
 void
-sva_declare_l4_page (unsigned long frameAddr) {
+sva_declare_l4_page (uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2563,55 +2563,63 @@ sva_declare_l4_page (unsigned long frameAddr) {
 }
 
 /*
- * Function: sva_remove_l4_page()
+ * Function: sva_remove_page()
  *
  * Description:
  *  This function informs the SVA VM that the system software no longer wants
- *  to use the specified page as an L4 page table page.
+ *  to use the specified page as a page table page.
  *
  * Inputs:
- *  vaddr - The virtual address of the L4 page table page.
+ *  paddr - The physical address of the page table page.
  */
 void
-sva_remove_l4_page (uintptr_t vaddr) {
+sva_remove_page (uintptr_t paddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
-  /* Get the entry controlling the permissions for this pml4 PTP */
-  page_entry_t *pml4PE = get_pgeVaddr(vaddr);
+  /* Get the entry controlling the permissions for this pte PTP */
+  page_entry_t *pte = get_pgeVaddr(getVirtual (paddr));
 
-  /* Get the page_desc for the newly declared l4 page frame */
-  page_desc_t *pgDesc = getPageDescPtr(getPhysicalAddr (vaddr));
+  /* Get the page_desc for the l1 page frame */
+  page_desc_t *pgDesc = getPageDescPtr(paddr);
 
   /*
-   * Make sure that this is an L4 page.  We don't want the system software to
+   * Make sure that this is an L1 page.  We don't want the system software to
    * trick us.
    */
-  if (pgDesc->type != PG_L4) {
-    panic ("SVA: sva_remove_l4_page: Not an L4 page: %lx\n", vaddr);
+  switch (pgDesc->type)  {
+    case PG_L1:
+    case PG_L2:
+    case PG_L3:
+    case PG_L4:
+      break;
+
+    default:
+      panic ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
+      break;
   }
 
   /*
    * Check that there are no references to this page (i.e., there is no page
    * table entry that refers to this physical page frame).  If there is a
-   * mapping, then someone is still using it as an L4 page.
+   * mapping, then someone is still using it as a page table page.  In that
+   * case, ignore the request.
    */
-  if (pgDesc->count) {
-    panic ("SVA: sva_remove_l4_page: L4 page still referenced: %lx\n", vaddr);
+  if (pgDesc->count == 0) {
+    /*
+     * Mark the page frame as an unused page.
+     */
+    pgDesc->type = PG_UNUSED;
+
+    /*
+     * Make the page writeable again.
+     */
+    __update_mapping (pte, setMappingReadWrite (*pte));
   }
-
-  /*
-   * Mark the page frame as an unused page.
-   */
-  pgDesc->type = PG_UNUSED;
-
-  /*
-   * Make the page writeable again.
-   */
-  __update_mapping (pml4PE, setMappingReadWrite (*pml4PE));
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
+  return;
 }
 
 #if 0
