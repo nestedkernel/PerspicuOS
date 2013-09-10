@@ -2343,7 +2343,6 @@ sva_declare_l1_page (uintptr_t frameAddr) {
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
-#if 1
   /*
    * Make sure that this is already an L1 page, an unused page, or a kernel
    * data page.
@@ -2359,7 +2358,6 @@ sva_declare_l1_page (uintptr_t frameAddr) {
       panic ("SVA: Declaring L1 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
       break;
   }
-#endif
 
   /*
    * Mark this page frame as an L1 page frame.
@@ -2376,37 +2374,6 @@ sva_declare_l1_page (uintptr_t frameAddr) {
   /* Restore interrupts */
   sva_exit_critical (rflags);
 }
-
-#if 0
-/*
- * Removes the l1 flag of the page ands sets the page writable.
- */
-void llva_remove_l1_page(pte_t * pteptr) {
-  void* pagetable = get_pagetable();
-  
-  pte_t* pte = get_pte((unsigned long) pteptr, pagetable);
-  pte_t new_val = __pte(pte_val(*pte) | _PAGE_RW);
-  unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
-
-  if (page_desc[index].l1_count != 0) {
-    poolcheckfail("MMU: removing an L1 page still referenced: %d %x",
-                  page_desc[index].l1_count, __builtin_return_address(0));
-  }
-
-  page_desc[index].l1 = 0;
-  page_desc[index].l1_user = 0;
-  page_desc[index].l1_kernel = 0;
-
-  unsigned eflags;
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-  unprotect_paging();
-  (*pte) = new_val;
-  protect_paging();
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-}
-
-#endif
 
 /*
  * Intrinsic: sva_declare_l2_page()
@@ -2448,36 +2415,6 @@ sva_declare_l2_page (uintptr_t frameAddr) {
   /* Restore interrupts */
   sva_exit_critical (rflags);
 }
-
-#if 0
-/*
- * Removes the l2 flag of the page and sets the page writable.
- */
-void llva_remove_l2_page(pgd_t * pgdptr) {
-  void* pagetable = get_pagetable();
-
-  pte_t* pte = get_pte((unsigned long)pgdptr, pagetable);
-  pte_t new_val = __pte(pte_val(*pte) | _PAGE_RW);
-  unsigned long index = pte_val(new_val) >> PAGE_SHIFT;
-
-  /*
-   * Mark the page as no longer being a Level 2 (L2) page.
-   */
-  page_desc[index].l2 = 0;
-
-  unsigned eflags;
-  __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-
-  /*
-   * Make the page writeable again.
-   */
-  unprotect_paging();
-  (*pte) = new_val;
-  protect_paging();
-  if (eflags & 0x00000200)
-    __asm__ __volatile__ ("sti":::"memory");
-}
-#endif
 
 /*
  * Intrinsic: sva_declare_l3_page()
