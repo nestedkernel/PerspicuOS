@@ -66,8 +66,8 @@ static const uintptr_t X86_PAGE_SIZE = 4096u;
 static const unsigned PAGESHIFT = 12;
 
 /* Size of the physical memory and page size in bytes */
-static const unsigned long memSize = 16 * 1024 * 1024 * 1024;
-static const unsigned int pageSize = 4096;
+static const unsigned long memSize = 0x00000007ffffffffu;
+static const unsigned long pageSize = 4096;
 static const unsigned long numPageDescEntries = memSize / pageSize;
 
 /* Start and end addresses of the secure memory */
