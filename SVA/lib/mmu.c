@@ -2396,11 +2396,20 @@ sva_declare_l2_page (uintptr_t frameAddr) {
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
   /*
-   * TODO: Will this frame be zeroed out by some type of paging out process
-   * or function? If not we need to zero out the page_desc being accessed
-   * here. What I mean is that if this frame was previously used for another
-   * page table page then we need to make sure the data has been zeroed out.
+   * Make sure that this is already an L2 page, an unused page, or a kernel
+   * data page.
    */
+  switch (pgDesc->type) {
+    case PG_UNUSED:
+    case PG_L2:
+    case PG_TKDATA:
+      break;
+
+    default:
+      printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
+      panic ("SVA: Declaring L2 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      break;
+  }
 
   /* Setup metadata tracking for this new page */
   pgDesc->type = PG_L2;
@@ -2414,6 +2423,7 @@ sva_declare_l2_page (uintptr_t frameAddr) {
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
+  return;
 }
 
 /*
@@ -2436,6 +2446,22 @@ sva_declare_l3_page (uintptr_t frameAddr) {
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
+  /*
+   * Make sure that this is already an L3 page, an unused page, or a kernel
+   * data page.
+   */
+  switch (pgDesc->type) {
+    case PG_UNUSED:
+    case PG_L3:
+    case PG_TKDATA:
+      break;
+
+    default:
+      printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
+      panic ("SVA: Declaring L3 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      break;
+  }
+
   /* Mark this page frame as an L3 page frame */
   pgDesc->type = PG_L3;
 
@@ -2448,6 +2474,7 @@ sva_declare_l3_page (uintptr_t frameAddr) {
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
+  return;
 }
 
 /*
@@ -2477,6 +2504,22 @@ sva_declare_l4_page (uintptr_t frameAddr) {
 #if 0
   SVA_ASSERT(pgRefCount(pgDesc) == 0, "MMU: L4 reference count non-zero.");
 #endif
+
+  /*
+   * Make sure that this is already an L4 page, an unused page, or a kernel
+   * data page.
+   */
+  switch (pgDesc->type) {
+    case PG_UNUSED:
+    case PG_L4:
+    case PG_TKDATA:
+      break;
+
+    default:
+      printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
+      panic ("SVA: Declaring L4 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      break;
+  }
 
   /* 
    * We need to make sure that this page is not being used for some other
