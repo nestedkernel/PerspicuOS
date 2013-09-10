@@ -2937,8 +2937,8 @@ pmap_fill_ptp(pt_entry_t *firstpte, pt_entry_t newpte)
 
 	for (pte = firstpte; pte < firstpte + NPTEPG; pte++) {
 #ifdef SVA_MMU
-        /* Update the pte with the new page mapping */
-        sva_update_l1_mapping(pte, newpte);
+		/* Update the pte with the new page mapping */
+		sva_update_l1_mapping(pte, newpte);
 #else
 		*pte = newpte;
 #endif
@@ -3007,6 +3007,13 @@ pmap_demote_pde(pmap_t pmap, pd_entry_t *pde, vm_offset_t va)
 	newpte = oldpde & ~PG_PS;
 	if ((newpte & PG_PDE_PAT) != 0)
 		newpte ^= PG_PDE_PAT | PG_PTE_PAT;
+
+#ifdef SVA_MMU
+	/*
+	 * Declare the new PTE page as a page table page.
+	 */
+	sva_declare_l1_page (mptepa);
+#endif
 
 	/*
 	 * If the page table page is new, initialize it.
@@ -3878,10 +3885,10 @@ validate:
 				pmap_invalidate_page(pmap, va);
 		} else {
 #ifdef SVA_MMU
-            /* Insert new l1 mapping */
-            sva_update_l1_mapping(pte, newpte);
+			/* Insert new l1 mapping */
+			sva_update_l1_mapping(pte, newpte);
 #else
-            pte_store(pte, newpte);
+			pte_store(pte, newpte);
 #endif
         }
 	}
@@ -4134,9 +4141,8 @@ pmap_enter_quick_locked(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 */
 	if ((m->oflags & VPO_UNMANAGED) != 0) {
 #ifdef SVA_MMU
-        /* Update the initial mapping of the leaf page */
-        sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_V | PG_U));
-
+		/* Update the initial mapping of the leaf page */
+		sva_update_l1_mapping(pte, (pd_entry_t)(pa | PG_V | PG_U));
 #else
 		pte_store(pte, pa | PG_V | PG_U);
 #endif
