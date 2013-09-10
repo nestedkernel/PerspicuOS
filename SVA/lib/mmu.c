@@ -132,7 +132,9 @@ struct PTInfo PTPages[1024];
  */
 page_desc_t * getPageDescPtr(unsigned long mapping) {
   unsigned long frameIndex = (mapping & PG_FRAME) / pageSize;
-  return &page_desc[frameIndex];
+  if (frameIndex >= numPageDescEntries)
+    panic ("SVA: getPageDescPtr: %lx %lx\n", frameIndex, numPageDescEntries);
+  return page_desc + frameIndex;
 }
 
 /*
@@ -143,6 +145,8 @@ page_desc_t * getPageDescPtr(unsigned long mapping) {
  */
 void 
 init_mmu () {
+  /* Initialize the page descriptor array */
+  memset (page_desc, 0, sizeof (struct page_desc_t) * numPageDescEntries);
   return;
 }
 
@@ -425,8 +429,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
              * table page.
              */
             if (pgRefCount(newPG) > 0) {
+#if 0
                 SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
                         "MMU: attempted to insert mappping to a second VA for PTP");
+#endif
             }
         }
     }
@@ -787,9 +793,11 @@ updateNewPageData(page_entry_t mapping) {
              * we currently do not have a mapping to this page already, which
              * means this is the first mapping to the page. 
              */
+#if 0
             if (isPTP(newPG)){
                 setPTPVA(newPG, newVA);
             }
+#endif
 
             /* There is some type of bug with this update. */
             newPG->count++;
@@ -2334,6 +2342,24 @@ sva_declare_l1_page (unsigned long frameAddr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
+
+#if 0
+  /*
+   * Make sure that this is already an L1 page, an unused page, or a kernel
+   * data page.
+   */
+  switch (pgDesc->type) {
+    case PG_UNUSED:
+    case PG_L1:
+    case PG_TKDATA:
+      break;
+
+    default:
+      printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
+      panic ("SVA: Declaring L1 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      break;
+  }
+#endif
 
   /*
    * Mark this page frame as an L1 page frame.
