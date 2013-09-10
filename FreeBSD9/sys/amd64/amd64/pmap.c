@@ -1785,6 +1785,9 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * Put page on a list so that it is released after
 	 * *ALL* TLB shootdown is done
 	 */
+#ifdef SVA_MMU
+	sva_remove_page (VM_PAGE_TO_PHYS(m));
+#endif
 	pmap_add_delayed_free_list(m, free, TRUE);
 	
 	return (1);
@@ -2353,6 +2356,9 @@ pmap_release(pmap_t pmap)
 
 	m->wire_count--;
 	atomic_subtract_int(&cnt.v_wire_count, 1);
+#ifdef SVA_MMU
+  sva_remove_page (VM_PAGE_TO_PHYS(m));
+#endif
 	vm_page_free_zero(m);
 	PMAP_LOCK_DESTROY(pmap);
 }
@@ -3127,6 +3133,7 @@ pmap_remove_pde(pmap_t pmap, pd_entry_t *pdq, vm_offset_t sva,
 			atomic_subtract_int(&cnt.v_wire_count, 1);
 		}
 	}
+
 	return (pmap_unuse_pt(pmap, sva, *pmap_pdpe(pmap, sva), free));
 }
 
