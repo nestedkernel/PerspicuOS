@@ -2767,10 +2767,10 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
    */
-#if 0
   page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pteptr));
-  SVA_ASSERT (ptDesc->type == PG_L1, "SVA: MMU: update_l1 not an L1\n");
-#endif
+  if (ptDesc->type != PG_L1) {
+    panic ("SVA: MMU: update_l1 not an L1: %lx %lx: %lx\n", pteptr, val, ptDesc->type);
+  }
 
   /*
    * Update the page table with the new mapping.
