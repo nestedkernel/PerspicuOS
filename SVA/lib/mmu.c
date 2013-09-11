@@ -2000,7 +2000,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
   thisPg = getPageDescPtr(pageMapping);
 
   /* Mark if we have seen this traversal already */
-  traversedPTEAlready = thisPg->type != PG_UNUSED;
+  traversedPTEAlready = (thisPg->type != PG_UNUSED);
 
 #if DEBUG_INIT >= 1
   /* Character inputs to make the printing pretty for debugging */
@@ -2161,6 +2161,13 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
    * walk on all sub entries.
    */
   for (i = 0; i < numSubLevelPgEntries; i++){
+    /*
+     * Do not process any entries that implement the direct map.  This prevents
+     * us from marking physical pages in the direct map as kernel data pages.
+     */
+    if ((pageLevel == PG_L4) && (i == (0xfffffe0000000000 / 0x1000))) {
+      continue;
+    }
 #if OBSOLETE
     //pagePtr += (sizeof(page_entry_t) * i);
     //page_entry_t *nextEntry = pagePtr;
@@ -2288,7 +2295,7 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
 #endif
 
     /* Zero out the page descriptor array */
-    memset(&page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
+    memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
 
     /* Walk the kernel page tables and initialize the sva page_desc */
     declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
