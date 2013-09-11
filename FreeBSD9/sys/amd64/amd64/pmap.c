@@ -5304,6 +5304,9 @@ pmap_demote_pdpe(pmap_t pmap, pdp_entry_t *pdpe, vm_offset_t va)
 		return (FALSE);
 	}
 	mpdepa = VM_PAGE_TO_PHYS(mpde);
+#ifdef SVA_MMU
+	sva_declare_l2_page (mpdepa);
+#endif
 	firstpde = (pd_entry_t *)PHYS_TO_DMAP(mpdepa);
 	newpdpe = mpdepa | PG_M | PG_A | (oldpdpe & PG_U) | PG_RW | PG_V;
 	KASSERT((oldpdpe & PG_A) != 0,
