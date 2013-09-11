@@ -2044,6 +2044,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
 
       thisPg->type = PG_L4;       /* Set the page type to L4 */
       thisPg->user = 0;           /* Set the priv flag to kernel */
+      ++(thisPg->count);
       subLevelPgType = PG_L3;
       numSubLevelPgEntries = NPML4EPG;//    numPgEntries;
       break;
@@ -2052,6 +2053,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
       
       thisPg->type = PG_L3;       /* Set the page type to L3 */
       thisPg->user = 0;           /* Set the priv flag to kernel */
+      ++(thisPg->count);
       subLevelPgType = PG_L2;
       numSubLevelPgEntries = NPDPEPG; //numPgEntries;
       break;
@@ -2071,10 +2073,12 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         unsigned long index = (pageMapping & ~PDPMASK) / pageSize;
         page_desc[index].type = PG_TKDATA;
         page_desc[index].user = 0;           /* Set the priv flag to kernel */
+        ++(page_desc[index].count);
         return;
       } else {
         thisPg->type = PG_L2;       /* Set the page type to L2 */
         thisPg->user = 0;           /* Set the priv flag to kernel */
+        ++(thisPg->count);
         subLevelPgType = PG_L1;
         numSubLevelPgEntries = NPDEPG; // numPgEntries;
       }
@@ -2095,10 +2099,12 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
         unsigned long index = (pageMapping & ~PDRMASK) / pageSize;
         page_desc[index].type = PG_TKDATA;
         page_desc[index].user = 0;           /* Set the priv flag to kernel */
+        ++(page_desc[index].count);
         return;
       } else {
         thisPg->type = PG_L1;       /* Set the page type to L1 */
         thisPg->user = 0;           /* Set the priv flag to kernel */
+        ++(thisPg->count);
         subLevelPgType = PG_TKDATA;
         numSubLevelPgEntries = NPTEPG;//      numPgEntries;
       }
@@ -2803,14 +2809,14 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
    */
   unsigned long rflags = sva_enter_critical();
 
-#if 0
+#if 1
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
    */
   page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pdePtr));
   if (ptDesc->type != PG_L2) {
-    panic ("SVA: MMU: update_l2 not an L2: %lx %lx: %lx\n", pdePtr, val, ptDesc->type);
+    printf ("SVA: MMU: update_l2 not an L2: %lx %lx: type=%lx count=%lx\n", pdePtr, val, ptDesc->type, ptDesc->count);
   }
 #endif
 
