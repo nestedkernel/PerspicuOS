@@ -2885,38 +2885,50 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
  * Updates a level3 mapping 
  */
 void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned long rflags = sva_enter_critical();
 
-    unsigned long rflags;
+  /*
+   * Ensure that the PTE pointer points to an L1 page table.  If it does not,
+   * then report an error.
+   */
+  page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pdptePtr));
+  if (ptDesc->type != PG_L3) {
+    panic ("SVA: MMU: update_l3 not an L3: %lx %lx: %lx\n", pdptePtr, val, ptDesc->type);
+  }
 
-#if DEBUG >= 2
-    printf("<<<<\n\tSVA:  pre-update_l3_page: pdpte: %p, *pdpte: 0x%lx, newMapping: %p\n>>>>\n",
-            pdptePtr, *pdptePtr, val);
-#endif
-    __update_mapping(pdptePtr, val);
-#if DEBUG >= 2
-    printf("\tSVA: post-update_l3_page: pdpte: %p, *pdpte: 0x%lx\n>>>>\n",
-            pdptePtr, *pdptePtr);
-#endif
+  __update_mapping(pdptePtr, val);
+
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
+  return;
 }
 
 /*
  * Updates a level4 mapping 
  */
 void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned long rflags = sva_enter_critical();
 
-    unsigned long rflags;
+  /*
+   * Ensure that the PTE pointer points to an L1 page table.  If it does not,
+   * then report an error.
+   */
+  page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pml4ePtr));
+  if (ptDesc->type != PG_L4) {
+    panic ("SVA: MMU: update_l4 not an L4: %lx %lx: %lx\n", pml4ePtr, val, ptDesc->type);
+  }
 
-#if DEBUG >= 2
-    printf("<<<<\n   SVA:update_l4_page: pml4e: %p, *pml4e: 0x%lx, newMapping: 0x%lx\n",
-            pml4ePtr, *pml4ePtr, val);
-#endif
+  __update_mapping(pml4ePtr, val);
 
-    __update_mapping(pml4ePtr, val);
-
-#if DEBUG >= 2
-    printf("   SVA:update_l4_page: pml4e: %p, *pml4e: 0x%lx\n>>>>\n",
-            pml4ePtr, *pml4ePtr);
-#endif
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
+  return;
 }
 
 #if 0
