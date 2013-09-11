@@ -373,363 +373,362 @@ is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vadd
  */
 static inline unsigned long
 pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
-    /* Collect associated information for the existing mapping */
-    unsigned long origPA = *page_entry & PG_FRAME;
-    unsigned long origFrame = origPA >> PAGESHIFT;
-    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-    page_desc_t *origPG = &page_desc[origFrame];
+  /* Collect associated information for the existing mapping */
+  unsigned long origPA = *page_entry & PG_FRAME;
+  unsigned long origFrame = origPA >> PAGESHIFT;
+  uintptr_t origVA = (uintptr_t) getVirtual(origPA);
+  page_desc_t *origPG = &page_desc[origFrame];
 
-    /* Get associated information for the new page being mapped */
-    unsigned long newPA = newVal & PG_FRAME;
-    unsigned long newFrame = newPA >> PAGESHIFT;
-    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-    page_desc_t *newPG = &page_desc[newFrame];
+  /* Get associated information for the new page being mapped */
+  unsigned long newPA = newVal & PG_FRAME;
+  unsigned long newFrame = newPA >> PAGESHIFT;
+  uintptr_t newVA = (uintptr_t) getVirtual(newPA);
+  page_desc_t *newPG = &page_desc[newFrame];
 
-    /* Get the page table page descriptor. The page_entry is the viratu */
-    uintptr_t ptePAddr = getPhysicalAddr (page_entry);
-    page_desc_t *ptePG = getPageDescPtr(ptePAddr);
+  /* Get the page table page descriptor. The page_entry is the viratu */
+  uintptr_t ptePAddr = getPhysicalAddr (page_entry);
+  page_desc_t *ptePG = getPageDescPtr(ptePAddr);
 
-    /* 
-     * If we aren't mapping a new page then we can skip several checks, and in
-     * some cases we must, otherwise, the checks will fail. For example if this
-     * is a mapping in a page table page then we allow a zero mapping. 
-     */
-    if(newVal & PG_V){
+  /* 
+   * If we aren't mapping a new page then we can skip several checks, and in
+   * some cases we must, otherwise, the checks will fail. For example if this
+   * is a mapping in a page table page then we allow a zero mapping. 
+   */
+  if (newVal & PG_V) {
+    /* If the new mapping references a secure memory page fail */
+    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
 
-        /* If the new mapping references a secure memory page fail */
-        SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
 
-
-        /* If the mapping is to an SVA page then fail */
-        SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+    /* If the mapping is to an SVA page then fail */
+    SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
 
 #if OBSOLETE
-        /*
-         * If new mapping is to a physical page that is used in a kernel stack, flag
-         * an error.
-         */
-        SVA_NOOP_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
-#endif
-    
-        /* 
-         * If the new page is a page table page then we verify some page table
-         * page specific checks. 
-         *
-         * TODO: for better code design this can be refactored into a single
-         * function.
-         */
-        if (isPTP(newPG)) {
-
-            /* 
-             * If we have a page table page being mapped in and it currently
-             * has a mapping to it, then we verify that the new VA from the new
-             * mapping matches the existing currently mapped VA. 
-             *
-             * This guarantees that we have at most one VA mapping to each page
-             * table page.
-             */
-            if (pgRefCount(newPG) > 0) {
-#if 0
-                SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
-                        "MMU: attempted to insert mappping to a second VA for PTP");
-#endif
-            }
-        }
-    }
-        
-    /* 
-     * If the virtual address of the page_entry is in secure memory then fail,
-     * as the kernel will never be allowed to map any VA mapping that region. 
-     */
-    SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
-            "MMU: Kernel attempted to map into a secure page table page");
-
-    /* If the pt entry resides in a ghost page table page then fail */
-    SVA_ASSERT (!isGhostPTP(ptePG), 
-            "MMU: Kernel attempted to map into an SVA page table page");
-
     /*
-     * If the new mapping is set for user access, but the VA being used is to
-     * kernel space, fail. Also capture in this check is if the new mapping is
-     * set for super user access, but the VA being used is to user space, fail.
+     * If new mapping is to a physical page that is used in a kernel stack, flag
+     * an error.
+     */
+    SVA_NOOP_ASSERT (!isKernelStackPG(newPG), "Kernel attempted to double map a stack page");
+#endif
+
+    /* 
+     * If the new page is a page table page then we verify some page table
+     * page specific checks. 
      *
-     * 3 things to assess for matches: 
-     *  - U/S Flag of new mapping
-     *  - Type of the new mapping frame
-     *  - Type of the PTE frame
-     * 
-     * Ensures the new mapping U/S flag matches the PT page frame type and the
-     * mapped in frame's page type, as well as no mapping kernel code pages
-     * into userspace.
+     * TODO: for better code design this can be refactored into a single
+     * function.
      */
-    
-    /* 
-     * TODO: this functionality depends on the pages in question being marked
-     * as kernel or user page privilege. Once that functionality is added then
-     * this check can be enabled. The function doing this is 
-     * check_and_init_first_mapping.
-     */
-
-    SVA_NOOP_ASSERT ( 
-            (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
-            (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
-            "MMU: all three -- mapping, new page frame, and PTP -- do not match privilege");
-
-    /* 
-     * If the original PA is not equivalent to the new PA then we are creating
-     * an entirely new mapping, thus make sure that this is a valid new page
-     * reference. Also verify that the reference counts to the old page are
-     * sane, i.e., there is at least a current count of 1 to it. 
-     */
-    if (origPA != newPA) {
-#if OBSOLETE
-        /* 
-         * TODO: I need to think about this more to make sure I understand why
-         * this check is necessary. 
-         */
-         /* If the old mapping was to a stack fail */
-        SVA_NOOP_ASSERT (!isStackPG(origPG));
+    if (isPTP(newPG)) {
+      /* 
+       * If we have a page table page being mapped in and it currently
+       * has a mapping to it, then we verify that the new VA from the new
+       * mapping matches the existing currently mapped VA. 
+       *
+       * This guarantees that we have at most one VA mapping to each page
+       * table page.
+       */
+      if (pgRefCount(newPG) > 0) {
+#if 0
+          SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
+                  "MMU: attempted to insert mappping to a second VA for PTP");
 #endif
-            
-        /* 
-         * If the old mapping was to a code page then we know we shouldn't be
-         * pointing this entry to another code page, thus fail.
-         */
-        SVA_NOOP_ASSERT (!isCodePG(origPG), 
-                "Kernel attempting to modify code page mapping");
-    
-        /* 
-         * When removing a mapping to a page table page by setting the new
-         * reference to zero, verify that the reference count to the old page
-         * table page will not be reduced to less than zero. 
-         */
-        /* 
-         * FIXME: the code to increment reference counts is broken. It happens
-         * in __do_mmu_update. The code is there but currently commented out.
-         * We can't turn this assertion on until that is setup because it will
-         * alwasy be zero presently.
-         */
-        SVA_NOOP_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
-                "MMU: Attempted to remove a mapping to a page with count of 0");
+      }
+    }
+  }
+      
+  /* 
+   * If the virtual address of the page_entry is in secure memory then fail,
+   * as the kernel will never be allowed to map any VA mapping that region. 
+   */
+  SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
+          "MMU: Kernel attempted to map into a secure page table page");
+
+  /* If the pt entry resides in a ghost page table page then fail */
+  SVA_ASSERT (!isGhostPTP(ptePG), 
+          "MMU: Kernel attempted to map into an SVA page table page");
+
+  /*
+   * If the new mapping is set for user access, but the VA being used is to
+   * kernel space, fail. Also capture in this check is if the new mapping is
+   * set for super user access, but the VA being used is to user space, fail.
+   *
+   * 3 things to assess for matches: 
+   *  - U/S Flag of new mapping
+   *  - Type of the new mapping frame
+   *  - Type of the PTE frame
+   * 
+   * Ensures the new mapping U/S flag matches the PT page frame type and the
+   * mapped in frame's page type, as well as no mapping kernel code pages
+   * into userspace.
+   */
+  
+  /* 
+   * TODO: this functionality depends on the pages in question being marked
+   * as kernel or user page privilege. Once that functionality is added then
+   * this check can be enabled. The function doing this is 
+   * check_and_init_first_mapping.
+   */
+
+  SVA_NOOP_ASSERT ( 
+          (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
+          (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
+          "MMU: all three -- mapping, new page frame, and PTP -- do not match privilege");
+
+  /* 
+   * If the original PA is not equivalent to the new PA then we are creating
+   * an entirely new mapping, thus make sure that this is a valid new page
+   * reference. Also verify that the reference counts to the old page are
+   * sane, i.e., there is at least a current count of 1 to it. 
+   */
+  if (origPA != newPA) {
+#if OBSOLETE
+    /* 
+     * TODO: I need to think about this more to make sure I understand why
+     * this check is necessary. 
+     */
+     /* If the old mapping was to a stack fail */
+    SVA_NOOP_ASSERT (!isStackPG(origPG));
+#endif
         
-        /* 
-         * Since we are adding a mapping to a new page, then we update the
-         * count for the new page mapping. First check that we aren't
-         * overflowing the counter.
-         */
-        SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
-                "MMU: overflow for the mapping count");
-    }
-
-    /* TODO: do we need this check */
+    /* 
+     * If the old mapping was to a code page then we know we shouldn't be
+     * pointing this entry to another code page, thus fail.
+     */
+    SVA_NOOP_ASSERT (!isCodePG(origPG), 
+            "Kernel attempting to modify code page mapping");
 
     /* 
-     * Verify that the page we are mapping into is a page frame
+     * When removing a mapping to a page table page by setting the new
+     * reference to zero, verify that the reference count to the old page
+     * table page will not be reduced to less than zero. 
      */
-    SVA_NOOP_ASSERT (isPTP(ptePG), 
-            "MMU: attempted mapping into a non-ptp page frame");
-
-    /*
-     * Verify that that the mapping matches the correct type of page
-     * allowed to be mapped into this page table. Verify that the new
-     * PTP is of the correct type given the page level of the page
-     * entry. 
+    /* 
+     * FIXME: the code to increment reference counts is broken. It happens
+     * in __do_mmu_update. The code is there but currently commented out.
+     * We can't turn this assertion on until that is setup because it will
+     * alwasy be zero presently.
      */
-    switch(ptePG->type) {
-        case PG_L1:
-            SVA_NOOP_ASSERT (isFramePg(newPG), 
-                    "MMU: attempted to map non-frame page into L1.");
-            break;
-        case PG_L2:
-            SVA_NOOP_ASSERT (isL1Pg(newPG), 
-                    "MMU: attempted to map non-L1 page into L2.");
-            break;
-        case PG_L3:
-            SVA_NOOP_ASSERT (isL2Pg(newPG), 
-                    "MMU: attempted to map non-L2 page into L3.");
-            break;
-        case PG_L4:
-            /* 
-             * FreeBSD inserts a self mapping into the pml4, therefore it is
-             * valid to map in an L4 page into the L4. TODO: consider the
-             * security implications of this...
-             */
-            SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
-                    "MMU: attempted to map non-L3/L4 page into L4.");
-            break;
-        default:
-            /* 
-             * TODO when enabling this we will have had to finish the init and
-             * remove code 
-             */
-            SVA_NOOP_ASSERT (0,
-                    "MMU attempted to make update to non page table page.");
-    }
+    SVA_NOOP_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
+            "MMU: Attempted to remove a mapping to a page with count of 0");
     
     /* 
-     * TODO There might be a bug in this lookup, as it doesn't account for PS=1
-     * pages e.g., 2MB or 1GB pages. 
+     * Since we are adding a mapping to a new page, then we update the
+     * count for the new page mapping. First check that we aren't
+     * overflowing the counter.
      */
-    /* 
-     * Verify that we have the correct PTE for the given VA.
-     */
-    SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
-            "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
+    SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
+            "MMU: overflow for the mapping count");
+  }
 
-    return 1;
+  /* TODO: do we need this check */
+
+  /* 
+   * Verify that the page we are mapping into is a page frame
+   */
+  SVA_NOOP_ASSERT (isPTP(ptePG), 
+          "MMU: attempted mapping into a non-ptp page frame");
+
+  /*
+   * Verify that that the mapping matches the correct type of page
+   * allowed to be mapped into this page table. Verify that the new
+   * PTP is of the correct type given the page level of the page
+   * entry. 
+   */
+  switch(ptePG->type) {
+    case PG_L1:
+      SVA_NOOP_ASSERT (isFramePg(newPG), 
+              "MMU: attempted to map non-frame page into L1.");
+      break;
+    case PG_L2:
+      SVA_NOOP_ASSERT (isL1Pg(newPG), 
+              "MMU: attempted to map non-L1 page into L2.");
+      break;
+    case PG_L3:
+      SVA_NOOP_ASSERT (isL2Pg(newPG), 
+              "MMU: attempted to map non-L2 page into L3.");
+      break;
+    case PG_L4:
+      /* 
+       * FreeBSD inserts a self mapping into the pml4, therefore it is
+       * valid to map in an L4 page into the L4. TODO: consider the
+       * security implications of this...
+       */
+      SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+              "MMU: attempted to map non-L3/L4 page into L4.");
+      break;
+    default:
+      /* 
+       * TODO when enabling this we will have had to finish the init and
+       * remove code 
+       */
+      SVA_NOOP_ASSERT (0,
+              "MMU attempted to make update to non page table page.");
+  }
+  
+  /* 
+   * TODO There might be a bug in this lookup, as it doesn't account for PS=1
+   * pages e.g., 2MB or 1GB pages. 
+   */
+
+  /* 
+   * Verify that we have the correct PTE for the given VA.
+   */
+  SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
+          "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
+
+  return 1;
 
 #if OBSOLETE
-    void* pagetable = get_pagetable();
-    unsigned long new_index = pte_val(val) >> PAGE_SHIFT;
+  void* pagetable = get_pagetable();
+  unsigned long new_index = pte_val(val) >> PAGE_SHIFT;
 
+  /*
+   * If the new entry is a level1, level2 or code page, disable the RW flag
+   */
+  if (new_index && likely(pte_val(val) & _PAGE_RW)) {
+    if (unlikely(page_desc[new_index].l1 ||
+                 page_desc[new_index].l2 ||
+                 page_desc[new_index].code)) {
+        val = __pte(pte_val(val) & ~_PAGE_RW);
+    }
+  }
+
+  /*
+   * Ensure that this mapping does not create a mapping into a page used by the
+   * SVA virtual machine.
+   */
+  if (unlikely(page_desc[new_index].sva))
+      poolcheckfail("MMU: try to map a sva pag: %x", __builtin_return_address(0));
+
+  /*
+   * Get the virtual to physical page mapping that is already within the
+   * page table.
+   */
+  pte_t old_mapping = *pteptr;
+  unsigned long old_index = pte_val(old_mapping) >> PAGE_SHIFT;
+
+  if (new_index) {
     /*
-     * If the new entry is a level1, level2 or code page, disable the RW flag
+     * If the new entry is maps to a physical page that belongs to a Type-Known
+     * MetaPool, flag an error.
      */
-    if (new_index && likely(pte_val(val) & _PAGE_RW)) {
-        if (unlikely(page_desc[new_index].l1 ||
-                    page_desc[new_index].l2 ||
-                    page_desc[new_index].code)) {
-            val = __pte(pte_val(val) & ~_PAGE_RW);
-        }
+    if (page_desc[new_index].typed) {
+      poolcheckfail("MMU: try to double map a type known page: ", new_index, __builtin_return_address(0));
     }
 
     /*
-     * Ensure that this mapping does not create a mapping into a page used by the
-     * SVA virtual machine.
+     * If we're creating a new mapping to a physical page that is used in a
+     * kernel stack, flag an error.
      */
-    if (unlikely(page_desc[new_index].sva))
-        poolcheckfail("MMU: try to map a sva pag: %x", __builtin_return_address(0));
+    if (page_desc[new_index].stack) {
+      poolcheckfail("MMU: try to double map a stack page: %x", __builtin_return_address(0));
+    }
 
     /*
-     * Get the virtual to physical page mapping that is already within the
-     * page table.
+     * If we're creating a virtual mapping that is accessible only in
+     * kernel-space, but the page is accessible via some user-space mapping,
+     * flag an error.
      */
-    pte_t old_mapping = *pteptr;
-    unsigned long old_index = pte_val(old_mapping) >> PAGE_SHIFT;
-
-    if (new_index) {
-        /*
-         * If the new entry is maps to a physical page that belongs to a Type-Known
-         * MetaPool, flag an error.
-         */
-        if (page_desc[new_index].typed) {
-            poolcheckfail("MMU: try to double map a type known page: ", new_index, __builtin_return_address(0));
-        }
-
-        /*
-         * If we're creating a new mapping to a physical page that is used in a
-         * kernel stack, flag an error.
-         */
-        if (page_desc[new_index].stack) {
-            poolcheckfail("MMU: try to double map a stack page: %x", __builtin_return_address(0));
-        }
-
-        /*
-         * If we're creating a virtual mapping that is accessible only in
-         * kernel-space, but the page is accessible via some user-space mapping,
-         * flag an error.
-         */
 #if 0
-        if (((pte_val(val)) & PTE_CANUSER) == 0) {
-            if (page_desc[new_index].user) {
-                poolcheckfail("Mapping user-accessible page into the kernel",
-                        new_index, __builtin_return_address(0));
-            }
-        } else {
-            if (page_desc[new_index].kernel) {
-                poolcheckfail("Mapping kernel-accessible page into user-space",
-                        new_index, __builtin_return_address(0));
-            }
-        }
-#endif
-
-#if 0
-        /*
-         * If the new mapping wants to make the page accessible to user-space but
-         * the page currently contains typed or untyped kernel objects, then the
-         * caller is trying to make kernel memory objects accessible to user-space
-         * programs.  Do not permit such treachery!
-         */
-        if ((((pte_val(val)) & PTE_CANUSER) == 1) &&
-                (page_desc[new_index].typed || page_desc[new_index].untyped)) {
-            poolcheckfail("MMU: Mapping kernel page into user-space: ",
-                    new_index, __builtin_return_address(0));
-        }
-#endif
-
-        /*
-         * If the frame is currently accessible by user-space code and the new
-         * translation will map the page into the kernel's address space, report an
-         * error.  Oh, and do not permit such treachery!.
-         */
-        if (page_desc[new_index].user && is_l1_kernel_page(pteptr)) {
-            pte_t* kpte = get_pte((unsigned long)pteptr, get_pagetable());
-            unsigned long kpa;
-            kpa = pte_val(*kpte) >> PAGE_SHIFT;
-            poolcheckfail("MMU: Mapping user-accessible page into kernel-space: ",
-                    new_index, kpa);
-        }
-    }
-
-    if (old_index) {
-        if (unlikely(page_desc[old_index].stack)) {
-            poolcheckfail("MMU: try to modify the mapping of a stack: %x", __builtin_return_address(0));
-        }
-        /** NDD NOTES:
-         * If the old was an sva page, then the pte entry will be an entry in
-         * an sva page table, and thus be captured when we check to see if we
-         * are mapping into an sva page table page. Thus, this check is
-         * superceeded by the check to see if we are mapping into an SVA page. 
-         */
-        if (unlikely(page_desc[old_index].sva))
-            poolcheckfail("MMU: try to modify the mapping of a sva page: %x", __builtin_return_address(0));
-        /** NDD NOTES:
-         * This check is saying that a code mapping should never change... 
-         */
-        if (unlikely(page_desc[old_index].code))
-            poolcheckfail("MMU: try to modify the mapping of kernel code: %x", __builtin_return_address(0));
-    }
-
-    /* Update the mapping count of the old and new mapped physical pages */
-    if (old_index) {  
-        page_desc[old_index].count--;
-        /* If there is no mapping of the page, we can remove the untyped flag,
-           so that the page can be used by users. */
-        if (page_desc[old_index].count == 0) {
-            page_desc[old_index].untyped = 0;
-            page_desc[old_index].user = 0;
-        }
-    }
-    
-    if (new_index) {
-        if (page_desc[new_index].count < ((1 << 12) - 1)) {
-            page_desc[new_index].count++;
-        } else {
-            poolcheckfail("MMU: overflow for mapping count %x", __builtin_return_address(0));
-        }
-
-        /*
-         * If the new translation makes the page accessible to user-space programs,
-         * mark the physical page frame as accessible from user-space.
-         */
-        if (((pte_val(val)) & PTE_CANUSER) == 1) {
-            page_desc[new_index].user = 1;
-        }
-    }
-
-    /* OBSOLETE NOTE: This is obsolete because this function assumes all pages
-     * have already been declared and intialized based upon that inital
-     * declare. This means that we should not hit an instance where an update
-     * is going to change the user/super flag.
-     */
-    /*
-     * If the new mapping makes the page available to user-space, record that.
-     */
-    if (((pte_val(val)) & PTE_CANUSER)) {
-        page_desc[new_index].user = 1;
+    if (((pte_val(val)) & PTE_CANUSER) == 0) {
+      if (page_desc[new_index].user) {
+          poolcheckfail("Mapping user-accessible page into the kernel",
+                  new_index, __builtin_return_address(0));
+      }
     } else {
-        page_desc[new_index].kernel = 1;
+      if (page_desc[new_index].kernel) {
+          poolcheckfail("Mapping kernel-accessible page into user-space",
+                  new_index, __builtin_return_address(0));
+      }
     }
+#endif
+
+#if 0
+    /*
+     * If the new mapping wants to make the page accessible to user-space but
+     * the page currently contains typed or untyped kernel objects, then the
+     * caller is trying to make kernel memory objects accessible to user-space
+     * programs.  Do not permit such treachery!
+     */
+    if ((((pte_val(val)) & PTE_CANUSER) == 1) &&
+            (page_desc[new_index].typed || page_desc[new_index].untyped)) {
+        poolcheckfail("MMU: Mapping kernel page into user-space: ",
+                new_index, __builtin_return_address(0));
+    }
+#endif
+
+    /*
+     * If the frame is currently accessible by user-space code and the new
+     * translation will map the page into the kernel's address space, report an
+     * error.  Oh, and do not permit such treachery!.
+     */
+    if (page_desc[new_index].user && is_l1_kernel_page(pteptr)) {
+      pte_t* kpte = get_pte((unsigned long)pteptr, get_pagetable());
+      unsigned long kpa;
+      kpa = pte_val(*kpte) >> PAGE_SHIFT;
+      poolcheckfail("MMU: Mapping user-accessible page into kernel-space: ",
+              new_index, kpa);
+    }
+  }
+
+  if (old_index) {
+    if (unlikely(page_desc[old_index].stack)) {
+        poolcheckfail("MMU: try to modify the mapping of a stack: %x", __builtin_return_address(0));
+    }
+    /** NDD NOTES:
+     * If the old was an sva page, then the pte entry will be an entry in
+     * an sva page table, and thus be captured when we check to see if we
+     * are mapping into an sva page table page. Thus, this check is
+     * superceeded by the check to see if we are mapping into an SVA page. 
+     */
+    if (unlikely(page_desc[old_index].sva))
+        poolcheckfail("MMU: try to modify the mapping of a sva page: %x", __builtin_return_address(0));
+    /** NDD NOTES:
+     * This check is saying that a code mapping should never change... 
+     */
+    if (unlikely(page_desc[old_index].code))
+        poolcheckfail("MMU: try to modify the mapping of kernel code: %x", __builtin_return_address(0));
+  }
+
+  /* Update the mapping count of the old and new mapped physical pages */
+  if (old_index) {  
+      page_desc[old_index].count--;
+      /* If there is no mapping of the page, we can remove the untyped flag,
+         so that the page can be used by users. */
+      if (page_desc[old_index].count == 0) {
+          page_desc[old_index].untyped = 0;
+          page_desc[old_index].user = 0;
+      }
+  }
+  
+  if (new_index) {
+    if (page_desc[new_index].count < ((1 << 12) - 1)) {
+        page_desc[new_index].count++;
+    } else {
+        poolcheckfail("MMU: overflow for mapping count %x", __builtin_return_address(0));
+    }
+
+    /*
+     * If the new translation makes the page accessible to user-space programs,
+     * mark the physical page frame as accessible from user-space.
+     */
+    if (((pte_val(val)) & PTE_CANUSER) == 1) {
+        page_desc[new_index].user = 1;
+    }
+  }
+
+  /* OBSOLETE NOTE: This is obsolete because this function assumes all pages
+   * have already been declared and intialized based upon that inital
+   * declare. This means that we should not hit an instance where an update
+   * is going to change the user/super flag.
+   */
+  /*
+   * If the new mapping makes the page available to user-space, record that.
+   */
+  if (((pte_val(val)) & PTE_CANUSER)) {
+    page_desc[new_index].user = 1;
+  } else {
+    page_desc[new_index].kernel = 1;
+  }
 #endif
 
 }
@@ -1085,10 +1084,8 @@ check_and_init_first_mapping(unsigned long newMapping){
  */
 static inline void
 __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
-  unsigned long rflags;
-
   /* Disable interrupts so that we appear to execute as a single instruction. */
-  rflags = sva_enter_critical();
+  uintptr_t rflags = sva_enter_critical();
 
   /* 
    * If this is the first mapping to the page then establish initial values
@@ -1103,10 +1100,10 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
    * table entry, else raise an error.
    */
   if (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
-      /* Perform the pagetable mapping update */
-      __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
+    /* Perform the pagetable mapping update */
+    __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
   } else {
-      panic("##### SVA invalid page update!!!\n");
+    panic("##### SVA invalid page update!!!\n");
   }
 
   /* Restore interrupts */
