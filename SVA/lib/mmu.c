@@ -1,4 +1,4 @@
-/*===- mmu.h - SVA Execution Engine  =-------------------------------------===
+/*===- mmu.c - SVA Execution Engine  =-------------------------------------===
  * 
  *                        Secure Virtual Architecture
  *
