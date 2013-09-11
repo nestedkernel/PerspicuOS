@@ -2066,7 +2066,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
        */
       if ((pageMapping & PG_PS) != 0) {
 #if DEBUG_INIT >= 1
-        printf("%sIdentified 1GB page...\n",indent);
+        printf("\tIdentified 1GB page...\n");
 #endif
         unsigned long index = (pageMapping & ~PDPMASK) / pageSize;
         page_desc[index].type = PG_TKDATA;
@@ -2089,7 +2089,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
        */
       if ((pageMapping & PG_PS) != 0){
 #if DEBUG_INIT >= 1
-        printf("%sIdentified 2MB page...\n",indent);
+        printf("\tIdentified 2MB page...\n");
 #endif
         /* The frame address referencing the page obtained */
         unsigned long index = (pageMapping & ~PDRMASK) / pageSize;
@@ -2791,21 +2791,26 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
  */
 void
 sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
+  /*
+   * Disable interrupts so that we appear to execute as a single instruction.
+   */
+  unsigned long rflags = sva_enter_critical();
 
-    unsigned long rflags;
-
-#if DEBUG >= 4
-    printf("<<<<\n\tSVA:  pre-update_l2_page: pde: %p, *pde: 0x%lx, newMapping: 0x%lx\n",
-            pdePtr, *pdePtr, val);
-    print_regs();
+#if 0
+  /*
+   * Ensure that the PTE pointer points to an L1 page table.  If it does not,
+   * then report an error.
+   */
+  page_desc_t * ptDesc = getPageDescPtr (getPhysicalAddr (pdePtr));
+  if (ptDesc->type != PG_L2) {
+    panic ("SVA: MMU: update_l2 not an L2: %lx %lx: %lx\n", pdePtr, val, ptDesc->type);
+  }
 #endif
 
-    __update_mapping(pdePtr, val);
-
-#if DEBUG >= 4
-    printf("\tSVA: post-update_l2_page: pde: %p, *pde: 0x%lx\n>>>>\n", 
-            pdePtr, *pdePtr);
-#endif
+  /*
+   * Update the page mapping.
+   */
+  __update_mapping(pdePtr, val);
 
 #if OBSOLETE
     void* pagetable = get_pagetable();
@@ -2862,16 +2867,11 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
 
         page_desc[old_index].l1_count--;
     }
-
-    /* Perform the pagetable mapping update */
-    unsigned eflags;
-    __asm__ __volatile__ ("pushf; popl %0\n" : "=r" (eflags));
-    unprotect_paging();
-    *pmdptr = val;
-    protect_paging();
-    if (eflags & 0x00000200)
-        __asm__ __volatile__ ("sti":::"memory");
 #endif
+
+  /* Restore interrupts */
+  sva_exit_critical (rflags);
+  return;
 }
 
 /*
