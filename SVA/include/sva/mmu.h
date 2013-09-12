@@ -108,7 +108,19 @@ SVA_NOOP_ASSERT (int res, char * st) {
   if (!res) res++;
 }
 
-#define SVA_ASSERT(res,string) if(!res) panic(string)
+/*
+ * Function: SVA_ASSERT()
+ *
+ * Description:
+ *  Check that the test (given as the first argument) passed.  If it did not,
+ *  then panic with the specified string.
+ */
+static inline void
+SVA_ASSERT (unsigned char passed, char * str) {
+  if (!passed)
+    panic ("%s", str);
+  return;
+}
 
 /*
  *****************************************************************************
