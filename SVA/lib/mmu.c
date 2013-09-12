@@ -622,63 +622,53 @@ setPgPrivMode (page_desc_t *pg, uintptr_t va) {
  *  This function is called whenever we are inserting a new mapping into a page
  *  entry. The goal is to manage any SVA page data that needs to be set for
  *  tracking the new mapping with the existing page data. This is essential to
- *  enable the mmu verification checks.
+ *  enable the MMU verification checks.
  *
  * Inputs:
- *  - mapping : the new mapping to be inserted
+ *  mapping - The new mapping to be inserted in x86_64 page table format.
  */
 static inline void
 updateNewPageData(page_entry_t mapping) {
-    uintptr_t newPA = mapping & PG_FRAME;
-    unsigned long newFrame = newPA >> PAGESHIFT;
-    uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-    page_desc_t *newPG = getPageDescPtr(mapping);
+  uintptr_t newPA = mapping & PG_FRAME;
+  unsigned long newFrame = newPA >> PAGESHIFT;
+  uintptr_t newVA = (uintptr_t) getVirtual(newPA);
+  page_desc_t *newPG = getPageDescPtr(mapping);
 
-    /*
-     * If the new mapping is valid then update the counts for it.
-     */
-#if NOT_YET_IMPLEMENTED
-    if (mapping & PG_V) {
-
-        /* There is a bug when we modify counts on page_desc[0] so skip */
-        if(newFrame != 0) {
-
-            //printf("SVA: new page update [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-            //newPG, val, newPA, newVA, newPG->count);
-            /*
-             * If the new page is to a PTP and this is the first reference to
-             * the page, we need to set the VA mapping this page so that the
-             * verification routine can enforce that this page is only mapped
-             * to a single VA. Note that if we have gotten here, we know that
-             * we currently do not have a mapping to this page already, which
-             * means this is the first mapping to the page. 
-             */
+  /*
+   * If the new mapping is valid, update the counts for it.
+   */
 #if 0
-            if (isPTP(newPG)){
-                setPTPVA(newPG, newVA);
-            }
-#endif
-
-            /* There is some type of bug with this update. */
-            newPG->count++;
-        } else {
-            /* 
-             * FIXME:XXX this case has a bug when updating the metadata.
-             * Figure it out 
-             */
-        }
-
-        /* 
-         * Set the privilege mode of this entry given the VA 
-         */
-        //setPrivMode(newPG, newVA);
-
-        /* 
-         * Set the VA of this entry if it is the first mapping to a page
-         * table page.
-         */
+  if (mapping & PG_V) {
+    /*
+     * If the new page is to a PTP and this is the first reference to
+     * the page, we need to set the VA mapping this page so that the
+     * verification routine can enforce that this page is only mapped
+     * to a single VA. Note that if we have gotten here, we know that
+     * we currently do not have a mapping to this page already, which
+     * means this is the first mapping to the page. 
+     */
+#if 0
+    if (isPTP(newPG)){
+        setPTPVA(newPG, newVA);
     }
 #endif
+    newPG->count++;
+
+    /* 
+     * Set the privilege mode of this entry given the VA 
+     */
+#if 0
+    setPrivMode(newPG, newVA);
+#endif
+
+    /* 
+     * Set the VA of this entry if it is the first mapping to a page
+     * table page.
+     */
+  }
+#endif
+
+  return;
 }
 
 /*
@@ -689,60 +679,23 @@ updateNewPageData(page_entry_t mapping) {
  *  the mapping. 
  * 
  * Inputs:
- *  - mapping : the mapping for the old page
+ *  mapping - An x86_64 page table entry describing the old mapping of the page
  */
 static inline void
-updateOrigPageData(page_entry_t mapping){
-    uintptr_t origPA = mapping & PG_FRAME; 
-    unsigned long origFrame = origPA >> PAGESHIFT;
-    uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-    page_desc_t *origPG = &page_desc[origFrame];
+updateOrigPageData(page_entry_t mapping) {
+  uintptr_t origPA = mapping & PG_FRAME; 
+  unsigned long origFrame = origPA >> PAGESHIFT;
+  page_desc_t *origPG = &page_desc[origFrame];
 
-    /* FIXME:TODO there is a special case where the original page could be
-     * invalid or non-existent. I can think of two cases actually: 
-     *  - a zero mapping meaning it is non-existent
-     *  - a non-zero real address mapping but with the valid bit set to 0
-     *  - a non-zero valid mapping 
-     *
-     *  The real issue is figuring out whether or not an invalidate mapping
-     *  removes the mapping and clears it. The one case is true though in
-     *  that we don't decrement unless we have a value in the old mapping.
-     */
-    /* 
-     * Only decrement the mapping count if the page has an existing
-     * valid mapping.
-     */
-    //if((*pteptr & PG_V) && origPA != 0) 
-    if((mapping & PG_V)) {
+  /* 
+   * Only decrement the mapping count if the page has an existing valid
+   * mapping.  Ensure that we don't drop the reference count below zero.
+   */
+  if ((mapping & PG_V) && (origPG->count)) {
+    --(origPG->count);
+  }
 
-#if NOT_YET_IMPLEMENTED
-        /* There is a bug when we modify counts on page_desc[0] so skip */
-        if(origFrame != 0) {
-
-            /* Update the mapping count of the old and new mapped physical pages */
-            origPG->count--;
-
-        } else {
-            /* 
-             * FIXME:XXX this case has a bug when updating the metadata.
-             * Figure it out 
-             */
-            printf("Decremented ref count [pdesc:%p][*pte:%p][PA:%p][VA:%p][pre-count:%lu]\n",
-                    origPG, mapping, origPA, origVA, origPG->count);
-        }
-#endif
-
-#if NOT_YET_IMPLEMENTED
-        /* 
-         * TODO: what happens if the count is already zero here? For example
-         * when we remove a page, do we zero out the references to it from the
-         * PTs or do we just do an invalidate update?
-         */
-        if (pgRefCount(origPG) == 0) {
-            removePage(origPG);
-        }
-#endif
-    }
+  return;
 }
 
 /*
@@ -2329,7 +2282,7 @@ sva_declare_l3_page (uintptr_t frameAddr) {
 
     default:
       printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
-      panic ("SVA: Declaring L3 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      panic ("SVA: Declaring L3 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x count=%x\n", frameAddr, pgDesc, pgDesc->type, pgDesc->count);
       break;
   }
 
