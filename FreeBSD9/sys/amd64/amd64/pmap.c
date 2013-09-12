@@ -1852,56 +1852,56 @@ pmap_pinit(pmap_t pmap)
 	pmap->pm_pml4 = (pml4_entry_t *)PHYS_TO_DMAP(VM_PAGE_TO_PHYS(pml4pg));
 
 #ifdef SVA_MMU
-    /* 
-     * Due to the large page size mapping on PDEs in the DMAP we need to demote
-     * the PDE to a set of PTs so that we can control the new PTPs alone.
-     */
-    pmap_demote_DMAP(VM_PAGE_TO_PHYS(pml4pg), PAGE_SIZE, FALSE);
+	/* 
+	 * Due to the large page size mapping on PDEs in the DMAP we need to demote
+	 * the PDE to a set of PTs so that we can control the new PTPs alone.
+	 */
+	pmap_demote_DMAP(VM_PAGE_TO_PHYS(pml4pg), PAGE_SIZE, FALSE);
 #endif
 
 	if ((pml4pg->flags & PG_ZERO) == 0)
 		pagezero(pmap->pm_pml4);
 
 #ifdef SVA_MMU
-    /* 
-     * SVA self referential entry, which is used when declaring this particular
-     * page.
-     */
-    pml4e_self = (pml4_entry_t *) &pmap->pm_pml4[PML4PML4I];
+	/* 
+	 * SVA self referential entry, which is used when declaring this particular
+	 * page.
+	 */
+	pml4e_self = (pml4_entry_t *) &pmap->pm_pml4[PML4PML4I];
 
 #if 0//SVA_DEBUG
-    /* TODO: figure out if this check is needed. */
+	/* TODO: figure out if this check is needed. */
 	if ((pml4pg->flags & PG_ZERO) != 0)
-        panic("SVA: about to call declare l4 on a page that says not to zero");
+		panic("SVA: about to call declare l4 on a page that says not to zero");
 #endif
-    /* 
-     * Declare the l4 page to SVA. This will initialize paging structures
-     * and make the page table page as read only. 
-     *  
-     * SVA-TODO: Think more on how this pte is used for managing access to this
-     * particular page. Instead should we setup something like the cr3 to
-     * capture this new data? Can we always assume the reference is in this
-     * address? What if an attacker modifies it so that the self references is
-     * somewhere else in memory? I suppose we are forcing the mapping to be
-     * here for correct execution. So if the attacker changes then it will
-     * automatically break the system. 
-     */
+	/* 
+	 * Declare the l4 page to SVA. This will initialize paging structures
+	 * and make the page table page as read only. 
+	 *  
+	 * SVA-TODO: Think more on how this pte is used for managing access to this
+	 * particular page. Instead should we setup something like the cr3 to
+	 * capture this new data? Can we always assume the reference is in this
+	 * address? What if an attacker modifies it so that the self references is
+	 * somewhere else in memory? I suppose we are forcing the mapping to be
+	 * here for correct execution. So if the attacker changes then it will
+	 * automatically break the system. 
+	 */
 
 #if SVA_DEBUG
-    printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
-    printf("Virtual Address: pml4: %p, *pml4: %p\n", pmap->pm_pml4, *pmap->pm_pml4);
+	printf("CR0: %p, CR3: %p, CR4: %p\n",rcr0(), rcr3(), rcr4());
+	printf("Virtual Address: pml4: %p, *pml4: %p\n", pmap->pm_pml4, *pmap->pm_pml4);
 #endif
-    sva_declare_l4_page(VM_PAGE_TO_PHYS(pml4pg));
+	sva_declare_l4_page(VM_PAGE_TO_PHYS(pml4pg));
 #endif
 
 	/* Wire in kernel global address entries. */
 #ifdef SVA_MMU
-    /* 
-     * Update the L4 mapping with the kernel VAs. Note that these pages were
-     * initialized during system startup and thus the reason we don't have a
-     * declare here.
-     */
-    sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
+	/* 
+	 * Update the L4 mapping with the kernel VAs. Note that these pages were
+	 * initialized during system startup and thus the reason we don't have a
+	 * declare here.
+	 */
+	sva_update_l4_mapping(&pmap->pm_pml4[KPML4I], (pd_entry_t)(KPDPphys | PG_RW
                 | PG_V | PG_U)); 
 #else /* !SVA_MMU */
 	pmap->pm_pml4[KPML4I] = KPDPphys | PG_RW | PG_V | PG_U;
@@ -1934,7 +1934,7 @@ pmap_pinit(pmap_t pmap)
      * doing the update on the newly created l4 page table page we just
      * declared.
      */
-    sva_update_l4_mapping(&pmap->pm_pml4[PML4PML4I], (pd_entry_t) (VM_PAGE_TO_PHYS(pml4pg) | PG_V |
+    sva_update_l4_mapping(&(pmap->pm_pml4[PML4PML4I]), (pd_entry_t) (VM_PAGE_TO_PHYS(pml4pg) | PG_V |
                 PG_RW | PG_A | PG_M));
 #else
     /* install self-referential address mapping entry(s) */
