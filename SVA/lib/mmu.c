@@ -717,12 +717,24 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
 
   /*
    * If we have a new mapping as opposed to just changing the flags of an
-   * existing mapping, then update the sva meta data for the pages. We know
+   * existing mapping, then update the SVA meta data for the pages. We know
    * that we have passed the validation checks so these updates have been
    * vetted.
    */
   if (newPA != origPA) {
     updateOrigPageData(*pteptr);
+    updateNewPageData(mapping);
+  } else if ((*pteptr & PG_V) && ((mapping & PG_V) == 0)) {
+    /*
+     * If the old mapping is marked valid but the new mapping is not, then
+     * decrement the reference count of the old page.
+     */
+    updateOrigPageData(*pteptr);
+  } else if (((*pteptr & PG_V) == 0) && (mapping & PG_V)) {
+    /*
+     * Contrariwise, if the old mapping is invalid but the new mapping is valid,
+     * then increment the reference count of the new page.
+     */
     updateNewPageData(mapping);
   }
 
