@@ -396,7 +396,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    */
   if (newVal & PG_V) {
     /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a secure page");
+    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a ghost page");
 
 
     /* If the mapping is to an SVA page then fail */
@@ -444,8 +444,26 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
      */
     switch (ptePG->type) {
       case PG_L1:
-        SVA_NOOP_ASSERT (isFramePg(newPG), 
-                "MMU: attempted to map non-frame page into L1.");
+        if (!isFramePg(newPG)) {
+          /* If it is a ghost frame, stop with an error */
+          if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+
+          /*
+           * If it is a page table page, just ensure that it is not writeable.
+           * The kernel may be modifying the direct map, and we will permit
+           * that as long as it doesn't make page tables writeable.
+           *
+           * Note: The SVA VM really should have its own direct map that the
+           *       kernel cannot use or modify, but that is too much work, so
+           *       we make this compromise.
+           */
+          if ((newPG->type >= PG_L1) && (newPG->type <= PG_L4)) {
+            newVal &= (~PG_RW);
+          } else {
+            panic ("SVA: MMU: Map bad page type into L1: %x\n", newPG->type);
+          }
+        }
+
         break;
 
       case PG_L2:
@@ -471,23 +489,17 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
       case PG_L4:
         /* 
          * FreeBSD inserts a self mapping into the pml4, therefore it is
-         * valid to map in an L4 page into the L4. TODO: consider the
-         * security implications of this...
+         * valid to map in an L4 page into the L4.
+         *
+         * TODO: Consider the security implications of allowing an L4 to map
+         *       an L4.
          */
-        if ((!isL3Pg(newPG)) && !(isL4Pg(newPG))) {
-          panic ("SVA: Bad L3/L4: newPA = %lx, type = %lx\n", newPA, newPG->type);
-        }
         SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
                 "MMU: attempted to map non-L3/L4 page into L4.");
         break;
 
       default:
-        /* 
-         * TODO when enabling this we will have had to finish the init and
-         * remove code 
-         */
-        SVA_NOOP_ASSERT (0,
-                "MMU attempted to make update to non page table page.");
+        break;
     }
   }
 
