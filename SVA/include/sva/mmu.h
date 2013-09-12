@@ -489,6 +489,7 @@ static inline int isL2Pg (page_desc_t *page) { return page->type == PG_L2; }
 static inline int isL3Pg (page_desc_t *page) { return page->type == PG_L3; }
 static inline int isL4Pg (page_desc_t *page) { return page->type == PG_L4; }
 static inline int isSVAPg (page_desc_t *page) { return page->type == PG_SVA; }
+static inline int isCodePg (page_desc_t *page) { return page->type == PG_CODE; }
 static inline int isGhostPTP (page_desc_t *page) { return page->ghostPTP; }
 
 static inline int isGhostPG (page_desc_t *page) { 
