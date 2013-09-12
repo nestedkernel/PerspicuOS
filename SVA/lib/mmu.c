@@ -435,6 +435,60 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
 #endif
       }
     }
+
+    /*
+     * Verify that that the mapping matches the correct type of page
+     * allowed to be mapped into this page table. Verify that the new
+     * PTP is of the correct type given the page level of the page
+     * entry. 
+     */
+    switch (ptePG->type) {
+      case PG_L1:
+        SVA_NOOP_ASSERT (isFramePg(newPG), 
+                "MMU: attempted to map non-frame page into L1.");
+        break;
+
+      case PG_L2:
+        if (newVal & PG_PS) {
+          SVA_ASSERT (isFramePg(newPG), 
+                  "MMU: map non-data page into large L2.");
+        } else {
+          SVA_ASSERT (isL1Pg(newPG), 
+                  "MMU: attempted to map non-L1 page into L2.");
+        }
+        break;
+
+      case PG_L3:
+        if (newVal & PG_PS) {
+          SVA_ASSERT (isFramePg(newPG), 
+                  "MMU: map non-data page into large L3.");
+        } else {
+          SVA_ASSERT (isL2Pg(newPG), 
+                  "MMU: attempted to map non-L2 page into L3.");
+        }
+        break;
+
+      case PG_L4:
+        /* 
+         * FreeBSD inserts a self mapping into the pml4, therefore it is
+         * valid to map in an L4 page into the L4. TODO: consider the
+         * security implications of this...
+         */
+        if ((!isL3Pg(newPG)) && !(isL4Pg(newPG))) {
+          panic ("SVA: Bad L3/L4: newPA = %lx, type = %lx\n", newPA, newPG->type);
+        }
+        SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
+                "MMU: attempted to map non-L3/L4 page into L4.");
+        break;
+
+      default:
+        /* 
+         * TODO when enabling this we will have had to finish the init and
+         * remove code 
+         */
+        SVA_NOOP_ASSERT (0,
+                "MMU attempted to make update to non page table page.");
+    }
   }
 
   /* 
@@ -514,43 +568,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
             "MMU: overflow for the mapping count");
   }
 
-  /*
-   * Verify that that the mapping matches the correct type of page
-   * allowed to be mapped into this page table. Verify that the new
-   * PTP is of the correct type given the page level of the page
-   * entry. 
-   */
-  switch(ptePG->type) {
-    case PG_L1:
-      SVA_NOOP_ASSERT (isFramePg(newPG), 
-              "MMU: attempted to map non-frame page into L1.");
-      break;
-    case PG_L2:
-      SVA_NOOP_ASSERT (isL1Pg(newPG), 
-              "MMU: attempted to map non-L1 page into L2.");
-      break;
-    case PG_L3:
-      SVA_NOOP_ASSERT (isL2Pg(newPG), 
-              "MMU: attempted to map non-L2 page into L3.");
-      break;
-    case PG_L4:
-      /* 
-       * FreeBSD inserts a self mapping into the pml4, therefore it is
-       * valid to map in an L4 page into the L4. TODO: consider the
-       * security implications of this...
-       */
-      SVA_NOOP_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
-              "MMU: attempted to map non-L3/L4 page into L4.");
-      break;
-    default:
-      /* 
-       * TODO when enabling this we will have had to finish the init and
-       * remove code 
-       */
-      SVA_NOOP_ASSERT (0,
-              "MMU attempted to make update to non page table page.");
-  }
-  
   /* 
    * TODO There might be a bug in this lookup, as it doesn't account for PS=1
    * pages e.g., 2MB or 1GB pages. 
