@@ -479,10 +479,10 @@ static inline int isGhostVA(uintptr_t va)
  * The following functions query the given page descriptor for type attributes.
  */
 static inline int isFramePg (page_desc_t *page) { 
-    return page->type == PG_TKDATA   ||       /* Defines a kernel data page */
-           page->type == PG_TUDATA   ||       /* Defines a user data page */
-           page->type == PG_FRAME             /* Defines a code page */
-        ;
+  return (page->type == PG_UNUSED)   ||      /* Defines an unused page */
+         (page->type == PG_TKDATA)   ||      /* Defines a kernel data page */
+         (page->type == PG_TUDATA)   ||      /* Defines a user data page */
+         (page->type == PG_CODE);           /* Defines a code page */
 }
 
 /* Description: Return whether the page is active or not */
