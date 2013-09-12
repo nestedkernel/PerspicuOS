@@ -759,29 +759,29 @@ updateOrigPageData(page_entry_t mapping){
  */
 static inline void
 __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
-    uintptr_t origPA = *pteptr & PG_FRAME;
-    uintptr_t newPA = mapping & PG_FRAME;
+  uintptr_t origPA = *pteptr & PG_FRAME;
+  uintptr_t newPA = mapping & PG_FRAME;
 
-    /*
-     * If we have a new mapping as opposed to just changing the flags of an
-     * existing mapping, then update the sva meta data for the pages. We know
-     * that we have passed the validation checks so these updates have been
-     * vetted.
-     */
-    if (newPA != origPA) {
-        updateOrigPageData(*pteptr);
-        updateNewPageData(mapping);
-    }
+  /*
+   * If we have a new mapping as opposed to just changing the flags of an
+   * existing mapping, then update the sva meta data for the pages. We know
+   * that we have passed the validation checks so these updates have been
+   * vetted.
+   */
+  if (newPA != origPA) {
+    updateOrigPageData(*pteptr);
+    updateNewPageData(mapping);
+  }
 
 #if ACTIVATE_PROT
-    /* If the new page should be read only, mark the entry value as such */
-    if (mapPageReadOnly(getPageDescPtr(*pteptr), mapping)) {
-        mapping = setMappingReadOnly(mapping);
-    }
+  /* If the new page should be read only, mark the entry value as such */
+  if (mapPageReadOnly(getPageDescPtr(*pteptr), mapping)) {
+    mapping = setMappingReadOnly(mapping);
+  }
 #endif
 
-    /* perform the actual write to the pte entry */
-    page_entry_store ((page_entry_t *) pteptr, mapping);
+  /* Perform the actual write to into the page table entry */
+  page_entry_store ((page_entry_t *) pteptr, mapping);
 }
 
 /*
