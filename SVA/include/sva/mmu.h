@@ -580,21 +580,20 @@ readOnlyPageType(page_desc_t *pg) {
  */
 static inline int 
 mapPageReadOnly(page_desc_t * ptePG, page_entry_t mapping) {
+  if (readOnlyPageType(getPageDescPtr(mapping))){
+    /* If we have an L1 page then we have a data frame mapping */
+    if (isL1Pg(ptePG))
+      return 1;
 
-    if (readOnlyPageType(getPageDescPtr(mapping))){
-        /* If we have an L1 page then we have a data frame mapping */
-        if (isL1Pg(ptePG))
-            return 1;
+    /* 
+     * If we assigning to an L2 or L3 check the PS flag to see if we map a page
+     * frame.
+     */
+    if ( (isL2Pg(ptePG) || isL3Pg(ptePG) ) && (mapping & PG_PS) )
+      return 1;
+  }
 
-        /* 
-         * If we assigning to an L2 or L3 check the PS flag to see if we map a page
-         * frame.
-         */
-        if ( (isL2Pg(ptePG) || isL3Pg(ptePG) ) && (mapping & PG_PS) )
-            return 1;
-    }
-
-    return 0;
+  return 0;
 }
 
 #endif
