@@ -637,7 +637,7 @@ updateNewPageData(page_entry_t mapping) {
   /*
    * If the new mapping is valid, update the counts for it.
    */
-#if 0
+#if 1
   if (mapping & PG_V) {
     /*
      * If the new page is to a PTP and this is the first reference to
@@ -2420,8 +2420,11 @@ sva_remove_page (uintptr_t paddr) {
    * table entry that refers to this physical page frame).  If there is a
    * mapping, then someone is still using it as a page table page.  In that
    * case, ignore the request.
+   *
+   * Note that we check for a reference count of 1 because the page is always
+   * mapped into the direct map.
    */
-  if (pgDesc->count == 0) {
+  if (pgDesc->count == 1) {
     /*
      * Mark the page frame as an unused page.
      */
@@ -2431,6 +2434,8 @@ sva_remove_page (uintptr_t paddr) {
      * Make the page writeable again.
      */
     __update_mapping (pte, setMappingReadWrite (*pte));
+  } else {
+    printf ("SVA: remove_page: type=%x count %x\n", pgDesc->type, pgDesc->count);
   }
 
   /* Restore interrupts */
