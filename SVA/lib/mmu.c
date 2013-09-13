@@ -415,24 +415,18 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     /* 
      * If the new page is a page table page then we verify some page table
      * page specific checks. 
-     *
-     * TODO: for better code design this can be refactored into a single
-     * function.
      */
     if (isPTP(newPG)) {
       /* 
        * If we have a page table page being mapped in and it currently
        * has a mapping to it, then we verify that the new VA from the new
-       * mapping matches the existing currently mapped VA. 
+       * mapping matches the existing currently mapped VA.   
        *
        * This guarantees that we have at most one VA mapping to each page
        * table page.
        */
-      if (pgRefCount(newPG) > 0) {
-#if 0
-        SVA_NOOP_ASSERT(pgVA(newPG) == newVA, 
-                "MMU: attempted to insert mappping to a second VA for PTP");
-#endif
+      if (pgRefCount(newPG) > 1) {
+        SVA_ASSERT (pgVA(newPG) == newVA, "MMU: Mapping PTP to a second VA");
       }
     }
 
@@ -535,7 +529,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    * this check can be enabled. The function doing this is 
    * check_and_init_first_mapping.
    */
-
   SVA_NOOP_ASSERT ( 
           (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
           (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
@@ -617,18 +610,16 @@ updateNewPageData(page_entry_t mapping) {
    */
   if (mapping & PG_V) {
     /*
-     * If the new page is to a PTP and this is the first reference to
-     * the page, we need to set the VA mapping this page so that the
+     * If the new page is to a page table page and this is the first reference
+     * to the page, we need to set the VA mapping this page so that the
      * verification routine can enforce that this page is only mapped
      * to a single VA. Note that if we have gotten here, we know that
      * we currently do not have a mapping to this page already, which
      * means this is the first mapping to the page. 
      */
-#if 0
-    if (isPTP(newPG)){
-      setPTPVA(newPG, newVA);
+    if (isPTP(newPG)) {
+      setPTPVA (newPG, newVA);
     }
-#endif
 
     /* 
      * Update the reference count for the new page frame. Check that we aren't
