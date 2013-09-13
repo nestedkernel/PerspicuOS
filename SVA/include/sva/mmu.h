@@ -570,26 +570,31 @@ readOnlyPageType(page_desc_t *pg) {
  *  if the WP bit in CR0 is set. 
  *
  * Inputs:
- *  - ptePG     : The page descriptor of the page we are inserting the new
- *                mapping into. We need this because if the page level is 2 or
- *                3 then we may have a leaf page or not depending on the PS
- *                flag in the mapping. If the insertion is to an L1 then we
- *                have a new leaf mapping. 
- *  - maping    : The mapping to be inserted, is used to determine whether we
- *                have a big page size or not (PS bit). 
+ *  ptePG    - The page descriptor of the page that we are inserting into the
+ *             page table.  We will use this to determine if we are adding
+ *             a page table page.
+ *
+ *  mapping - The mapping that will be used to insert the page.  This is used
+ *            for cases in which what would ordinarily be a page table page is
+ *            a large data page.
+ *
+ * Return value:
+ *  0 - The mapping can safely be made writeable.
+ *  1 - The mapping should be read-only.
  */
-static inline int 
+static inline unsigned char 
 mapPageReadOnly(page_desc_t * ptePG, page_entry_t mapping) {
   if (readOnlyPageType(getPageDescPtr(mapping))){
-    /* If we have an L1 page then we have a data frame mapping */
+    /*
+     * L1 pages should always be mapped read-only.
+     */
     if (isL1Pg(ptePG))
       return 1;
 
     /* 
-     * If we assigning to an L2 or L3 check the PS flag to see if we map a page
-     * frame.
+     * L2 and L3 pages should be mapped read-only unless they are data pages.
      */
-    if ( (isL2Pg(ptePG) || isL3Pg(ptePG) ) && (mapping & PG_PS) )
+    if ((isL2Pg(ptePG) || isL3Pg(ptePG) ) && (!(mapping & PG_PS)))
       return 1;
   }
 
