@@ -2620,7 +2620,6 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
    */
   unsigned long rflags = sva_enter_critical();
 
-#if 1
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2629,69 +2628,11 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
   if (ptDesc->type != PG_L2) {
     printf ("SVA: MMU: update_l2 not an L2: %lx %lx: type=%lx count=%lx\n", pdePtr, val, ptDesc->type, ptDesc->count);
   }
-#endif
 
   /*
    * Update the page mapping.
    */
   __update_mapping(pdePtr, val);
-
-#if OBSOLETE
-    void* pagetable = get_pagetable();
-
-    if (pmd_val(val)) {
-        pte_t* pte = get_pte((unsigned long)pmdptr, pagetable);
-
-        /* Verify that pmdptr points to a level2 page */
-        unsigned long index = pte_val(*pte) >> PAGE_SHIFT;
-        if (unlikely(!page_desc[index].l2)) {
-            poolcheckfail("MMU: Try to put a L1 in a non-L: %x", __builtin_return_address(0));
-        }
-
-
-        /* Verify that val contains a level1 page */
-        unsigned long addr = pmd_page(val);
-        pte_t* l1 = get_pte(addr, pagetable);
-        index = pte_val(*l1) >> PAGE_SHIFT;
-        if (unlikely(!page_desc[index].l1)) {
-            poolcheckfail("MMU: Try to put a non-L1 in a L2: %x", __builtin_return_address(0));
-        } else {
-            if (page_desc[index].l1_count < ((1 << 5) - 1)) {
-                page_desc[index].l1_count++;
-            } else
-                poolcheckfail("MMU: Overflow in the L1 count: %x", __builtin_return_address(0));
-        }
-
-        /*
-         * Determine if the L1 page will be mapping values into user-space virtual
-         * address or kernel-space virtual address.  We do this by finding the
-         * offset from the beginning of the page table (which is the address of
-         * where the translation is to be stored rounded down to the nearest page;
-         * this works because the page global directory can only be a single page
-         * in length).
-         */
-        unsigned int pmdbase = ((unsigned)(pmdptr)) & PAGE_MASK;
-        if (pmdptr < (((pgd_t*)pmdbase) + USER_PTRS_PER_PGD))
-            page_desc[index].l1_user = 1;
-        else
-            page_desc[index].l1_kernel = 1;
-    } 
-
-    if (pmd_val(*pmdptr)) {
-        unsigned long old_addr = pmd_page(*pmdptr);
-        pte_t* old_pte = get_pte(old_addr, pagetable);
-        unsigned long old_index = pte_val(*old_pte) >> PAGE_SHIFT;
-        /** NDD NOTE
-         * This effectively makes sure that this page was an l1, we ensure
-         * insertion will be correct, therefore don't need to explicitly verify
-         * this.
-         */
-        if (page_desc[old_index].l1_count <= 0)
-            poolcheckfail("MMU: Page in L1 was not a L1: %x!", __builtin_return_address(0));
-
-        page_desc[old_index].l1_count--;
-    }
-#endif
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
