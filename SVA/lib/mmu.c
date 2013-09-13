@@ -556,28 +556,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
       SVA_ASSERT ((*page_entry & PG_U),
                   "Kernel attempting to modify code page mapping");
     }
-
-    /* 
-     * When removing a mapping to a page table page by setting the new
-     * reference to zero, verify that the reference count to the old page
-     * table page will not be reduced to less than zero. 
-     */
-    /* 
-     * FIXME: the code to increment reference counts is broken. It happens
-     * in __do_mmu_update. The code is there but currently commented out.
-     * We can't turn this assertion on until that is setup because it will
-     * alwasy be zero presently.
-     */
-    SVA_NOOP_ASSERT(pgRefCount(origPG) >= minRefCountToRemoveMapping, 
-            "MMU: Attempted to remove a mapping to a page with count of 0");
-    
-    /* 
-     * Since we are adding a mapping to a new page, then we update the
-     * count for the new page mapping. First check that we aren't
-     * overflowing the counter.
-     */
-    SVA_NOOP_ASSERT (pgRefCount(newPG) < ((1<<12-1)), 
-            "MMU: overflow for the mapping count");
   }
 
   /* 
@@ -637,7 +615,6 @@ updateNewPageData(page_entry_t mapping) {
   /*
    * If the new mapping is valid, update the counts for it.
    */
-#if 1
   if (mapping & PG_V) {
     /*
      * If the new page is to a PTP and this is the first reference to
@@ -649,9 +626,16 @@ updateNewPageData(page_entry_t mapping) {
      */
 #if 0
     if (isPTP(newPG)){
-        setPTPVA(newPG, newVA);
+      setPTPVA(newPG, newVA);
     }
 #endif
+
+    /* 
+     * Update the reference count for the new page frame. Check that we aren't
+     * overflowing the counter.
+     */
+    SVA_ASSERT (pgRefCount(newPG) < ((1u << 13) - 1), 
+                "MMU: overflow for the mapping count");
     newPG->count++;
 
     /* 
@@ -666,7 +650,6 @@ updateNewPageData(page_entry_t mapping) {
      * table page.
      */
   }
-#endif
 
   return;
 }
