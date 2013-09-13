@@ -161,7 +161,10 @@ typedef struct page_desc_t {
     /* Type of frame */
     enum page_type_t type;
 
-    /* If the page is a PTP mark the VA that maps to it */
+    /*
+     * If the page is a page table page, mark the virtual addres to which it is
+     * mapped.
+     */
     uintptr_t virtAddr;
 
     /* Flag to denote whether the page is a Ghost page table page */
@@ -468,7 +471,7 @@ setMappingReadWrite (page_entry_t mapping) {
  *  - va     -- New va to set
  */
 static inline void setPTPVA(page_desc_t *newPG, uintptr_t va) {
-    newPG->virtAddr = va; 
+  newPG->virtAddr = va; 
 }
 
 /* State whether this kernel virtual address is in the secure memory range */
