@@ -1730,11 +1730,11 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		pml4_entry_t *pml4;
 		pml4 = pmap_pml4e(pmap, va);
 
-        /*
-         * Update the pml4 pdp page
-         */
+		/*
+		 * Update the pml4 pdp page
+		 */
 #ifdef SVA_MMU 
-        sva_update_l4_mapping(pml4, 0);
+		sva_update_l4_mapping(pml4, 0);
 #else
 		*pml4 = 0;
 #endif
@@ -1744,7 +1744,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		pdp_entry_t *pdp;
 		pdp = pmap_pdpe(pmap, va);
 #ifdef SVA_MMU 
-        sva_update_l3_mapping(pdp, 0);
+		sva_update_l3_mapping(pdp, 0);
 #else
 		*pdp = 0;
 #endif
@@ -1753,7 +1753,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 		pd_entry_t *pd;
 		pd = pmap_pde(pmap, va);
 #ifdef SVA_MMU 
-        sva_update_l2_mapping(pd, 0);
+		sva_update_l2_mapping(pd, 0);
 #else
 		*pd = 0;
 #endif
