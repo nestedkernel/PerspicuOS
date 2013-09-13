@@ -712,12 +712,10 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
     updateNewPageData(mapping);
   }
 
-#if ACTIVATE_PROT
   /* If the new page should be read only, mark the entry value as such */
-  if (mapPageReadOnly(getPageDescPtr(*pteptr), mapping)) {
+  if (mapPageReadOnly (getPageDescPtr(*pteptr), mapping)) {
     mapping = setMappingReadOnly(mapping);
   }
-#endif
 
   /* Perform the actual write to into the page table entry */
   page_entry_store ((page_entry_t *) pteptr, mapping);
@@ -2036,33 +2034,33 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
  */
 void
 declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
-    /* Get pointers for the pages */
-    uintptr_t page;
-    uintptr_t btextPage = btext & PG_FRAME;
-    uintptr_t etextPage = etext & PG_FRAME;
+  /* Get pointers for the pages */
+  uintptr_t page;
+  uintptr_t btextPage = btext & PG_FRAME;
+  uintptr_t etextPage = etext & PG_FRAME;
 
-    for (page = btextPage; page < etextPage; ) {
-        /* Get the page frame index and get the codePg to mark */
-        unsigned long index = page / pageSize;
-        page_desc_t codePg = page_desc[index];
+  for (page = btextPage; page < etextPage; ) {
+    /* Get the page frame index and get the codePg to mark */
+    unsigned long index = page / pageSize;
+    page_desc_t codePg = page_desc[index];
 
-#if 0//ACTIVATE_PROT
-        /* Set the code page to read only */
-        page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
-        printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
-                page, *(page_entry_t *)page, romapping);
-        panic("");
-        /* SVA-TODO Get the pte for this kernel page */
-        //page_entry_store((page_entry_t *)page, romapping);             
+#if 0
+    /* Set the code page to read only */
+    page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
+    printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
+            page, *(page_entry_t *)page, romapping);
+    panic("SVA: Stopping to look at code\n");
+    /* SVA-TODO Get the pte for this kernel page */
+    //page_entry_store((page_entry_t *)page, romapping);             
 #endif
 
-        /* Mark the page as both a code page and kernel level */
-        codePg.type = PG_CODE; 
-        codePg.user = 0;
+    /* Mark the page as both a code page and kernel level */
+    codePg.type = PG_CODE; 
+    codePg.user = 0;
 
-        /* Set page to address of the next page */
-        page += pageSize;
-    }
+    /* Set page to address of the next page */
+    page += pageSize;
+  }
 }
 
 /*
