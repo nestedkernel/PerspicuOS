@@ -156,36 +156,6 @@ init_mmu () {
  *****************************************************************************
  */
 
-/*
- * Function: canBeDeclared()
- *
- * Description:
- *  Determine if the page described by the specified page descriptor can be
- *  declared as a page table page.
- */
-static inline unsigned char
-canBeDeclared (page_desc_t * pgDesc) {
-  unsigned char canDeclare = 1;
-  switch (pgDesc->type) {
-    case PG_L1:
-    case PG_L2:
-    case PG_L3:
-    case PG_L4:
-    case PG_LEAF:
-    case PG_TKDATA:
-    case PG_TUDATA:
-    case PG_CODE:
-    case PG_SVA:
-    case PG_GHOST:
-      canDeclare = 0;
-      break;
-    default:
-      break;
-  }
-
-  return canDeclare;
-}
-
 /* Functions for aiding in declare and updating of page tables */
 
 /*
@@ -2136,20 +2106,28 @@ sva_declare_l1_page (uintptr_t frameAddr) {
       break;
   }
 
-  /*
-   * Mark this page frame as an L1 page frame.
-   */
-  pgDesc->type = PG_L1;
-
   /* 
-   * Initialize the page data and page entry. Note that we pass a general
-   * page_entry_t to the function as it enables reuse of code for each of the
-   * entry declaration functions. 
+   * Declare the page as an L1 page (unless it is already an L1 page).
    */
-  init_page_entry(frameAddr);
+  if (pgDesc->type != PG_L1) {
+    /*
+     * Mark this page frame as an L1 page frame.
+     */
+    pgDesc->type = PG_L1;
+
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr);
+  } else {
+    panic ("SVA: declare L1: type = %x\n", pgDesc->type);
+  }
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
+  return;
 }
 
 /*
@@ -2184,19 +2162,24 @@ sva_declare_l2_page (uintptr_t frameAddr) {
 
     default:
       printf ("SVA: %lx %lx\n", page_desc, page_desc + numPageDescEntries);
-      panic ("SVA: Declaring L2 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x\n", frameAddr, pgDesc, pgDesc->type);
+      panic ("SVA: Declaring L2 for wrong page: frameAddr = %lx, pgDesc=%lx, type=%x count=%x\n", frameAddr, pgDesc, pgDesc->type, pgDesc->count);
       break;
   }
 
-  /* Setup metadata tracking for this new page */
-  pgDesc->type = PG_L2;
-
   /* 
-   * Initialize the page data and page entry. Note that we pass a general
-   * page_entry_t to the function as it enables reuse of code for each of the
-   * entry declaration functions. 
+   * Declare the page as an L2 page (unless it is already an L2 page).
    */
-  init_page_entry(frameAddr);
+  if (pgDesc->type != PG_L2) {
+    /* Setup metadata tracking for this new page */
+    pgDesc->type = PG_L2;
+
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr);
+  }
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
@@ -2239,15 +2222,20 @@ sva_declare_l3_page (uintptr_t frameAddr) {
       break;
   }
 
-  /* Mark this page frame as an L3 page frame */
-  pgDesc->type = PG_L3;
-
   /* 
-   * Initialize the page data and page entry. Note that we pass a general
-   * page_entry_t to the function as it enables reuse of code for each of the
-   * entry declaration functions. 
+   * Declare the page as an L3 page (unless it is already an L3 page).
    */
-  init_page_entry(frameAddr);
+  if (pgDesc->type != PG_L3) {
+    /* Mark this page frame as an L3 page frame */
+    pgDesc->type = PG_L3;
+
+    /* 
+     * Initialize the page data and page entry. Note that we pass a general
+     * page_entry_t to the function as it enables reuse of code for each of the
+     * entry declaration functions. 
+     */
+    init_page_entry(frameAddr);
+  }
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
@@ -2299,11 +2287,9 @@ sva_declare_l4_page (uintptr_t frameAddr) {
   }
 
   /* 
-   * We need to make sure that this page is not being used for some other
-   * purpose which would prevent it from being used as a page table page.
-   * Check for that before modifying the page.
+   * Declare the page as an L4 page (unless it is already an L4 page).
    */
-  if (canBeDeclared(pgDesc)) {
+  if (pgDesc->type != PG_L4) {
     /* Mark this page frame as an L4 page frame */
     pgDesc->type = PG_L4;
 
@@ -2341,8 +2327,8 @@ sva_remove_page (uintptr_t paddr) {
   page_desc_t *pgDesc = getPageDescPtr(paddr);
 
   /*
-   * Make sure that this is an L1 page.  We don't want the system software to
-   * trick us.
+   * Make sure that this is a page table page.  We don't want the system
+   * software to trick us.
    */
   switch (pgDesc->type)  {
     case PG_L1:
@@ -2352,7 +2338,12 @@ sva_remove_page (uintptr_t paddr) {
       break;
 
     default:
-      panic ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
+      /* Restore interrupts */
+#if 0
+      printf ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
+#endif
+      sva_exit_critical (rflags);
+      return;
       break;
   }
 
@@ -2365,7 +2356,7 @@ sva_remove_page (uintptr_t paddr) {
    * Note that we check for a reference count of 1 because the page is always
    * mapped into the direct map.
    */
-  if (pgDesc->count == 1) {
+  if ((pgDesc->count == 1) || (pgDesc->count == 0)) {
     /*
      * Mark the page frame as an unused page.
      */
@@ -2374,7 +2365,7 @@ sva_remove_page (uintptr_t paddr) {
     /*
      * Make the page writeable again.
      */
-    __update_mapping (pte, setMappingReadWrite (*pte));
+    page_entry_store ((page_entry_t *) pte, setMappingReadWrite (*pte));
   } else {
     printf ("SVA: remove_page: type=%x count %x\n", pgDesc->type, pgDesc->count);
   }
