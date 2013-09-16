@@ -213,10 +213,8 @@ canBeDeclared (page_desc_t * pgDesc) {
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
     
-#if ACTIVATE_PROT
   /* Disable page protection so we can write to the referencing table entry */
   unprotect_paging();
-#endif
     
 #if DEBUG >= 5
   printf("##### SVA<page_entry_store>: pre-write ");
@@ -231,10 +229,8 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
   printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
 #endif
 
-#if ACTIVATE_PROT
   /* Reenable page protection */
   protect_paging();
-#endif
 }
 
 /*
