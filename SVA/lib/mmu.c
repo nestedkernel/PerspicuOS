@@ -1273,6 +1273,11 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   pml4e_t pml4eVal;
 
   /*
+   * Disable protections.
+   */
+  unprotect_paging();
+
+  /*
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
    */
@@ -1400,6 +1405,13 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   getPageDescPtr (get_pdptePaddr (pml4e, vaddr))->ghostPTP = 1;
   getPageDescPtr (get_pdePaddr (pdpte, vaddr))->ghostPTP = 1;
   getPageDescPtr (get_ptePaddr (pde, vaddr))->ghostPTP = 1;
+
+
+  /*
+   * Re-enable page protections.
+   */
+  protect_paging();
+
   return pml4eVal;
 }
 
