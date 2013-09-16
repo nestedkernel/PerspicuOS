@@ -875,7 +875,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
     /*
      * Mark the secure memory is unmapped in the page tables.
      */
+    unprotect_paging ();
     *secmemp &= ~(PTE_PRESENT);
+    protect_paging ();
 
     /*
      * Flush the secure memory page mappings.
@@ -939,7 +941,9 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
       uintptr_t mask = PTE_PRESENT | PTE_CANWRITE | PTE_CANUSER;
       if ((newThread->secmemPML4e & mask) != mask)
         panic ("SVA: Not Present: %lx %lx\n", newThread->secmemPML4e, mask);
+      unprotect_paging ();
       *secmemp = newThread->secmemPML4e;
+      protect_paging ();
     }
 
     /*
@@ -1443,7 +1447,9 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
     /*
      * Mark the secure memory is unmapped in the page tables.
      */
+    unprotect_paging ();
     *secmemp = 0;
+    protect_paging ();
 
     /*
      * Delete the secure memory mappings from the SVA thread structure.

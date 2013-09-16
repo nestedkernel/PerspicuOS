@@ -157,45 +157,6 @@ init_mmu () {
  */
 
 /*
- * Function: protect_paging()
- *
- * Description:
- *  Actually enforce read only protection. 
- *
- *  Protects the page table entry. This disables the flag in CR0 which bypasses
- *  the RW flag in pagetables. After this call, it is safe to re-enable
- *  interrupts.
- */
-static inline void
-protect_paging(void) {
-  /* The flag value for enabling page protection */
-  const uintptr_t flag = 0x00010000;
-  uintptr_t value = 0;
-  __asm__ __volatile ("movq %%cr0,%0\n": "=r" (value));
-  value |= flag;
-  __asm__ __volatile ("movq %0,%%cr0\n": :"r" (value));
-  return;
-}
-
-/*
- * Function: unprotect_paging
- *
- * Description:
- *  This function disables page protection on x86_64 systems.  It is used by
- *  the SVA VM to allow itself to disable protection to update the in-memory
- *  page tables.
- */
-static inline void
-unprotect_paging(void) {
-  /* The flag value for enabling page protection */
-  const uintptr_t flag = 0xfffffffffffeffff;
-  uintptr_t value;
-  __asm__ __volatile("movq %%cr0,%0\n": "=r"(value));
-  value &= flag;
-  __asm__ __volatile("movq %0,%%cr0\n": : "r"(value));
-}
-
-/*
  * Function: canBeDeclared()
  *
  * Description:
