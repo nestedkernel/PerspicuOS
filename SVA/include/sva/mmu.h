@@ -546,10 +546,10 @@ static inline int isCodePG (page_desc_t *page){ return page->code; }
 static inline int
 readOnlyPageType(page_desc_t *pg) {
   return  (pg->type == PG_L4)
-#if 0
            || (pg->type == PG_L3)
-           || (pg->type == PG_L1)
+#if 0
            || (pg->type == PG_L2)
+           || (pg->type == PG_L1)
            || (pg->type == PG_CODE)
            || (pg->type == PG_SVA)
 #endif
