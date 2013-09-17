@@ -1152,7 +1152,7 @@ freePTPage (unsigned int ptindex) {
   /*
    * Change the type of the page table page.
    */
-  getPageDescPtr(PTPages[ptindex].paddr)->ghostPTP = 1;
+  getPageDescPtr(PTPages[ptindex].paddr)->ghostPTP = 0;
   return;
 }
 
