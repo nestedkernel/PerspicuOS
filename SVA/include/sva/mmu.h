@@ -547,12 +547,12 @@ static inline int
 readOnlyPageType(page_desc_t *pg) {
   return  (pg->type == PG_L4)
            || (pg->type == PG_L3)
-#if 0
            || (pg->type == PG_L2)
+#if 0
            || (pg->type == PG_L1)
+#endif
            || (pg->type == PG_CODE)
            || (pg->type == PG_SVA)
-#endif
            ;
 }
 
