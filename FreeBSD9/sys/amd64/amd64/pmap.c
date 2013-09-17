@@ -3761,7 +3761,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_prot_t access, vm_page_t m,
 	opa = origpte & PG_FRAME;
 
 #ifdef SVA_MMU
-    newMapping = pa == opa;
+	newMapping = pa == opa;
 #endif
 
 	/*
