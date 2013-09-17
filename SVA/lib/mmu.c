@@ -1129,6 +1129,10 @@ allocPTPage (void) {
     return ptindex;
   }
 
+  /*
+   * Set the type of the page to be a ghost page table page.
+   */
+  getPageDescPtr(getPhysicalAddr (p))->ghostPTP = 1;
   return 0;
 }
 
@@ -1144,6 +1148,11 @@ freePTPage (unsigned int ptindex) {
    * Mark the entry in the page table page array as available.
    */
   PTPages[ptindex].valid = 0;
+
+  /*
+   * Change the type of the page table page.
+   */
+  getPageDescPtr(PTPages[ptindex].paddr)->ghostPTP = 1;
   return;
 }
 
