@@ -137,6 +137,12 @@ page_desc_t * getPageDescPtr(unsigned long mapping) {
   return page_desc + frameIndex;
 }
 
+void
+printPageType (unsigned char * p) {
+  printf ("SVA: page type: %p: %x\n", p, getPageDescPtr(getPhysicalAddr(p))->type);
+  return;
+}
+
 /*
  * Function: init_mmu
  *
@@ -687,29 +693,27 @@ init_page_entry (unsigned long frameAddr) {
    * direct map.
    */
   page_entry_t * page_entry = get_pgeVaddr (vaddr);
-#if UNDER_TEST
-#if ACTIVATE_PROT
+
   /*
    * If this should be marked as a read only page, set the RO flag of the pde
    * referencing this new page. This is an update type operation. A value of
    * 0 in bit position 2 configures for no writes.
    */
+#if 0
   if (readOnlyPageType(getPageDescPtr(frameAddr))) {
     page_entry_t newMapping = *page_entry;
     newMapping = setMappingReadOnly(newMapping);
 
-    /* Perform the actual store of the value to the page_entry */
-    page_entry_store(page_entry, newMapping);
+    /*
+     * In the end we want to use this to insert the new declared PTPs so they
+     * pass validation as they are real PTP updates. 
+     */
+    if ((newMapping & PG_PS) == 0)
+      __update_mapping(page_entry, newMapping);
   }
 #endif
 
-#else
-  /* TODO:
-   * In the end we want to use this to insert the new declared PTPs so they
-   * pass validation as they are real PTP updates. 
-   */
-  __update_mapping(page_entry, *page_entry);
-#endif
+  return;
 }
 
 /*
