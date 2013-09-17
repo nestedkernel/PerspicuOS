@@ -1619,6 +1619,10 @@ pmap_add_delayed_free_list(vm_page_t m, vm_page_t *free, boolean_t set_PG_ZERO)
 	else
 		m->flags &= ~PG_ZERO;
 	m->right = *free;
+#if 1
+  /* Remove this page if it is a page table page */
+	sva_remove_page (VM_PAGE_TO_PHYS(m));
+#endif
 	*free = m;
 }
 	
@@ -1785,9 +1789,6 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_offset_t va, vm_page_t m,
 	 * Put page on a list so that it is released after
 	 * *ALL* TLB shootdown is done
 	 */
-#ifdef SVA_MMU
-	sva_remove_page (VM_PAGE_TO_PHYS(m));
-#endif
 	pmap_add_delayed_free_list(m, free, TRUE);
 	
 	return (1);
