@@ -256,7 +256,7 @@ static page_desc_t page_desc[numPageDescEntries];
 
 extern uintptr_t getPhysicalAddr (void * v);
 extern pml4e_t mapSecurePage (unsigned char * v, uintptr_t paddr);
-extern void unmapSecurePage (unsigned char * v);
+extern void unmapSecurePage (unsigned char * cr3, unsigned char * v);
 
 /*
  *****************************************************************************

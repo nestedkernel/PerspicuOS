@@ -789,9 +789,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   struct SVAThread * newThread = (struct SVAThread *)(newint);
   sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
 
-  /* Local CR3 register */
-  uintptr_t cr3;
-
   /* Variables for registers for debugging */
   uintptr_t rsp, rbp;
 
@@ -867,6 +864,13 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * and caches that might contain it.
    */
   if (oldThread->secmemSize) {
+    /*
+     * Save the CR3 register.  We'll need it later for sva_release_stack().
+     */
+    uintptr_t cr3;
+    __asm__ __volatile__ ("movq %%cr3, %0\n" : "=r" (cr3));
+    old->cr3 = cr3;
+
     /*
      * Get a pointer into the page tables for the secure memory region.
      */
@@ -1415,7 +1419,7 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
       return;
     }
   } else {
-    panic ("SVA: Invalid translation handle\n");
+    panic ("SVA: Out of range translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
     return;
   }
 
@@ -1508,6 +1512,13 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   extern sva_key_t * installKey (sva_key_t * keyp, intptr_t size);
   threadp->ghostKey = installKey (&(transp->key), sizeof (sva_key_t));
 
+  /*
+   * Invalidate the translation handle since we've now used it.
+   */
+  memset (&(transp->key), 0, sizeof (sva_key_t));
+  transp->entryPoint = 0;
+  transp->used = 0;
+
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
 
@@ -1534,8 +1545,13 @@ sva_release_stack (uintptr_t id) {
     return;
 
   /*
-   * TODO: Release ghost memory.
+   * Release ghost memory.  Be sure to use the value of CR3 belonging to the
+   * thread that is being released.
    */
+  uintptr_t cr3 = ((((uintptr_t)new->cr3) & 0x000ffffffffff000u));
+  for (uintptr_t size=0; size < newThread->secmemSize; size += X86_PAGE_SIZE) {
+    unmapSecurePage ((unsigned char *)cr3, SECMEMSTART + size);
+  }
 
   /*
    * Mark the integer state as invalid.  This will prevent it from being

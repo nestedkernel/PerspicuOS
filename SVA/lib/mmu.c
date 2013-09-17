@@ -1388,6 +1388,8 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
  *  Unmap a single frame of secure memory from the specified virtual address.
  *
  * Inputs:
+ *  cr3   - The value to use for the CR3 register (provides the starting point
+ *          for virtual to physical page translation).
  *  vaddr - The virtual address to unmap.
  *
  * TODO:
@@ -1395,13 +1397,13 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
  *  for this page.
  */
 void
-unmapSecurePage (unsigned char * v) {
+unmapSecurePage (unsigned char * cr3, unsigned char * v) {
   /*
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
    */
   uintptr_t vaddr = (uintptr_t) v;
-  pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
+  pml4e_t * pml4e = get_pml4eVaddr (cr3, vaddr);
   if (!isPresent (pml4e)) {
     panic ("SVA: unmapSecurePage: No PML4E!\n");
   }
@@ -1411,11 +1413,13 @@ unmapSecurePage (unsigned char * v) {
    */
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
-    panic ("SVA: unmapSecurePage: No PDPTE!\n");
+    printf ("SVA: unmapSecurePage: No PDPTE!\n");
+    return;
   }
 
   if ((*pdpte) & PTE_PS) {
-    panic ("unmapSecurePage: PDPTE has PS BIT\n");
+    printf ("unmapSecurePage: PDPTE has PS BIT\n");
+    return;
   }
 
   /*
@@ -1423,11 +1427,13 @@ unmapSecurePage (unsigned char * v) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
-    panic ("SVA: unmapSecurePage: No PDE!\n");
+    printf ("SVA: unmapSecurePage: No PDE!\n");
+    return;
   }
 
   if ((*pde) & PTE_PS) {
-    panic ("unmapSecurePage: PDE has PS BIT\n");
+    printf ("unmapSecurePage: PDE has PS BIT\n");
+    return;
   }
 
   /*
@@ -1435,12 +1441,14 @@ unmapSecurePage (unsigned char * v) {
    */
   pte_t * pte = get_pteVaddr (pde, vaddr);
   if (!isPresent (pte)) {
-    panic ("SVA: unmapSecurePage: PTE is not present!\n");
+    printf ("SVA: unmapSecurePage: PTE is not present!\n");
+    return;
   }
 
   /*
    * Modify the PTE so that the page is not present.
    */
+  unprotect_paging();
   *pte = 0;
 
   /*
@@ -1472,6 +1480,7 @@ unmapSecurePage (unsigned char * v) {
     }
   }
 
+  protect_paging();
   return;
 }
 

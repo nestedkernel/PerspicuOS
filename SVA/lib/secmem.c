@@ -205,7 +205,7 @@ freeSecureMemory (void) {
     /*
      * Unmap the memory from the secure memory virtual address space.
      */
-    unmapSecurePage (p);
+    unmapSecurePage (get_pagetable(), p);
 
     /*
      * Release the memory to the operating system.  Note that we must first
