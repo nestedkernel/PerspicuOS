@@ -432,7 +432,7 @@ pageVA(page_desc_t pg){
  */
 static inline page_entry_t
 setMappingReadOnly (page_entry_t mapping) { 
-  return (mapping & ~PG_RW); 
+  return (mapping & ~((uintptr_t)(PG_RW))); 
 }
 
 /*
