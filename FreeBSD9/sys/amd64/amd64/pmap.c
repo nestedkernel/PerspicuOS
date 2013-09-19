@@ -3449,8 +3449,12 @@ retry:
 	if ((prot & VM_PROT_EXECUTE) == 0)
 		newpde |= pg_nx;
 	if (newpde != oldpde) {
+#if 0
 		if (!atomic_cmpset_long(pde, oldpde, newpde))
 			goto retry;
+#else
+    sva_update_l2_mapping (pde, newpde);
+#endif
 		if (oldpde & PG_G)
 			pmap_invalidate_page(pmap, sva);
 		else
@@ -3564,8 +3568,12 @@ retry:
 				pbits |= pg_nx;
 
 			if (pbits != obits) {
+#if 0
 				if (!atomic_cmpset_long(pte, obits, pbits))
 					goto retry;
+#else
+				sva_update_l1_mapping (pte, pbits);
+#endif
 				if (obits & PG_G)
 					pmap_invalidate_page(pmap, sva);
 				else
@@ -3615,8 +3623,12 @@ setpde:
 		 * When PG_M is already clear, PG_RW can be cleared without
 		 * a TLB invalidation.
 		 */
+#if 0
 		if (!atomic_cmpset_long(firstpte, newpde, newpde & ~PG_RW))
 			goto setpde;
+#else
+		sva_update_l1_mapping (firstpte, newpde & ~PG_RW);
+#endif
 		newpde &= ~PG_RW;
 	}
 
@@ -3640,8 +3652,12 @@ setpte:
 			 * When PG_M is already clear, PG_RW can be cleared
 			 * without a TLB invalidation.
 			 */
+#if 0
 			if (!atomic_cmpset_long(pte, oldpte, oldpte & ~PG_RW))
 				goto setpte;
+#else
+			sva_update_l1_mapping (pte, oldpte & ~PG_RW);
+#endif
 			oldpte &= ~PG_RW;
 			oldpteva = (oldpte & PG_FRAME & PDRMASK) |
 			    (va & ~PDRMASK);
@@ -3864,7 +3880,12 @@ validate:
 		if (origpte & PG_V) {
 			invlva = FALSE;
             /* SVA TODO Figure out what the heck this does */
+#if 0
 			origpte = pte_load_store(pte, newpte);
+#else
+      origpte = *pte;
+			sva_update_l1_mapping(pte, newpte);
+#endif
 			if (origpte & PG_A) {
 				if (origpte & PG_MANAGED)
 					vm_page_aflag_set(om, PGA_REFERENCED);
@@ -4312,10 +4333,18 @@ retry:
 	pte = pmap_pde_to_pte(pde, va);
 	if (wired && (*pte & PG_W) == 0) {
 		pmap->pm_stats.wired_count++;
+#if 0
 		atomic_set_long(pte, PG_W);
+#else
+    sva_update_l1_mapping (pte, *pte | PG_W);
+#endif
 	} else if (!wired && (*pte & PG_W) != 0) {
 		pmap->pm_stats.wired_count--;
+#if 0
 		atomic_clear_long(pte, PG_W);
+#else
+    sva_update_l1_mapping (pte, *pte &= (~PG_W));
+#endif
 	}
 out:
 	if (are_queues_locked)
@@ -4950,9 +4979,13 @@ pmap_remove_write(vm_page_t m)
 retry:
 		oldpte = *pte;
 		if (oldpte & PG_RW) {
+#if 0
 			if (!atomic_cmpset_long(pte, oldpte, oldpte &
 			    ~(PG_RW | PG_M)))
 				goto retry;
+#else
+			sva_update_l1_mapping (pte, oldpte & ~(PG_RW | PG_M));
+#endif
 			if ((oldpte & PG_M) != 0)
 				vm_page_dirty(m);
 			pmap_invalidate_page(pmap, pv->pv_va);
@@ -5193,11 +5226,20 @@ pmap_pte_attr(pt_entry_t *pte, int cache_bits)
 	 * The cache mode bits are all in the low 32-bits of the
 	 * PTE, so we can just spin on updating the low 32-bits.
 	 */
+#if 0
 	do {
 		opte = *(u_int *)pte;
 		npte = opte & ~PG_PTE_CACHE;
 		npte |= cache_bits;
 	} while (npte != opte && !atomic_cmpset_int((u_int *)pte, opte, npte));
+#else
+	do {
+		opte = *(u_int *)pte;
+		npte = opte & ~PG_PTE_CACHE;
+		npte |= cache_bits;
+    sva_update_l1_mapping (pte, npte);
+	} while (npte != opte);
+#endif
 }
 
 /* Adjust the cache mode for a 2MB page mapped via a PDE. */
@@ -5210,11 +5252,21 @@ pmap_pde_attr(pd_entry_t *pde, int cache_bits)
 	 * The cache mode bits are all in the low 32-bits of the
 	 * PDE, so we can just spin on updating the low 32-bits.
 	 */
+#if 0
 	do {
 		opde = *(u_int *)pde;
 		npde = opde & ~PG_PDE_CACHE;
 		npde |= cache_bits;
 	} while (npde != opde && !atomic_cmpset_int((u_int *)pde, opde, npde));
+#else
+  /* SVA: SVA requires the use of intrinsics to update PDEs */
+	do {
+		opde = *(u_int *)pde;
+		npde = opde & ~PG_PDE_CACHE;
+		npde |= cache_bits;
+    sva_update_l2_mapping (pde, npde);
+	} while (npde != opde);
+#endif
 }
 
 /*
