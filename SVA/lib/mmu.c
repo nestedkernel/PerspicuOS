@@ -677,25 +677,22 @@ initDeclaredPage (unsigned long frameAddr) {
   page_entry_t * page_entry = get_pgeVaddr (vaddr);
 
   /*
-   * If this should be marked as a read only page, set the RO flag of the pde
-   * referencing this new page. This is an update type operation. A value of
-   * 0 in bit position 2 configures for no writes.
+   * Make the direct map entry for the page read-only to ensure that the OS
+   * goes through SVA to make page table changes.
+   */
+  page_entry_t newMapping = *page_entry;
+  newMapping = setMappingReadOnly(newMapping);
+
+  /*
+   * In the end we want to use this to insert the new declared PTPs so they
+   * pass validation as they are real PTP updates. 
    */
 #if 0
-  if (readOnlyPageType(getPageDescPtr(frameAddr))) {
-    page_entry_t newMapping = *page_entry;
-    newMapping = setMappingReadOnly(newMapping);
-
-    /*
-     * In the end we want to use this to insert the new declared PTPs so they
-     * pass validation as they are real PTP updates. 
-     */
-    if ((newMapping & PG_PS) == 0)
-      __update_mapping(page_entry, newMapping);
+  if ((newMapping & PG_PS) == 0) {
+    page_entry_store (page_entry, newMapping);
   }
 #endif
 
-  memset (vaddr, 0, X86_PAGE_SIZE);
   return;
 }
 
