@@ -87,6 +87,9 @@ static inline void __clean_and_restore_ptp (pte_t * pageEntryPtr);
  *****************************************************************************
  */
 
+/* Flags whether the MMU has been initialized */
+static unsigned char mmuIsInitialized = 0;
+
 /*
  * Struct: PTInfo
  *
@@ -1611,6 +1614,10 @@ sva_mm_load_pgtable (void * pg) {
   print_regs();
 #endif 
 
+  if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
+    printf ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
+  }
+
   /* 
    * Unset page protection so that we can write to cr3 and can write into
    * the top-level page-table page if necessary.
@@ -1807,7 +1814,9 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
 
     case PG_L3:
       
-      thisPg->type = PG_L3;       /* Set the page type to L3 */
+      /* TODO: Determine why we want to reassign an L4 to an L3 */
+      if (thisPg->type != PG_L4)
+        thisPg->type = PG_L3;       /* Set the page type to L3 */
       thisPg->user = 0;           /* Set the priv flag to kernel */
       ++(thisPg->count);
       subLevelPgType = PG_L2;
@@ -2090,6 +2099,10 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     printf("Do we make it here?");
 #endif
 
+    /*
+     * Note that the MMU is now initialized.
+     */
+    mmuIsInitialized = 1;
 }
 
 /*
