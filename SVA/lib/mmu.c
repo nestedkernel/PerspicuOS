@@ -34,9 +34,6 @@
 /* Used to denote obsolete code that hasn't been deleted yet */
 #define OBSOLETE            0   
 
-/* Denotes whether or not we are activating read only protection */
-#define ACTIVATE_PROT       0
-
 /* Define whether to enable DEBUG blocks #if statements */
 #define DEBUG               0
 
@@ -1608,9 +1605,7 @@ sva_mm_load_pgtable (void * pg) {
  */
 void 
 sva_load_cr0 (unsigned long val) {
-#if ACTIVATE_PROT
     val |= CR0_WP;
-#endif 
     _load_cr0(val);
 }
 
