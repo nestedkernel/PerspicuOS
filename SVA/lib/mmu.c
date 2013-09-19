@@ -31,17 +31,8 @@
 /* Used to denote unimplemented code */
 #define NOT_YET_IMPLEMENTED 0   
 
-/* Code that is under test and may cause issues */
-#define UNDER_TEST          1   
-
-/* Used to temporarily disable code for any reason */
-#define TMP_DISABLED        0   
-
 /* Used to denote obsolete code that hasn't been deleted yet */
 #define OBSOLETE            0   
-
-/* Denotes code that is in for some type of testing but is only temporary */
-#define TMP_TEST_CODE       1
 
 /* Denotes whether or not we are activating read only protection */
 #define ACTIVATE_PROT       0
