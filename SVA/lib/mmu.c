@@ -625,23 +625,25 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
     updateNewPageData(mapping);
   }
 
+#if 0
   /* If the new page should be read only, mark the entry value as such */
   if (mapPageReadOnly (getPageDescPtr(*pteptr), mapping)) {
     mapping = setMappingReadOnly(mapping);
   }
+#endif
 
   /* Perform the actual write to into the page table entry */
   page_entry_store ((page_entry_t *) pteptr, mapping);
 }
 
 /*
- * Function: init_page_entry
+ * Function: initDeclaredPage
  *
  * Description:
- *  This function zeros out the physical page pointed to by frameAddr and sets
- *  as read only the page_entry. The page_entry is agnostic as to which level
- *  page table entry we are modifying, because the format of the entry is the
- *  same in all cases. 
+ *  This function zeros out the physical page pointed to by frameAddr and
+ *  changes the permissions of the page in the direct map to read-only.
+ *  This function is agnostic as to which level page table entry we are
+ *  modifying because the format of the entry is the same in all cases. 
  *
  * Assumption: This function should only be called by a declare intrinsic.
  *      Otherwise it has side effects that may break the system.
@@ -655,7 +657,7 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
  *      address.
  */
 static inline void 
-init_page_entry (unsigned long frameAddr) {
+initDeclaredPage (unsigned long frameAddr) {
   /*
    * Get the direct map virtual address of the physical address.
    */
@@ -693,6 +695,7 @@ init_page_entry (unsigned long frameAddr) {
   }
 #endif
 
+  memset (vaddr, 0, X86_PAGE_SIZE);
   return;
 }
 
@@ -2083,7 +2086,7 @@ sva_declare_l1_page (uintptr_t frameAddr) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr);
+    initDeclaredPage(frameAddr);
   } else {
     panic ("SVA: declare L1: type = %x\n", pgDesc->type);
   }
@@ -2141,7 +2144,7 @@ sva_declare_l2_page (uintptr_t frameAddr) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr);
+    initDeclaredPage(frameAddr);
   }
 
   /* Restore interrupts */
@@ -2197,7 +2200,7 @@ sva_declare_l3_page (uintptr_t frameAddr) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr);
+    initDeclaredPage(frameAddr);
   }
 
   /* Restore interrupts */
@@ -2261,7 +2264,7 @@ sva_declare_l4_page (uintptr_t frameAddr) {
      * page_entry_t to the function as it enables reuse of code for each of the
      * entry declaration functions. 
      */
-    init_page_entry(frameAddr);
+    initDeclaredPage(frameAddr);
   }
 
   /* Restore interrupts */
