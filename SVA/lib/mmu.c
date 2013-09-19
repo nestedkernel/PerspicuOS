@@ -178,7 +178,6 @@ init_mmu () {
  */
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
-    
   /* Disable page protection so we can write to the referencing table entry */
   unprotect_paging();
     
@@ -2420,24 +2419,6 @@ void llva_end_mem_init(pgd_t * pgdptr, unsigned long max_pfn,
 }
 
 #endif
-
-/* 
- * Function: sva_update_mapping()
- *
- * Description:
- *  This function updates the entry to the page table page, and is agnostic to
- *  the level of page table. The particular needs for each page table level are
- *  handled in the __update_mapping function.
- *
- * Inputs:
- *  pteptr - The location within the page tabel page in which the new
- *           translation should be placed.
- *  val    - The new translation to insert into the page table.
- */
-void
-sva_update_mapping(page_entry_t * pteptr, page_entry_t val) {
-    __update_mapping(pteptr,val);
-}
 
 /* 
  * Function: sva_remove_mapping()
