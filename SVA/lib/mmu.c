@@ -79,7 +79,6 @@ static inline uintptr_t get_ptePaddr (pde_t * pde, uintptr_t vaddr);
  * Mapping update function prototypes.
  */
 static inline void __update_mapping (pte_t * pageEntryPtr, page_entry_t val);
-static inline void __clean_and_restore_ptp (pte_t * pageEntryPtr);
 
 /*
  *****************************************************************************
@@ -195,18 +194,8 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
   /* Disable page protection so we can write to the referencing table entry */
   unprotect_paging();
     
-#if DEBUG >= 5
-  printf("##### SVA<page_entry_store>: pre-write ");
-  printf("Addr:0x%p, Val:0x%lx: \n", page_entry, *page_entry);
-#endif
-    
-    /* Write the new value to the page_entry */
-    *page_entry = newVal;
-
-#if DEBUG >= 5
-  printf("##### SVA<page_entry_store>: post-write ");
-  printf("Addr:0x%p, Val:0x%lx \n", page_entry, *page_entry);
-#endif
+  /* Write the new value to the page_entry */
+  *page_entry = newVal;
 
   /* Reenable page protection */
   protect_paging();
@@ -840,53 +829,6 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
-}
-
-/*
- * Function: __clean_and_restore_ptp
- *
- * Description:
- *  This function takes a pte pointer to a page that has been identified as a
- *  protected page (PTPs as well as code pages) and releases the VG resources
- *  associated with the page, as well as zero and make the page writeable
- *  again. 
- *
- *  It is important to note that the pte for a page-translation-page will be a
- *  pte in the DMAP region. This is due to the fact that access to the PTPs is
- *  managed via that region as only one VA is given to each PTP. 
- *
- * Inputs:
- *  - pageEntryPtr  : A pointer to a pte that points to the given read only
- *                    page. 
- */
-static inline void 
-__clean_and_restore_ptp (pte_t * pageEntryPtr) {
-  /* Get the page_desc for the newly declared l4 page frame */
-  page_desc_t *pgDesc = getPageDescPtr(getPhysicalAddr (pageEntryPtr));
-
-  /*
-   * Check that there are no references to this page (i.e., there is no page
-   * table entry that refers to this physical page frame).  If there is a
-   * mapping, then someone is still using it as a page table page).
-   */
-  if (pgDesc->count) {
-    panic ("SVA: sva_remove_mapping: Still referenced: %lx\n", pageEntryPtr);
-  }
-
-  /*
-   * Mark the page frame as an unused page.
-   */
-  pgDesc->type = PG_UNUSED;
-
-  /*
-   * Make the page writeable again.  Be sure to disable page protection since
-   * page table pages are not writeable.
-   */
-  unprotect_paging();
-  __update_mapping (pageEntryPtr, setMappingReadWrite (*pageEntryPtr));
-  protect_paging();
-
-  return;
 }
 
 /* Functions for finding the virtual address of page table components */
@@ -2534,16 +2476,7 @@ sva_remove_mapping(page_entry_t * pteptr) {
   page_desc_t *pgDesc = getPageDescPtr(*pteptr);
 
   /* Update the page table mapping to zero */
-  __update_mapping(pteptr, ZERO_MAPPING);
-
-  /* 
-   * If the page is a read only type then we need to zero it and mark it as
-   * writeable again. This function also releases the virtual ghost data
-   * structures for the page. 
-   */
-  if (readOnlyPageType(pgDesc)) {
-    __clean_and_restore_ptp (pteptr);
-  }
+  __update_mapping (pteptr, ZERO_MAPPING);
 
   /* Restore interrupts */
   sva_exit_critical (rflags);
