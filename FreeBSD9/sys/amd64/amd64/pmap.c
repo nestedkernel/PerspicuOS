@@ -5066,7 +5066,11 @@ pmap_ts_referenced(vm_page_t m)
 			    " found a 2mpage in page %p's pv list", m));
 			pte = pmap_pde_to_pte(pde, pv->pv_va);
 			if ((*pte & PG_A) != 0) {
+#if 0
 				atomic_clear_long(pte, PG_A);
+#else
+        sva_update_l1_mapping(pte, *pte & (~PG_A));
+#endif
 				pmap_invalidate_page(pmap, pv->pv_va);
 				rtval++;
 				if (rtval > 4)
@@ -5127,10 +5131,14 @@ pmap_clear_modify(vm_page_t m)
 					pte = pmap_pde_to_pte(pde, va);
 					oldpte = *pte;
 					if ((oldpte & PG_V) != 0) {
+#if 0
 						while (!atomic_cmpset_long(pte,
 						    oldpte,
 						    oldpte & ~(PG_M | PG_RW)))
 							oldpte = *pte;
+#else
+            sva_update_l1_mapping (pte, oldpte & ~(PG_M | PG_RW));
+#endif
 						vm_page_dirty(m);
 						pmap_invalidate_page(pmap, va);
 					}
@@ -5147,7 +5155,11 @@ pmap_clear_modify(vm_page_t m)
 		    " a 2mpage in page %p's pv list", m));
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
 		if ((*pte & (PG_M | PG_RW)) == (PG_M | PG_RW)) {
+#if 0
 			atomic_clear_long(pte, PG_M);
+#else
+      sva_update_l1_mapping (pte, *pte & (~PG_M));
+#endif
 			pmap_invalidate_page(pmap, pv->pv_va);
 		}
 		PMAP_UNLOCK(pmap);
@@ -5204,7 +5216,11 @@ pmap_clear_reference(vm_page_t m)
 		    " a 2mpage in page %p's pv list", m));
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
 		if (*pte & PG_A) {
+#if 0
 			atomic_clear_long(pte, PG_A);
+#else
+			sva_update_l1_mapping(pte, *pte & (~PG_A));
+#endif
 			pmap_invalidate_page(pmap, pv->pv_va);
 		}
 		PMAP_UNLOCK(pmap);
