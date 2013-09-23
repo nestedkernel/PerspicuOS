@@ -881,25 +881,25 @@ static inline pml4e_t *
 get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
   /* Offset into the page table */
   uintptr_t offset = ((vaddr >> 39) << 3) & vmask;
-  return (pml4e_t *) getVirtual (((uintptr_t)cr3) + offset);
+  return (pml4e_t *) getVirtual (((uintptr_t)cr3) | offset);
 }
 
 static inline pdpte_t *
 get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
-  return (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) + offset);
+  return (pdpte_t *) getVirtual ((*pml4e & 0x000ffffffffff000u) | offset);
 }
 
 static inline pde_t *
 get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
-  return (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) + offset);
+  return (pde_t *) getVirtual ((*pdpte & 0x000ffffffffff000u) | offset);
 }
 
 static inline pte_t *
 get_pteVaddr (pde_t * pde, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr >> 12) << 3) & vmask;
-  return (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) + offset);
+  return (pte_t *) getVirtual ((*pde & 0x000ffffffffff000u) | offset);
 }
 
 /*
@@ -909,25 +909,25 @@ static inline uintptr_t
 get_pml4ePaddr (unsigned char * cr3, uintptr_t vaddr) {
   /* Offset into the page table */
   uintptr_t offset = ((vaddr >> 39) << 3) & vmask;
-  return (((uintptr_t)cr3) + offset);
+  return (((uintptr_t)cr3) | offset);
 }
 
 static inline uintptr_t
 get_pdptePaddr (pml4e_t * pml4e, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
-  return ((*pml4e & 0x000ffffffffff000u) + offset);
+  return ((*pml4e & 0x000ffffffffff000u) | offset);
 }
 
 static inline uintptr_t
 get_pdePaddr (pdpte_t * pdpte, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
-  return ((*pdpte & 0x000ffffffffff000u) + offset);
+  return ((*pdpte & 0x000ffffffffff000u) | offset);
 }
 
 static inline uintptr_t
 get_ptePaddr (pde_t * pde, uintptr_t vaddr) {
   uintptr_t offset = ((vaddr >> 12) << 3) & vmask;
-  return ((*pde & 0x000ffffffffff000u) + offset);
+  return ((*pde & 0x000ffffffffff000u) | offset);
 }
 
 /* Functions for querying information about a page table entry */

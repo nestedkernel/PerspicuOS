@@ -79,7 +79,7 @@ static const uintptr_t USERSTART = 0x0000000000000000u;
 static const uintptr_t USEREND = 0x00007fffffffffffu;
 
 /* Mask to get the proper number of bits from the virtual address */
-static const uintptr_t vmask = 0x0000000000000fffu;
+static const uintptr_t vmask = 0x0000000000000ff8u;
 
 /* The number of references allowed per page table page */
 static const int maxPTPVARefs = 1;
