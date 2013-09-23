@@ -4426,8 +4426,8 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr, vm_size_t len,
 			    pmap_pv_insert_pde(dst_pmap, addr, srcptepaddr &
 			    PG_PS_FRAME))) {
 #ifdef SVA_MMU
-                /* Update the pde to include the new mapping */
-                sva_update_l2_mapping(pde, srcptepaddr & ~PG_W);
+				/* Update the pde to include the new mapping */
+				sva_update_l2_mapping(pde, srcptepaddr & ~PG_W);
 #else
 				*pde = srcptepaddr & ~PG_W;
 #endif
@@ -4472,8 +4472,12 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr, vm_size_t len,
 					 * accessed (referenced) bits
 					 * during the copy.
 					 */
+#ifdef SVA_MMU
+					sva_update_l1_mapping (dst_pte, ptetemp & ~(PG_W | PG_M | PG_A));
+#else
 					*dst_pte = ptetemp & ~(PG_W | PG_M |
 					    PG_A);
+#endif
 					pmap_resident_count_inc(dst_pmap, 1);
 	 			} else {
 					free = NULL;
