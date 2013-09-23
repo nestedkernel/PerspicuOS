@@ -660,37 +660,47 @@ initDeclaredPage (unsigned long frameAddr) {
   /*
    * Get the direct map virtual address of the physical address.
    */
-  unsigned char * vaddr = getVirtual (frameAddr);
+  volatile unsigned char * vaddr = getVirtual (frameAddr);
 
   /*
    * Initialize the contents of the page to zero.  This will ensure that no
    * existing page translations which have not been vetted exist within the
    * page.
    */
+#if 1
   memset (vaddr, 0, X86_PAGE_SIZE);
+#endif
 
   /*
    * Get a pointer to the page table entry that maps the physical page into the
    * direct map.
    */
   page_entry_t * page_entry = get_pgeVaddr (vaddr);
+  if (page_entry) {
+    /*
+     * Make the direct map entry for the page read-only to ensure that the OS
+     * goes through SVA to make page table changes.
+     */
+    page_entry_t newMapping = *page_entry;
+    newMapping = setMappingReadOnly(newMapping);
 
-  /*
-   * Make the direct map entry for the page read-only to ensure that the OS
-   * goes through SVA to make page table changes.
-   */
-  page_entry_t newMapping = *page_entry;
-  newMapping = setMappingReadOnly(newMapping);
-
-  /*
-   * In the end we want to use this to insert the new declared PTPs so they
-   * pass validation as they are real PTP updates. 
-   */
+    /*
+     * In the end we want to use this to insert the new declared PTPs so they
+     * pass validation as they are real PTP updates. 
+     */
 #if 0
-  if ((newMapping & PG_PS) == 0) {
-    page_entry_store (page_entry, newMapping);
-  }
+    if ((newMapping & PG_PS) == 0) {
+      page_entry_store (page_entry, 0);
+      const uintptr_t flag = 0x00010000 | 0x80000000;
+      uintptr_t cr0 = 0;
+      __asm__ __volatile ("movq %%cr0,%0\n": "=r" (cr0));
+      if ((cr0 & flag) == flag) {
+        memset (vaddr, 0, X86_PAGE_SIZE);
+        panic ("SVA: Failed to prevent write: cr0=%lx: %lx -> %lx: %lx = %lx\n", cr0, vaddr, frameAddr, page_entry, *page_entry);
+      }
+    }
 #endif
+  }
 
   return;
 }
@@ -829,52 +839,58 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
  *  of larger page sizes.
  * 
  * Inputs:
- *  - vaddr     : Virtual Address to find entry for
+ *  vaddr - Virtual Address to find entry for
+ *
+ * Return value:
+ *  0 - There is no mapping for this virtual address.
+ *  Otherwise, a pointer to the PTE that controls the mapping of this virtual
+ *  address is returned.
  */
 static inline page_entry_t * 
 get_pgeVaddr (uintptr_t vaddr) {
-    page_entry_t *pge;
+  /* Pointer to the page table entry for the virtual address */
+  page_entry_t *pge = 0;
 
-    /* Get the base of the pml4 to traverse */
-    uintptr_t cr3 = get_pagetable();
+  /* Get the base of the pml4 to traverse */
+  uintptr_t cr3 = get_pagetable();
+  if ((cr3 & 0xfffffffffffff000u) == 0)
+    return 0;
 
-    /* Get the VA of the pml4e for this vaddr */
-    pml4e_t *pml4e = get_pml4eVaddr (cr3, vaddr);
+  /* Get the VA of the pml4e for this vaddr */
+  pml4e_t *pml4e = get_pml4eVaddr (cr3, vaddr);
 
+  if (*pml4e & PG_V) {
     /* Get the VA of the pdpte for this vaddr */
     pdpte_t *pdpte = get_pdpteVaddr (pml4e, vaddr);
-
-    /* 
-     * The PDPE can be configurd in large page mode. If it is then we have the
-     * entry corresponding to the given vaddr If not then we go deeper in the
-     * page walk.
-     */
-    if(*pdpte & PG_PS) {
+    if (*pdpte & PG_V) {
+      /* 
+       * The PDPE can be configurd in large page mode. If it is then we have the
+       * entry corresponding to the given vaddr If not then we go deeper in the
+       * page walk.
+       */
+      if (*pdpte & PG_PS) {
         pge = pdpte;
-#if DEBUG >=5
-        printf("Found PS=1 in PDPE: dealing with 1GB page\n");
-#endif
-    } else {
+      } else {
         /* Get the pde associated with this vaddr */
         pde_t *pde = get_pdeVaddr (pdpte, vaddr);
-        
-        /* 
-         * As is the case with the pdpte, if the pde is configured for large
-         * page size then we have the corresponding entry. Otherwise we need to
-         * traverse one more level, which is the last. 
-         */
-        if (*pde & PG_PS) {
+        if (*pde & PG_V) {
+          /* 
+           * As is the case with the pdpte, if the pde is configured for large
+           * page size then we have the corresponding entry. Otherwise we need
+           * to traverse one more level, which is the last. 
+           */
+          if (*pde & PG_PS) {
             pge = pde;
-#if DEBUG >=5
-            printf("Found PS=1 in PDE: dealing with 2MB page\n");
-#endif
-        }
-        else 
+          } else {
             pge = get_pteVaddr (pde, vaddr);
+          }
+        }
+      }
     }
-    
-    /* Return the entry corresponding to this vaddr */
-    return pge;
+  }
+
+  /* Return the entry corresponding to this vaddr */
+  return pge;
 }
 
 static inline pml4e_t *
