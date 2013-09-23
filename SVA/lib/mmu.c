@@ -896,28 +896,28 @@ get_pgeVaddr (uintptr_t vaddr) {
 static inline pml4e_t *
 get_pml4eVaddr (unsigned char * cr3, uintptr_t vaddr) {
   /* Offset into the page table */
-  uintptr_t offset = ((vaddr >> 39) << 3) & vmask;
+  uintptr_t offset = (vaddr >> (39 - 3)) & vmask;
   return (pml4e_t *) getVirtual (((uintptr_t)cr3) | offset);
 }
 
 static inline pdpte_t *
 get_pdpteVaddr (pml4e_t * pml4e, uintptr_t vaddr) {
   uintptr_t base   = (*pml4e) & 0x000ffffffffff000u;
-  uintptr_t offset = ((vaddr  >> 30) << 3) & vmask;
+  uintptr_t offset = (vaddr >> (30 - 3)) & vmask;
   return (pdpte_t *) getVirtual (base | offset);
 }
 
 static inline pde_t *
 get_pdeVaddr (pdpte_t * pdpte, uintptr_t vaddr) {
   uintptr_t base   = (*pdpte) & 0x000ffffffffff000u;
-  uintptr_t offset = ((vaddr  >> 21) << 3) & vmask;
+  uintptr_t offset = (vaddr >> (21 - 3)) & vmask;
   return (pde_t *) getVirtual (base | offset);
 }
 
 static inline pte_t *
 get_pteVaddr (pde_t * pde, uintptr_t vaddr) {
   uintptr_t base   = (*pde) & 0x000ffffffffff000u;
-  uintptr_t offset = ((vaddr >> 12) << 3) & vmask;
+  uintptr_t offset = (vaddr >> (12 - 3)) & vmask;
   return (pte_t *) getVirtual (base | offset);
 }
 
