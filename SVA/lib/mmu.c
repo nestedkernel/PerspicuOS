@@ -1839,19 +1839,6 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
     return;
   }
 
-#if 0
-  /*
-   * Given a valid and active entry set the read only bit for the
-   * mapping before traversing the page table page. 
-   */
-  if ((PG_L1 <= pageLevel) && (pageLevel <= PG_L4)) {
-    unprotect_paging();
-    page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
-    page_entry_store(pageEntry, readOnlyMapping);             
-    protect_paging();
-  }
-#endif
-
 #if DEBUG_INIT >= 1
   u_long nNonValPgs=0;
   u_long nValPgs=0;
@@ -1965,6 +1952,36 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
 }
 
 /*
+ * Function: makePTReadOnly()
+ *
+ * Description:
+ *  Scan through all of the page descriptors and find all the page descriptors
+ *  for page table pages.  For each such page, make the virtual page that maps
+ *  it into the direct map read-only.
+ */
+static inline void
+makePTReadOnly (void) {
+  /* Disable page protection */
+  unprotect_paging();
+
+  /*
+   * For each physical page, determine if it is used as a page table page.
+   * If so, make its entry in the direct map read-only.
+   */
+  uintptr_t paddr;
+  for (paddr = 0; paddr < memSize; paddr += pageSize) {
+    page_desc_t * pgType = getPageDescPtr(paddr)->type;
+    if ((PG_L1 <= pgType) && (pgType <= PG_L4)) {
+      page_entry_t * pageEntry = get_pgeVaddr (getVirtual(paddr));
+      page_entry_store (pageEntry, setMappingReadOnly(*pageEntry));
+    }
+  }
+
+  /* Re-enable page protection */
+  protect_paging();
+}
+
+/*
  * Function: sva_mmu_init
  *
  * Description:
@@ -2004,8 +2021,6 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     
     /* TODO: Set page_desc pages as SVA pages */
 
-    /* TODO: Set the SVA pages as read only */
-    
     /* Identify kernel code pages and intialize the descriptors */
     declare_kernel_code_pages(btext, etext);
     
@@ -2014,6 +2029,9 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     load_cr3(*kpml4Mapping & PG_FRAME);
     protect_paging();
 
+    /* TODO: Set the SVA pages as read only */
+    makePTReadOnly();
+    
 #if 0//ACTIVATE_PROT
     u_long sp;
     __asm __volatile("movq %%rsp,%0" : "=r" (sp));
