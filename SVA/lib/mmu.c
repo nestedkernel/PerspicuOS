@@ -1839,36 +1839,19 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
     return;
   }
 
-
-#if 0//ACTIVATE_PROT
-
-#if DEBUG_INIT
-  printf("%sPre-WP :\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
-          pageEntry, *pageEntry);
-#endif
-
+#if 0
   /*
    * Given a valid and active entry set the read only bit for the
    * mapping before traversing the page table page. 
    */
-#if 0
-  unprotect_paging();
-#endif
-  page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
-  page_entry_store(pageEntry, readOnlyMapping);             
-#if 0
-  printf("==== cr0: 0x%lx\n", _rcr0());
-  protect_paging();
-  printf("==== cr0: 0x%lx\n", _rcr0());
+  if ((PG_L1 <= pageLevel) && (pageLevel <= PG_L4)) {
+    unprotect_paging();
+    page_entry_t readOnlyMapping = setMappingReadOnly(*pageEntry);
+    page_entry_store(pageEntry, readOnlyMapping);             
+    protect_paging();
+  }
 #endif
 
-#if DEBUG_INIT
-  printf("%sPost-WP:\t pageEntryPTR: %p, pageEntryVal: 0x%lx\n", indent,
-          pageEntry, *pageEntry);
-#endif
-
-#endif /* ACTIVATE_PROT */
-  
 #if DEBUG_INIT >= 1
   u_long nNonValPgs=0;
   u_long nValPgs=0;
@@ -1878,6 +1861,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
    * walk on all sub entries.
    */
   for (i = 0; i < numSubLevelPgEntries; i++){
+#if 0
     /*
      * Do not process any entries that implement the direct map.  This prevents
      * us from marking physical pages in the direct map as kernel data pages.
@@ -1885,6 +1869,7 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
     if ((pageLevel == PG_L4) && (i == (0xfffffe0000000000 / 0x1000))) {
       continue;
     }
+#endif
 #if OBSOLETE
     //pagePtr += (sizeof(page_entry_t) * i);
     //page_entry_t *nextEntry = pagePtr;
@@ -2025,7 +2010,9 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     declare_kernel_code_pages(btext, etext);
     
     /* Now load the initial value of the cr3 to complete kernel init */
+    unprotect_paging();
     load_cr3(*kpml4Mapping & PG_FRAME);
+    protect_paging();
 
 #if 0//ACTIVATE_PROT
     u_long sp;
