@@ -660,16 +660,14 @@ initDeclaredPage (unsigned long frameAddr) {
   /*
    * Get the direct map virtual address of the physical address.
    */
-  volatile unsigned char * vaddr = getVirtual (frameAddr);
+  unsigned char * vaddr = getVirtual (frameAddr);
 
   /*
    * Initialize the contents of the page to zero.  This will ensure that no
    * existing page translations which have not been vetted exist within the
    * page.
    */
-#if 1
   memset (vaddr, 0, X86_PAGE_SIZE);
-#endif
 
   /*
    * Get a pointer to the page table entry that maps the physical page into the
@@ -679,20 +677,14 @@ initDeclaredPage (unsigned long frameAddr) {
   if (page_entry) {
     /*
      * Make the direct map entry for the page read-only to ensure that the OS
-     * goes through SVA to make page table changes.
+     * goes through SVA to make page table changes.  Also be sure to flush the
+     * TLBs for the direct map address to ensure that it's made read-only
+     * right away.
      */
-    page_entry_t newMapping = *page_entry;
-    newMapping = setMappingReadOnly(newMapping);
-
-    /*
-     * In the end we want to use this to insert the new declared PTPs so they
-     * pass validation as they are real PTP updates. 
-     */
-#if 0
-    if ((newMapping & PG_PS) == 0) {
-      page_entry_store (page_entry, newMapping);
+    if (((*page_entry) & PG_PS) == 0) {
+      page_entry_store (page_entry, setMappingReadOnly(*page_entry));
+      sva_mm_flush_tlb (vaddr);
     }
-#endif
   }
 
   return;
@@ -2284,6 +2276,54 @@ sva_declare_l4_page (uintptr_t frameAddr) {
   sva_exit_critical (rflags);
 }
 
+static inline page_entry_t * 
+printPTES (uintptr_t vaddr) {
+  /* Pointer to the page table entry for the virtual address */
+  page_entry_t *pge = 0;
+
+  /* Get the base of the pml4 to traverse */
+  uintptr_t cr3 = get_pagetable();
+  if ((cr3 & 0xfffffffffffff000u) == 0)
+    return 0;
+
+  /* Get the VA of the pml4e for this vaddr */
+  pml4e_t *pml4e = get_pml4eVaddr (cr3, vaddr);
+
+  if (*pml4e & PG_V) {
+    /* Get the VA of the pdpte for this vaddr */
+    pdpte_t *pdpte = get_pdpteVaddr (pml4e, vaddr);
+    if (*pdpte & PG_V) {
+      /* 
+       * The PDPE can be configurd in large page mode. If it is then we have the
+       * entry corresponding to the given vaddr If not then we go deeper in the
+       * page walk.
+       */
+      if (*pdpte & PG_PS) {
+        pge = pdpte;
+      } else {
+        /* Get the pde associated with this vaddr */
+        pde_t *pde = get_pdeVaddr (pdpte, vaddr);
+        if (*pde & PG_V) {
+          /* 
+           * As is the case with the pdpte, if the pde is configured for large
+           * page size then we have the corresponding entry. Otherwise we need
+           * to traverse one more level, which is the last. 
+           */
+          if (*pde & PG_PS) {
+            pge = pde;
+          } else {
+            pge = get_pteVaddr (pde, vaddr);
+            printf ("SVA: PTE: %lx %lx %lx %lx\n", *pml4e, *pdpte, *pde, *pge);
+          }
+        }
+      }
+    }
+  }
+
+  /* Return the entry corresponding to this vaddr */
+  return pge;
+}
+
 /*
  * Function: sva_remove_page()
  *
@@ -2342,9 +2382,11 @@ sva_remove_page (uintptr_t paddr) {
     pgDesc->type = PG_UNUSED;
 
     /*
-     * Make the page writeable again.
+     * Make the page writeable again.  Be sure to flush the TLBs to make the
+     * change take effect right away.
      */
     page_entry_store ((page_entry_t *) pte, setMappingReadWrite (*pte));
+    sva_mm_flush_tlb (getVirtual (paddr));
   } else {
     printf ("SVA: remove_page: type=%x count %x\n", pgDesc->type, pgDesc->count);
   }
@@ -2353,6 +2395,7 @@ sva_remove_page (uintptr_t paddr) {
   sva_exit_critical (rflags);
   return;
 }
+
 
 #if 0
 /*
