@@ -690,14 +690,7 @@ initDeclaredPage (unsigned long frameAddr) {
      */
 #if 0
     if ((newMapping & PG_PS) == 0) {
-      page_entry_store (page_entry, 0);
-      const uintptr_t flag = 0x00010000 | 0x80000000;
-      uintptr_t cr0 = 0;
-      __asm__ __volatile ("movq %%cr0,%0\n": "=r" (cr0));
-      if ((cr0 & flag) == flag) {
-        memset (vaddr, 0, X86_PAGE_SIZE);
-        panic ("SVA: Failed to prevent write: cr0=%lx: %lx -> %lx: %lx = %lx\n", cr0, vaddr, frameAddr, page_entry, *page_entry);
-      }
+      page_entry_store (page_entry, newMapping);
     }
 #endif
   }
