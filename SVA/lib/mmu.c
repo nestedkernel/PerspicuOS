@@ -2014,7 +2014,7 @@ sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
     load_cr3(*kpml4Mapping & PG_FRAME);
     protect_paging();
 
-    /* TODO: Set the SVA pages as read only */
+    /* Make existing page table pages read-only */
     makePTReadOnly();
     
 #if 0//ACTIVATE_PROT
