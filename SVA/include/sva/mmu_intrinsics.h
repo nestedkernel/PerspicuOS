@@ -23,6 +23,38 @@
  *===----------------------------------------------------------------------===
  */
 
+/*-
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 1993 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * $FreeBSD: release/9.0.0/sys/amd64/include/cpufunc.h 223796 2011-07-05 18:42:10Z jkim $
+ */
+
 #ifndef SVA_MMU_INTRINSICS_H
 #define SVA_MMU_INTRINSICS_H
 
@@ -72,9 +104,23 @@ sva_mm_save_pgtable (void)
   return p;
 }
 
+/*
+ * Function: sva_mm_flush_tlb()
+ *
+ * Description:
+ *  Flush all TLB's holding translations for the specified virtual address.
+ *
+ * Notes:
+ *  I had to look at the FreeBSD implementation of invlpg() to figure out that
+ *  you need to "dereference" the address to get the operand to the inline asm
+ *  constraint to work properly.  While perhaps not necessary (because I don't
+ *  think such a trivial thing can by copyrighted), the fact that I referenced
+ *  the FreeBSD code is why we have the BSD copyright and attribute comment at
+ *  the top of this file.
+ */
 static inline void
 sva_mm_flush_tlb (void * address) {
-  __asm__ __volatile__ ("invlpg %0" : : "m" (address) : "memory");
+  __asm__ __volatile__ ("invlpg %0" : : "m" (*((char *)address)) : "memory");
   return;
 }
 
