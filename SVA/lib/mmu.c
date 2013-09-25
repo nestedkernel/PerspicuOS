@@ -281,9 +281,10 @@ is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vadd
  *
  * Return:
  *  0  - The update is not valid and should not be performed.
- *  ~0 - The update is valid and can be performed.
+ *  1  - The update is valid but should disable write access.
+ *  2  - The update is valid and can be performed.
  */
-static inline unsigned long
+static inline unsigned char
 pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   /* Collect associated information for the existing mapping */
   unsigned long origPA = *page_entry & PG_FRAME;
@@ -300,6 +301,9 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   /* Get the page table page descriptor. The page_entry is the viratu */
   uintptr_t ptePAddr = getPhysicalAddr (page_entry);
   page_desc_t *ptePG = getPageDescPtr(ptePAddr);
+
+  /* Return value */
+  unsigned char retValue = 2;
 
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
@@ -364,7 +368,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
            *       we make this compromise.
            */
           if ((newPG->type >= PG_L1) && (newPG->type <= PG_L4)) {
-            newVal &= (~PG_RW);
+            retValue = 1;
           } else {
             panic ("SVA: MMU: Map bad page type into L1: %x\n", newPG->type);
           }
@@ -474,7 +478,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
           "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 
-  return 1;
+  return retValue;
 }
 
 /*
@@ -802,11 +806,18 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
    * If the given page update is valid then store the new value to the page
    * table entry, else raise an error.
    */
-  if (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
-    /* Perform the pagetable mapping update */
-    __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
-  } else {
-    panic("##### SVA invalid page update!!!\n");
+  switch (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
+    case 1:
+      val = setMappingReadOnly (val);
+      __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
+      break;
+
+    case 2:
+      __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
+      break;
+
+    default:
+      panic("##### SVA invalid page update!!!\n");
   }
 
   /* Restore interrupts */
