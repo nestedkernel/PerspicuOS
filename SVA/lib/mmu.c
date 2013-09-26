@@ -634,9 +634,9 @@ updateOrigPageData(page_entry_t mapping) {
  * Function: __do_mmu_update
  *
  * Description:
- *  If the update has been validated this function manages metadata by updating
- *  the internal SVA reference counts for pages, sets the read only flag if
- *  necessary, and then performs the actual update. 
+ *  If the update has been validated, this function manages metadata by
+ *  updating the internal SVA reference counts for pages and then performs the
+ *  actual update. 
  *
  * Inputs: 
  *  *page_entry  - VA pointer to the page entry being modified 
@@ -670,15 +670,9 @@ __do_mmu_update (pte_t * pteptr, page_entry_t mapping) {
     updateNewPageData(mapping);
   }
 
-#if 0
-  /* If the new page should be read only, mark the entry value as such */
-  if (mapPageReadOnly (getPageDescPtr(*pteptr), mapping)) {
-    mapping = setMappingReadOnly(mapping);
-  }
-#endif
-
   /* Perform the actual write to into the page table entry */
   page_entry_store ((page_entry_t *) pteptr, mapping);
+  return;
 }
 
 /*
@@ -833,9 +827,6 @@ check_and_init_first_mapping(unsigned long newMapping){
  */
 static inline void
 __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  uintptr_t rflags = sva_enter_critical();
-
   /* 
    * If this is the first mapping to the page then establish initial values
    * for page types 
@@ -862,8 +853,7 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
       panic("##### SVA invalid page update!!!\n");
   }
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
+  return;
 }
 
 /* Functions for finding the virtual address of page table components */
@@ -1595,11 +1585,6 @@ sva_mm_load_pgtable (void * pg) {
   /* Control Register 0 Value (which is used to enable paging) */
   unsigned int cr0;
 
-#if DEBUG >= 5
-  printf("##### SVA<sva_mm_load_pgtable> new entry value: 0x%lx,", pg);
-  print_regs();
-#endif 
-
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
     printf ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
@@ -1620,10 +1605,6 @@ sva_mm_load_pgtable (void * pg) {
                         : "=r" (cr0)
           : "r" (pg) : "memory");
     
-#if DEBUG >= 5
-  print_regs();
-#endif
-
   /*
    * Ensure that the secure memory region is still mapped within the current
    * set of page tables.
