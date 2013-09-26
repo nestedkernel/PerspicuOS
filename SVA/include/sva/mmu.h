@@ -165,7 +165,7 @@ typedef struct page_desc_t {
      * If the page is a page table page, mark the virtual addres to which it is
      * mapped.
      */
-    uintptr_t virtAddr;
+    uintptr_t pgVaddr;
 
     /* Flag to denote whether the page is a Ghost page table page */
     unsigned ghostPTP : 1;
@@ -459,21 +459,6 @@ setMappingReadWrite (page_entry_t mapping) {
 
 /* Page setter methods */
 
-/*
- * Function: setPTPVA
- *
- * Description:
- *  This function sets the given page descriptors virtual address to the
- *  supplied virtual address.
- *
- * Inputs:
- *  - newPG  -- page descriptor of the page to set the VA for.
- *  - va     -- New va to set
- */
-static inline void setPTPVA(page_desc_t *newPG, uintptr_t va) {
-  newPG->virtAddr = va; 
-}
-
 /* State whether this kernel virtual address is in the secure memory range */
 static inline int isGhostVA(uintptr_t va)
     { return (va >= SECMEMSTART) && (va < SECMEMEND); }
@@ -499,9 +484,6 @@ static inline unsigned char isDirectMap (unsigned char * p) {
 
 /* The number of active references to the page */
 static inline int pgRefCount(page_desc_t *page) { return page->count; }
-
-/* Return the virtual address of the page */
-static inline uintptr_t pgVA (page_desc_t *pg) { return pg->virtAddr; }
 
 /* Page type queries */
 static inline int isL1Pg (page_desc_t *page) { return page->type == PG_L1; }

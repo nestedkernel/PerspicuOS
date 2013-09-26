@@ -352,7 +352,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
        * within it) maps a singular region of the address space.
        */
       if (pgRefCount(newPG) > 1) {
-        SVA_ASSERT (pgVA(newPG) == newVA, "MMU: Mapping PTP to a second VA");
+        SVA_ASSERT (newPG->pgVaddr == newVA, "MMU: Mapping PTP to a second VA");
       }
     }
 
@@ -576,7 +576,7 @@ updateNewPageData(page_entry_t mapping) {
      * means this is the first mapping to the page. 
      */
     if (isPTP(newPG)) {
-      setPTPVA (newPG, newVA);
+      newPG->pgVaddr = newVA;
     }
 
     /* 
