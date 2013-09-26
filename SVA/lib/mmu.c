@@ -305,6 +305,16 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   /* Return value */
   unsigned char retValue = 2;
 
+  /*
+   * Determine if the page table pointer is within the direct map.  If not,
+   * then it's an error.
+   *
+   * TODO: This check does not cause a panic because the SVA VM does not set
+   *       up the direct map before starting the kernel.  As a result, we get
+   *       page table addresses that don't fall into the direct map.
+   */
+  SVA_NOOP_ASSERT (isDirectMap (page_entry), "SVA: MMU: Not direct map\n");
+
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
    * some cases we must, otherwise, the checks will fail. For example if this
@@ -2401,9 +2411,7 @@ sva_remove_page (uintptr_t paddr) {
 
     default:
       /* Restore interrupts */
-#if 0
-      printf ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
-#endif
+      panic ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
       sva_exit_critical (rflags);
       return;
       break;

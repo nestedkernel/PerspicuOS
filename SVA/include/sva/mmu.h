@@ -492,6 +492,11 @@ static inline int isFramePg (page_desc_t *page) {
 static inline int pgIsActive (page_desc_t *page) 
     { return page->type != PG_UNUSED ; } 
 
+static inline unsigned char isDirectMap (unsigned char * p) {
+  uintptr_t address = (uintptr_t)p;
+  return ((0xfffffe0000000000u <= address) && (address <= 0xffffff0000000000u));
+}
+
 /* The number of active references to the page */
 static inline int pgRefCount(page_desc_t *page) { return page->count; }
 
