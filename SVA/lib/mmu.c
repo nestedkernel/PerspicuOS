@@ -378,21 +378,53 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
 
       case PG_L2:
         if (newVal & PG_PS) {
-          SVA_ASSERT (isFramePg(newPG), 
-                  "MMU: map non-data page into large L2.");
+          if (!isFramePg(newPG)) {
+            /* If it is a ghost frame, stop with an error */
+            if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+
+            /*
+             * If it is a page table page, just ensure that it is not writeable.
+             * The kernel may be modifying the direct map, and we will permit
+             * that as long as it doesn't make page tables writeable.
+             *
+             * Note: The SVA VM really should have its own direct map that the
+             *       kernel cannot use or modify, but that is too much work, so
+             *       we make this compromise.
+             */
+            if ((newPG->type >= PG_L1) && (newPG->type <= PG_L4)) {
+              retValue = 1;
+            } else {
+              panic ("SVA: MMU: Map bad page type into L2: %x\n", newPG->type);
+            }
+          }
         } else {
-          SVA_ASSERT (isL1Pg(newPG), 
-                  "MMU: attempted to map non-L1 page into L2.");
+          SVA_ASSERT (isL1Pg(newPG), "MMU: Mapping non-L1 page into L2.");
         }
         break;
 
       case PG_L3:
         if (newVal & PG_PS) {
-          SVA_ASSERT (isFramePg(newPG), 
-                  "MMU: map non-data page into large L3.");
+          if (!isFramePg(newPG)) {
+            /* If it is a ghost frame, stop with an error */
+            if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+
+            /*
+             * If it is a page table page, just ensure that it is not writeable.
+             * The kernel may be modifying the direct map, and we will permit
+             * that as long as it doesn't make page tables writeable.
+             *
+             * Note: The SVA VM really should have its own direct map that the
+             *       kernel cannot use or modify, but that is too much work, so
+             *       we make this compromise.
+             */
+            if ((newPG->type >= PG_L1) && (newPG->type <= PG_L4)) {
+              retValue = 1;
+            } else {
+              panic ("SVA: MMU: Map bad page type into L2: %x\n", newPG->type);
+            }
+          }
         } else {
-          SVA_ASSERT (isL2Pg(newPG), 
-                  "MMU: attempted to map non-L2 page into L3.");
+          SVA_ASSERT (isL2Pg(newPG), "MMU: Mapping non-L2 page into L3.");
         }
         break;
 
@@ -405,7 +437,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
          *       an L4.
          */
         SVA_ASSERT (isL3Pg(newPG) || isL4Pg(newPG), 
-                "MMU: attempted to map non-L3/L4 page into L4.");
+                    "MMU: Mapping non-L3/L4 page into L4.");
         break;
 
       default:
