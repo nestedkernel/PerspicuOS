@@ -339,7 +339,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     }
 
     /* 
-     * If the new page is a page table page then we verify some page table
+     * If the new page is a page table page, then we verify some page table
      * page specific checks. 
      */
     if (isPTP(newPG)) {
@@ -348,8 +348,8 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
        * has a mapping to it, then we verify that the new VA from the new
        * mapping matches the existing currently mapped VA.   
        *
-       * This guarantees that we have at most one VA mapping to each page
-       * table page.
+       * This guarantees that we each page table page (and the translations
+       * within it) maps a singular region of the address space.
        */
       if (pgRefCount(newPG) > 1) {
         SVA_ASSERT (pgVA(newPG) == newVA, "MMU: Mapping PTP to a second VA");
