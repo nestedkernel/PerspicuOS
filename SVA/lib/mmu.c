@@ -195,76 +195,6 @@ page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
  */
 
 /*
- * Function: is_correct_pe_for_va 
- *
- * Description: This function verifies that the mapping being inserted is
- *      correct by checking that the va address being mapped into this
- *      particular page table entry should be in that address location.
- *
- *      To prove that we have a valid ordering we can just verify that the
- *      update is being applied to the correct page table (at any level) and
- *      that the particuler page table entry (at any level) is at the index
- *      defined by the virtual address.
- *
- * Inputs:
- *  
- */
-static inline int 
-is_correct_pe_for_va (uintptr_t testPgEPAddr, page_desc_t *newPG, uintptr_t vaddr)
-{
-    /* Variables to hold temporary address values */
-    pml4e_t *pml4e;
-    pdpte_t *pdpte;
-    pde_t *pde;
-    pte_t *pte;
-
-    /* Set the page type variable for later use */
-    enum page_type_t pglevel = newPG->type;
-
-    /*
-     * Get the currently active page table.
-     */
-    unsigned char * cr3 = get_pagetable();
-
-    /* 
-     * We need to get the physical address matching the page table page level
-     * and virtual address.
-     */
-    uintptr_t truePgEPAddr;
-
-    if (pglevel == PG_L4) {
-
-        truePgEPAddr = get_pml4ePaddr(cr3, vaddr);
-
-    } else if (pglevel == PG_L3) {
-
-        pml4e = get_pml4eVaddr (cr3, vaddr);
-        truePgEPAddr = get_pdptePaddr (pml4e, vaddr);
-
-    } else if (pglevel == PG_L2) {
-
-        pml4e = get_pml4eVaddr (cr3, vaddr);
-        pdpte = get_pdpteVaddr (pml4e, vaddr);
-        truePgEPAddr = get_pdePaddr (pdpte, vaddr);
-
-    } else if (pglevel == PG_L1) {
-
-        pml4e = get_pml4eVaddr (cr3, vaddr);
-        pdpte = get_pdpteVaddr (pml4e, vaddr);
-        pde = get_pdeVaddr (pdpte, vaddr);
-        truePgEPAddr = get_ptePaddr (pde, vaddr);
-
-    } 
-
-    /* 
-     * To make sure we have the correct page entry we compare the physical
-     * address of the entry under test with the physical address of the new
-     * entry from the VA.
-     */
-    return testPgEPAddr == truePgEPAddr;
-}
-
-/*
  * Function: pt_update_is_valid()
  *
  * Description:
@@ -508,17 +438,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
                   "Kernel attempting to modify code page mapping");
     }
   }
-
-  /* 
-   * TODO There might be a bug in this lookup, as it doesn't account for PS=1
-   * pages e.g., 2MB or 1GB pages. 
-   */
-
-  /* 
-   * Verify that we have the correct PTE for the given VA.
-   */
-  SVA_NOOP_ASSERT (is_correct_pe_for_va(ptePAddr, ptePG, newVA) , 
-          "MMU: attempted mapping of VA into either wrong page table page or wrong index into the page");
 
   return retValue;
 }
