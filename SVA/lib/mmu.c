@@ -1936,37 +1936,33 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
  * Description: Mark all kernel code pages as code pages
  *
  * Inputs: 
- *  - btext : marks the beginning of the text segment
- *  - etext : marks the address of the end of the text segment
+ *  btext - The first virtual address of the text segment.
+ *  etext - The last virtual address of the text segment.
  */
 void
 declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
   /* Get pointers for the pages */
   uintptr_t page;
-  uintptr_t btextPage = btext & PG_FRAME;
-  uintptr_t etextPage = etext & PG_FRAME;
+  uintptr_t btextPage = getPhysicalAddr(btext) & PG_FRAME;
+  uintptr_t etextPage = getPhysicalAddr(etext) & PG_FRAME;
 
-  for (page = btextPage; page < etextPage; ) {
-    /* Get the page frame index and get the codePg to mark */
-    unsigned long index = page / pageSize;
-    page_desc_t codePg = page_desc[index];
+  /*
+   * Scan through each page in the text segment.  Note that it is a code page,
+   * and make the page read-only within the page table.
+   */
+  for (page = btextPage; page < etextPage; page += pageSize) {
+    /* Mark the page as both a code page and kernel level */
+    page_desc[page / pageSize].type = PG_CODE;
+    page_desc[page / pageSize].user = 0;
 
+    /* Configure the MMU so that the page is read-only */
+    page_entry_t * page_entry = get_pgeVaddr (btext + (page - btextPage));
+    page_entry_store(page_entry, setMappingReadOnly (*page_entry));
 #if 0
-    /* Set the code page to read only */
-    page_entry_t romapping = setMappingReadOnly( * (page_entry_t *) page);
     printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
             page, *(page_entry_t *)page, romapping);
     panic("SVA: Stopping to look at code\n");
-    /* SVA-TODO Get the pte for this kernel page */
-    //page_entry_store((page_entry_t *)page, romapping);             
 #endif
-
-    /* Mark the page as both a code page and kernel level */
-    codePg.type = PG_CODE; 
-    codePg.user = 0;
-
-    /* Set page to address of the next page */
-    page += pageSize;
   }
 }
 
@@ -1992,7 +1988,9 @@ makePTReadOnly (void) {
     page_desc_t * pgType = getPageDescPtr(paddr)->type;
     if ((PG_L1 <= pgType) && (pgType <= PG_L4)) {
       page_entry_t * pageEntry = get_pgeVaddr (getVirtual(paddr));
+#if 1
       page_entry_store (pageEntry, setMappingReadOnly(*pageEntry));
+#endif
     }
   }
 
