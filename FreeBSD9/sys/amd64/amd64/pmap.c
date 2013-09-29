@@ -4343,7 +4343,7 @@ retry:
 #if 0
 		atomic_clear_long(pte, PG_W);
 #else
-    sva_update_l1_mapping (pte, *pte &= (~PG_W));
+    sva_update_l1_mapping (pte, *pte & (~PG_W));
 #endif
 	}
 out:
