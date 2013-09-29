@@ -432,27 +432,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
 }
 
 /*
- * Function: 
- *
- * Description:
- *
- * Inputs:
- */
-static inline void 
-setPgPrivMode (page_desc_t *pg, uintptr_t va) {
-    page_entry_t *pe;
-    switch(pg->type){
-        case PG_L4:
-            //pe = va_to_pml4VA(va);
-        case PG_L3:
-        case PG_L2:
-        case PG_L1:
-        default:
-            break;
-    }
-}
-
-/*
  * Function: updateNewPageData
  *
  * Description: 
@@ -494,13 +473,6 @@ updateNewPageData(page_entry_t mapping) {
     SVA_ASSERT (pgRefCount(newPG) < ((1u << 13) - 1), 
                 "MMU: overflow for the mapping count");
     newPG->count++;
-
-    /* 
-     * Set the privilege mode of this entry given the VA 
-     */
-#if 0
-    setPrivMode(newPG, newVA);
-#endif
 
     /* 
      * Set the VA of this entry if it is the first mapping to a page
@@ -639,88 +611,6 @@ initDeclaredPage (unsigned long frameAddr) {
 }
 
 /*
- * Function: 
- */
-static inline void
-setFramePrivType (unsigned long frame, unsigned long newMapping){
-#if NOT_YET_IMPLEMENTED
-    page_desc_t pgDesc = page_desc[frame];
-    /* 
-     * TODO: Figure out how to detect the user/kernel association of new page
-     * table pages.
-     */
-
-    /*
-     * TODO: figure out whether or not this is a leaf frame or a page table
-     * page frame. If it is a frame then the type is given by the newMapping
-     * value. If it is a page table frame then I need to figure out how to
-     * figure out the mapping.
-     */
-    if (){
-    }
-    /* If the new mapping points to user level */
-    if (isUserVA(newVA)){
-    } else {
-    }
-#endif
-}
-
-/*
- * Function: isFirstMappingToFrame
- *
- * Description:
- *  This function determines whether or not this frame has any existing
- *  references.
- *
- * Input:
- *  - frame : the physical frame number to check
- *
- * Return:
- *  - 1: true, the first mapping
- *  - 0: false, this frame has an existing mapping
- */
-static inline int
-isFirstMappingToFrame (unsigned long frame) {
-    /* SVA_ASSERT here just in case we have some odd error situation */
-#if NOT_YET_IMPLEMENTED
-    printf("The page frame count %d\n",page_desc[frame].count);
-    SVA_ASSERT (page_desc[frame].count >= 0, "MMU: page count is negative");
-#endif
-
-    /* 
-     * If the count is set to 0 then there are no existing references to this
-     * frame.
-     */
-    return page_desc[frame].count == 0;
-}
-
-/*
- * Function: check_and_init_first_mapping
- *
- * Description:
- *  There are certain labels that must be applied to a particular frame that
- *  can only be applied when using it's first mapping. Currently, the only
- *  thing that is needed upon first mapping is to label the page desc of the
- *  frame as either user or kernel depending on the new mapping.
- *
- * Input: 
- *  - newMapping    : Represents the new mapping to insert
- */
-static inline void
-check_and_init_first_mapping(unsigned long newMapping){
-
-    /* Get the frame number in the new mapping */
-    unsigned long frame = (newMapping & PG_FRAME) >> PAGESHIFT;
-
-    /* 
-     * If this is the first mapping to the frame then set the privilege on the
-     * frame. 
-     */
-    if (isFirstMappingToFrame(frame))
-        setFramePrivType(frame, newMapping);
-}
-
-/*
  * Function: __update_mapping
  *
  * Description:
@@ -735,14 +625,6 @@ check_and_init_first_mapping(unsigned long newMapping){
  */
 static inline void
 __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
-  /* 
-   * If this is the first mapping to the page then establish initial values
-   * for page types 
-   */
-#if NOT_YET_IMPLEMENTED
-  check_and_init_first_mapping(val);
-#endif
-
   /* 
    * If the given page update is valid then store the new value to the page
    * table entry, else raise an error.
