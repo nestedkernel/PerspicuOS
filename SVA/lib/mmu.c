@@ -412,17 +412,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    */
   
   /* 
-   * TODO: this functionality depends on the pages in question being marked
-   * as kernel or user page privilege. Once that functionality is added then
-   * this check can be enabled. The function doing this is 
-   * check_and_init_first_mapping.
-   */
-  SVA_NOOP_ASSERT ( 
-          (isUserMapping(newVal) && isUserPTP(ptePG) && isUserPG(newPG)) ||
-          (!isUserMapping(newVal) && !isUserPTP(ptePG) && !isUserPG(newPG)) , 
-          "MMU: all three -- mapping, new page frame, and PTP -- do not match privilege");
-
-  /* 
    * If the original PA is not equivalent to the new PA then we are creating
    * an entirely new mapping, thus make sure that this is a valid new page
    * reference. Also verify that the reference counts to the old page are
