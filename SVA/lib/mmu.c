@@ -261,6 +261,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    */
   SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
 
+  /*
+   * TODO: Add check that the direct map is not being modified.
+   */
+
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
    * some cases we must, otherwise, the checks will fail. For example if this
