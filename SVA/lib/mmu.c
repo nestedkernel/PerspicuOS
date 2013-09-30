@@ -245,6 +245,14 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    */
   SVA_NOOP_ASSERT (isDirectMap (page_entry), "SVA: MMU: Not direct map\n");
 
+  /*
+   * Verify that we're not trying to modify the PML4E entry that controls the
+   * ghost address space.
+   */
+  if ((ptePG->type == PG_L4) && ((ptePAddr & PG_FRAME) == secmemOffset)) {
+    panic ("SVA: MMU: Trying to modify ghost memory pml4e!\n");
+  }
+
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
    * some cases we must, otherwise, the checks will fail. For example if this
@@ -253,7 +261,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   if (newVal & PG_V) {
     /* If the new mapping references a secure memory page fail */
     SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a ghost page");
-
 
     /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
@@ -280,10 +287,20 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
        *
        * This guarantees that we each page table page (and the translations
        * within it) maps a singular region of the address space.
+       *
+       * Otherwise, this is the first mapping of the page, and we should record
+       * in what virtual address it is being placed.
        */
+#if 0
       if (pgRefCount(newPG) > 1) {
-        SVA_ASSERT (newPG->pgVaddr == newVA, "MMU: Mapping PTP to a second VA");
+        if (newPG->pgVaddr != page_entry) {
+          panic ("SVA: PG: %lx %lx: type=%x\n", newPG->pgVaddr, page_entry, newPG->type);
+        }
+        SVA_ASSERT (newPG->pgVaddr == page_entry, "MMU: Map PTP to second VA");
+      } else {
+        newPG->pgVaddr = page_entry;
       }
+#endif
     }
 
     /*
@@ -388,6 +405,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   /* 
    * If the virtual address of the page_entry is in secure memory then fail,
    * as the kernel will never be allowed to map any VA mapping that region. 
+   *
+   * TODO: This check is incorrect; it is checking that the PTE address is not
+   *       within ghost memory.  We want to know that we're not modifying
+   *       anything within the ghost address space.
    */
   SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
           "MMU: Kernel attempted to map into a secure page table page");
@@ -454,6 +475,7 @@ updateNewPageData(page_entry_t mapping) {
    * If the new mapping is valid, update the counts for it.
    */
   if (mapping & PG_V) {
+#if 0
     /*
      * If the new page is to a page table page and this is the first reference
      * to the page, we need to set the VA mapping this page so that the
@@ -465,6 +487,7 @@ updateNewPageData(page_entry_t mapping) {
     if (isPTP(newPG)) {
       newPG->pgVaddr = newVA;
     }
+#endif
 
     /* 
      * Update the reference count for the new page frame. Check that we aren't
@@ -1908,6 +1931,11 @@ sva_declare_l1_page (uintptr_t frameAddr) {
      */
     pgDesc->type = PG_L1;
 
+    /*
+     * Reset the virtual address which can point to this page table page.
+     */
+    pgDesc->pgVaddr = 0;
+
     /* 
      * Initialize the page data and page entry. Note that we pass a general
      * page_entry_t to the function as it enables reuse of code for each of the
@@ -1966,6 +1994,11 @@ sva_declare_l2_page (uintptr_t frameAddr) {
     /* Setup metadata tracking for this new page */
     pgDesc->type = PG_L2;
 
+    /*
+     * Reset the virtual address which can point to this page table page.
+     */
+    pgDesc->pgVaddr = 0;
+
     /* 
      * Initialize the page data and page entry. Note that we pass a general
      * page_entry_t to the function as it enables reuse of code for each of the
@@ -2021,6 +2054,11 @@ sva_declare_l3_page (uintptr_t frameAddr) {
   if (pgDesc->type != PG_L3) {
     /* Mark this page frame as an L3 page frame */
     pgDesc->type = PG_L3;
+
+    /*
+     * Reset the virtual address which can point to this page table page.
+     */
+    pgDesc->pgVaddr = 0;
 
     /* 
      * Initialize the page data and page entry. Note that we pass a general
@@ -2085,6 +2123,11 @@ sva_declare_l4_page (uintptr_t frameAddr) {
   if (pgDesc->type != PG_L4) {
     /* Mark this page frame as an L4 page frame */
     pgDesc->type = PG_L4;
+
+    /*
+     * Reset the virtual address which can point to this page table page.
+     */
+    pgDesc->pgVaddr = 0;
 
     /* 
      * Initialize the page data and page entry. Note that we pass a general
