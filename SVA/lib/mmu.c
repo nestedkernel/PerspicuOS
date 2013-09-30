@@ -253,6 +253,14 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     panic ("SVA: MMU: Trying to modify ghost memory pml4e!\n");
   }
 
+  /*
+   * Verify that we're not modifying any of the page tables that control
+   * the ghost virtual address space.  Ensuring that the page that we're
+   * writing into isn't a ghost page table (along with the previous check)
+   * should suffice.
+   */
+  SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
+
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
    * some cases we must, otherwise, the checks will fail. For example if this
@@ -260,7 +268,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    */
   if (newVal & PG_V) {
     /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel attempted to map a ghost page");
+    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel mapping a ghost page");
+
+    /* If the new mapping references a secure memory page fail */
+    SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
 
     /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
@@ -271,7 +282,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
      */
     if (isCodePg (newPG)) {
       if ((newVal & (PG_RW | PG_U)) == (PG_RW)) {
-        panic ("SVA: Making kernel page writeable: %lx %lx\n", newVA, newVal);
+        panic ("SVA: Making kernel code writeable: %lx %lx\n", newVA, newVal);
       }
     }
 
@@ -401,21 +412,6 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
         break;
     }
   }
-
-  /* 
-   * If the virtual address of the page_entry is in secure memory then fail,
-   * as the kernel will never be allowed to map any VA mapping that region. 
-   *
-   * TODO: This check is incorrect; it is checking that the PTE address is not
-   *       within ghost memory.  We want to know that we're not modifying
-   *       anything within the ghost address space.
-   */
-  SVA_ASSERT (!isGhostVA((uintptr_t) page_entry), 
-          "MMU: Kernel attempted to map into a secure page table page");
-
-  /* If the pt entry resides in a ghost page table page then fail */
-  SVA_ASSERT (!isGhostPTP(ptePG), 
-          "MMU: Kernel attempted to map into an SVA page table page");
 
   /*
    * If the new mapping is set for user access, but the VA being used is to
