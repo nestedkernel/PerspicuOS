@@ -1402,7 +1402,7 @@ sva_mm_load_pgtable (void * pg) {
    * Check that the new page table is an L4 page table page.
    */
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
-    printf ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
+    panic ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
 
   /* 
