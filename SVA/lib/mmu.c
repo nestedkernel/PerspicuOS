@@ -1747,9 +1747,10 @@ declare_ptp_and_walk_pt_entries(page_entry_t *pageEntry, unsigned long
 }
 
 /*
- * Function declare_kernel_code_pages 
+ * Function: declare_kernel_code_pages()
  *
- * Description: Mark all kernel code pages as code pages
+ * Description:
+ *  Mark all kernel code pages as code pages.
  *
  * Inputs: 
  *  btext - The first virtual address of the text segment.
@@ -1774,11 +1775,6 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
     /* Configure the MMU so that the page is read-only */
     page_entry_t * page_entry = get_pgeVaddr (btext + (page - btextPage));
     page_entry_store(page_entry, setMappingReadOnly (*page_entry));
-#if 0
-    printf("code page addr: %p, prev val: 0x%lx, new val: 0x%lx\n",
-            page, *(page_entry_t *)page, romapping);
-    panic("SVA: Stopping to look at code\n");
-#endif
   }
 }
 
