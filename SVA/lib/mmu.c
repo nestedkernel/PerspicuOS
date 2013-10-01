@@ -239,7 +239,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    * Determine if the page table pointer is within the direct map.  If not,
    * then it's an error.
    *
-   * TODO: This check does not cause a panic because the SVA VM does not set
+   * TODO: This check can cause a panic because the SVA VM does not set
    *       up the direct map before starting the kernel.  As a result, we get
    *       page table addresses that don't fall into the direct map.
    */
@@ -1198,8 +1198,8 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
  *  vaddr - The virtual address to unmap.
  *
  * TODO:
- *  Implement code that will tell other processors to invalid their TLB entries
- *  for this page.
+ *  Implement code that will tell other processors to invalidate their TLB
+ *  entries for this page.
  */
 void
 unmapSecurePage (unsigned char * cr3, unsigned char * v) {
@@ -1385,8 +1385,8 @@ void llva_check_pagetable(pgd_t* pgd) {
  * Description:
  *  Set the current page table.  This implementation will also enable paging.
  *
- * TODO:
- *  This should check that the page table points to an L1 page frame.
+ * Inputs:
+ *  pg - The physical address of the top-level page table page.
  */
 void
 sva_mm_load_pgtable (void * pg) {
@@ -1398,6 +1398,9 @@ sva_mm_load_pgtable (void * pg) {
   /* Control Register 0 Value (which is used to enable paging) */
   unsigned int cr0;
 
+  /*
+   * Check that the new page table is an L4 page table page.
+   */
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
     printf ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
