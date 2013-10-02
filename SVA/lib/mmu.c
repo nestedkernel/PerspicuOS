@@ -271,8 +271,14 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    * is a mapping in a page table page then we allow a zero mapping. 
    */
   if (newVal & PG_V) {
-    /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPG(newPG), "MMU: Kernel mapping a ghost page");
+    /*
+     * If the new mapping references a secure memory page, then silently
+     * ignore the request.  This reduces porting effort because the kernel
+     * can try to map a ghost page, and the mapping will just never happen.
+     */
+    if (isGhostPG(newPG)) {
+      return 0;
+    }
 
     /* If the new mapping references a secure memory page fail */
     SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
@@ -661,6 +667,10 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
     case 2:
       __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
       break;
+
+    case 0:
+      /* Silently ignore the request */
+      return;
 
     default:
       panic("##### SVA invalid page update!!!\n");
