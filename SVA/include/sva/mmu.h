@@ -144,6 +144,10 @@ enum page_type_t {
     PG_CODE,        /*  8: Defines a code page */
     PG_SVA,         /*  9: Defines an SVA system page */
     PG_GHOST,       /* 10: Defines a secure page */
+    PG_DML1,        /* 11: Defines a L1 PTP  for the direct map */
+    PG_DML2,        /* 12: Defines a L2 PTP  for the direct map */
+    PG_DML3,        /* 13: Defines a L3 PTP  for the direct map */
+    PG_DML4,        /* 14: Defines a L4 PTP  for the direct map */
 };
 
 /* Mask to get the address bits out of a PTE, PDE, etc. */

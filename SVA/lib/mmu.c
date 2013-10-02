@@ -262,8 +262,11 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
 
   /*
-   * TODO: Add check that the direct map is not being modified.
+   * Add check that the direct map is not being modified.
    */
+  if ((PG_DML1 <= ptePG->type) && (ptePG->type <= PG_DML4)) {
+    panic ("SVA: MMU: Modifying direct map!\n");
+  }
 
   /* 
    * If we aren't mapping a new page then we can skip several checks, and in
@@ -1434,6 +1437,9 @@ sva_load_cr0 (unsigned long val) {
  *    pages. In FreeBSD this isn't an issue given the way they initialize the
  *    static mapping, but could be a problem given differnet intialization
  *    methods.
+ *
+ *  - Add code to mark direct map page table pages to prevent the OS from
+ *    modifying them.
  *
  */
 #define DEBUG_INIT 0
