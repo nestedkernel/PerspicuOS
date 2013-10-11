@@ -37,6 +37,7 @@
 
 namespace llvm {
   extern FunctionPass * createSFIPass (void);
+  extern FunctionPass * createIagoPass (void);
 }
 
 namespace {
@@ -158,6 +159,7 @@ namespace {
       (void) llvm::createInstructionSimplifierPass();
       (void) llvm::createBBVectorizePass();
       (void) llvm::createSFIPass ();
+      (void) llvm::createIagoPass ();
 
       (void)new llvm::IntervalPartition();
       (void)new llvm::FindUsedTypes();
