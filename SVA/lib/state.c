@@ -119,6 +119,20 @@ installNewPushTarget (void) {
 }
 
 /*****************************************************************************
+ * Intrinsics for User-Space Applications
+ ****************************************************************************/
+
+void
+getThreadRID (void) {
+  /* Get the current interrput context */
+  sva_icontext_t * icp = getCPUState()->newCurrentIC;
+
+  /* Set the rax register with the pointer to the secret key */
+  icp->rax = getCPUState()->currentThread->rid;
+  return;
+}
+
+/*****************************************************************************
  * Interrupt Context Intrinsics
  ****************************************************************************/
 

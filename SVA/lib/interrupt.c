@@ -87,6 +87,20 @@ init_threads(void) {
 }
 
 /*
+ * Function: randomNumber()
+ *
+ * Description:
+ *  Use the rdrand instruction to generate a 64-bit random number.
+ */
+static inline uintptr_t
+randomNumber (void) {
+  uintptr_t rand;
+  __asm__ __volatile__ ("1: rdrand %0\n"
+                        "jae 1\n" : "=r" (rand));
+  return rand;
+}
+
+/*
  * Function: findNextFreeThread()
  *
  * Description:
@@ -141,6 +155,11 @@ findNextFreeThread (void) {
       sva_icontext_t * icontextp = newThread->interruptContexts + maxIC - 1;
       newThread->integerState.ist3 = ((uintptr_t) icontextp) - 0x10;
       newThread->integerState.kstackp = newThread->integerState.ist3; 
+
+      /*
+       * Generate a random identifier for the new thread.
+       */
+      newThread->rid = randomNumber();
       return newThread;
     }
   }

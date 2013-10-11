@@ -268,6 +268,8 @@ struct SVAThread {
   /* Pointer to thread private key */
   sva_key_t * ghostKey;
 
+  /* Randomly created identifier */
+  uintptr_t rid;
 } __attribute__ ((aligned (16)));
 
 /*
