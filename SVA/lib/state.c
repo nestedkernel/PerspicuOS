@@ -12,7 +12,7 @@
  *===----------------------------------------------------------------------===
  */
 
-#if 0
+#if 1
 #include <sva/config.h>
 #endif
 #include <sva/cfi.h>
@@ -877,7 +877,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
    * If the current state is using secure memory, we need to flush out the TLBs
    * and caches that might contain it.
    */
-  if (oldThread->secmemSize) {
+  if (vg && (oldThread->secmemSize)) {
     /*
      * Save the CR3 register.  We'll need it later for sva_release_stack().
      */
@@ -947,7 +947,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * table.  Note that we refetch the state information from the CPUState
      * to ensure that we're not accessing stale local variables.
      */
-    if (newThread->secmemSize) {
+    if (vg && (newThread->secmemSize)) {
       /*
        * Get a pointer into the page tables for the secure memory region.
        */
@@ -1049,7 +1049,9 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
    * Determine whether initp points within the secure memory region.  If it
    * does, then don't allocate anything.
    */
-  allocaOkay &= isNotWithinSecureMemory (initp);
+  if (vg) {
+    allocaOkay &= isNotWithinSecureMemory (initp);
+  }
 
   /*
    * Check if the alignment is within range.
@@ -1456,7 +1458,7 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   /*
    * Remove mappings to the secure memory for this thread.
    */
-  if (threadp->secmemSize) {
+  if (vg && (threadp->secmemSize)) {
     /*
      * Get a pointer into the page tables for the secure memory region.
      */
@@ -1523,13 +1525,17 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    * Now that ghost memory has been reinitialized, install the key for this
    * bitcode file into the ghost memory.
    */
-  extern sva_key_t * installKey (sva_key_t * keyp, intptr_t size);
-  threadp->ghostKey = installKey (&(transp->key), sizeof (sva_key_t));
+  if (vg) {
+    extern sva_key_t * installKey (sva_key_t * keyp, intptr_t size);
+    threadp->ghostKey = installKey (&(transp->key), sizeof (sva_key_t));
+  }
 
   /*
    * Invalidate the translation handle since we've now used it.
    */
-  memset (&(transp->key), 0, sizeof (sva_key_t));
+  if (vg) {
+    memset (&(transp->key), 0, sizeof (sva_key_t));
+  }
   transp->entryPoint = 0;
   transp->used = 0;
 
@@ -1564,7 +1570,9 @@ sva_release_stack (uintptr_t id) {
    */
   uintptr_t cr3 = ((((uintptr_t)new->cr3) & 0x000ffffffffff000u));
   for (uintptr_t size=0; size < newThread->secmemSize; size += X86_PAGE_SIZE) {
-    unmapSecurePage ((unsigned char *)cr3, SECMEMSTART + size);
+    if (vg) {
+      unmapSecurePage ((unsigned char *)cr3, SECMEMSTART + size);
+    }
   }
 
   /*
@@ -1689,8 +1697,10 @@ sva_init_stack (unsigned char * start_stackp,
    * Copy over the secure memory mappings from the old thread to the new
    * thread.
    */
-  newThread->secmemSize = oldThread->secmemSize;
-  newThread->secmemPML4e = oldThread->secmemPML4e;
+  if (vg) {
+    newThread->secmemSize = oldThread->secmemSize;
+    newThread->secmemPML4e = oldThread->secmemPML4e;
+  }
 
   /*
    * Copy over the valid list of push targets for sva_ipush().

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "sva/config.h"
 #include "sva/mmu_intrinsics.h"
 #include "sva/keys.h"
 #include "sva/state.h"
@@ -176,7 +177,9 @@ sva_translate(void * entryPoint) {
        * Do some basic initialization of the thread.
        */
       transp->entryPoint = entryPoint;
-      strcpy (&(transp->key), dummy256KeyPtr);
+      if (vg) {
+        strcpy (&(transp->key), dummy256KeyPtr);
+      }
 
       return transp;
     }

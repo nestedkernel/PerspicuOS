@@ -137,7 +137,9 @@ findNextFreeThread (void) {
        * future will obtain the key from the executable image and then
        * decrypted with the VirtualGhost private key. 
        */
-      init_thread_key(newThread);
+      if (vg) {
+        init_thread_key(newThread);
+      }
 
 #if DEBUG
       printf("<<<< SVA: Created new private key: value: %s\n",
@@ -159,7 +161,9 @@ findNextFreeThread (void) {
       /*
        * Generate a random identifier for the new thread.
        */
-      newThread->rid = randomNumber();
+      if (vg) {
+        newThread->rid = randomNumber();
+      }
       return newThread;
     }
   }
