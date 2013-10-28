@@ -748,7 +748,7 @@ INTERRUPT(118)
 INTERRUPT(119)
 INTERRUPT(120)
 INTERRUPT(121)
-TRAP(122) /* Authorize Ghost Memory Share */
+INTERRUPT(122)
 TRAP(123) /* Get Random Thread ID Trap */
 TRAP(124) /* Get Thread Secret Trap */
 TRAP(125) /* Install Push Target Trap */
