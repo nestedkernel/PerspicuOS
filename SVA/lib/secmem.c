@@ -158,6 +158,11 @@ allocSecureMemory (void) {
   return vaddrStart;
 }
 
+void
+ghostShare (void) {
+  return;
+}
+
 /*
  * Function: freeSecureMemory()
  *

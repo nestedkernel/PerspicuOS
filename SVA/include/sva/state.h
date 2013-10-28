@@ -270,6 +270,13 @@ struct SVAThread {
 
   /* Randomly created identifier */
   uintptr_t rid;
+
+  /* List of ghost memory sharing */
+  struct {
+    uintptr_t rid;
+    uintptr_t start;
+    uintptr_t length;
+  } ghostShared[16];
 } __attribute__ ((aligned (16)));
 
 /*
