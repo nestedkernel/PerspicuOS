@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include "sva/callbacks.h"
+#include "sva/config.h"
 #include "sva/mmu.h"
 #include "sva/mmu_intrinsics.h"
 #include "sva/x86.h"
@@ -249,8 +250,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    * Verify that we're not trying to modify the PML4E entry that controls the
    * ghost address space.
    */
-  if ((ptePG->type == PG_L4) && ((ptePAddr & PG_FRAME) == secmemOffset)) {
-    panic ("SVA: MMU: Trying to modify ghost memory pml4e!\n");
+  if (vg) {
+    if ((ptePG->type == PG_L4) && ((ptePAddr & PG_FRAME) == secmemOffset)) {
+      panic ("SVA: MMU: Trying to modify ghost memory pml4e!\n");
+    }
   }
 
   /*
@@ -259,7 +262,9 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    * writing into isn't a ghost page table (along with the previous check)
    * should suffice.
    */
-  SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
+  if (vg) {
+    SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
+  }
 
   /*
    * Add check that the direct map is not being modified.
@@ -279,12 +284,12 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
      * ignore the request.  This reduces porting effort because the kernel
      * can try to map a ghost page, and the mapping will just never happen.
      */
-    if (isGhostPG(newPG)) {
+    if (vg && isGhostPG(newPG)) {
       return 0;
     }
 
     /* If the new mapping references a secure memory page fail */
-    SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
+    if (vg) SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
 
     /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
@@ -337,7 +342,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
       case PG_L1:
         if (!isFramePg(newPG)) {
           /* If it is a ghost frame, stop with an error */
-          if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+          if (vg && isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
 
           /*
            * If it is a page table page, just ensure that it is not writeable.
@@ -361,7 +366,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
         if (newVal & PG_PS) {
           if (!isFramePg(newPG)) {
             /* If it is a ghost frame, stop with an error */
-            if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+            if (vg && isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
 
             /*
              * If it is a page table page, just ensure that it is not writeable.
@@ -387,7 +392,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
         if (newVal & PG_PS) {
           if (!isFramePg(newPG)) {
             /* If it is a ghost frame, stop with an error */
-            if (isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
+            if (vg && isGhostPG (newPG)) panic ("SVA: MMU: Mapping ghost page!\n");
 
             /*
              * If it is a page table page, just ensure that it is not writeable.
@@ -1349,7 +1354,7 @@ sva_mm_load_pgtable (void * pg) {
    * set of page tables.
    */
   struct SVAThread * threadp = getCPUState()->currentThread;
-  if (threadp->secmemSize) {
+  if (vg && threadp->secmemSize) {
     /*
      * Get a pointer into the page tables for the secure memory region.
      */
