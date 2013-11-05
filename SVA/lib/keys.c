@@ -163,30 +163,37 @@ struct translation translations [4096];
  */
 void *
 sva_translate(void * entryPoint) {
-  /*
-   * Find a free translation.
-   */
-  for (unsigned index = 0; index < 4096; ++index) {
-    if (__sync_bool_compare_and_swap (&(translations[index].used), 0, 1)) {
-      /*
-       * Remember which thread is the one we've grabbed.
-       */
-      struct translation * transp = translations + index;
+  if (vg) {
+    /*
+     * Find a free translation.
+     */
+    for (unsigned index = 0; index < 4096; ++index) {
+      if (__sync_bool_compare_and_swap (&(translations[index].used), 0, 1)) {
+        /*
+         * Remember which thread is the one we've grabbed.
+         */
+        struct translation * transp = translations + index;
 
-      /*
-       * Do some basic initialization of the thread.
-       */
-      transp->entryPoint = entryPoint;
-      if (vg) {
-        strcpy (&(transp->key), dummy256KeyPtr);
+        /*
+         * Do some basic initialization of the thread.
+         */
+        transp->entryPoint = entryPoint;
+        if (vg) {
+          strcpy (&(transp->key), dummy256KeyPtr);
+        }
+
+        return transp;
       }
-
-      return transp;
     }
+
+    /*
+     * Translation failed.
+     */
+    return 0;
   }
 
   /*
-   * Translation failed.
+   * If we're not doing Virtual Ghost, then just return the function pointer.
    */
-  return 0;
+  return entryPoint;
 }

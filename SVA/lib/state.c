@@ -1423,20 +1423,22 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   uintptr_t rflags;
 
   /* Function entry point */
-  void * func = 0;
+  void * func = handle;
 
   /*
    * Validate the translation handle.
    */
   struct translation * transp = (struct translation *)(handle);
-  if ((translations <= transp) && (transp < translations + 4096)) {
-    if (((uint64_t)transp - (uint64_t)translations) % sizeof (struct translation)) {
-      panic ("SVA: Invalid translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
+  if (vg) {
+    if ((translations <= transp) && (transp < translations + 4096)) {
+      if (((uint64_t)transp - (uint64_t)translations) % sizeof (struct translation)) {
+        panic ("SVA: Invalid translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
+        return;
+      }
+    } else {
+      panic ("SVA: Out of range translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
       return;
     }
-  } else {
-    panic ("SVA: Out of range translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
-    return;
   }
 
   /*
@@ -1502,7 +1504,9 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   /*
    * Setup the call to the new function.
    */
-  ep->rip = transp->entryPoint;
+  if (vg)
+    func = transp->entryPoint;
+  ep->rip = func;
   ep->rsp = stackp;
   ep->rdi = arg;
 
@@ -1535,9 +1539,9 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   if (vg) {
     memset (&(transp->key), 0, sizeof (sva_key_t));
+    transp->entryPoint = 0;
+    transp->used = 0;
   }
-  transp->entryPoint = 0;
-  transp->used = 0;
 
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
