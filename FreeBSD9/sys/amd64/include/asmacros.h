@@ -62,8 +62,13 @@
 #else
 #define GEN_ENTRY(name)		ALIGN_TEXT; .globl CNAME(name); \
 				.type CNAME(name),@function; CNAME(name): STARTFUNC
+#define GEN_ENTRY32(name)		ALIGN_TEXT; .globl CNAME(name); \
+				.type CNAME(name),@function; CNAME(name):
 #endif
 #define NON_GPROF_ENTRY(name)	GEN_ENTRY(name)
+#if 1
+#define NON_GPROF_ENTRY32(name)	GEN_ENTRY32(name)
+#endif
 #define NON_GPROF_RET		.byte 0xc3	/* opcode for `ret' */
 
 #define	END(name)		.size name, . - name

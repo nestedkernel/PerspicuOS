@@ -8,7 +8,7 @@
 .text
 .code32
 
-NON_GPROF_ENTRY(linux_sigcode)
+NON_GPROF_ENTRY32(linux_sigcode)
 	call	*LINUX_SIGF_HANDLER(%esp)
 	leal	LINUX_SIGF_SC(%esp),%ebx	/* linux scp */
 	movl	%esp, %ebx			/* pass sigframe */

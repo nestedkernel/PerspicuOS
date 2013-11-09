@@ -29,11 +29,11 @@ namespace llvm{
 #if 0
     const static int CFI_ID = 19880616;
 #else
-    const static int CFI_ID = 0xbeefbeef;
+    const static int CFI_ID = 0x0000beef;
 #endif
 
     const static bool JTOpt  = true; // jump table index optimization
-    const static bool skipID = true; // skip prefetchnta 
+    const static bool skipID = false; // skip prefetchnta 
   
     // The X86 target machine
     X86TargetMachine &TM;

@@ -55,11 +55,29 @@ addLabelInstruction (MachineBasicBlock & MBB,
                      const TargetInstrInfo * TII,
                      int ID) {
   //
-  // Build a prefetchnta instruction that uses a constant offset from a
-  // register.  The offset will be the label ID.
+  // Build a sequence of NOP instructions for the label.
   //
-  BuildMI(MBB,MI,dl,TII->get(X86::PREFETCHNTA))
-  .addReg(X86::EAX).addImm(0).addReg(0).addImm(ID).addReg(0);
+#if 0
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32rr), X86::ECX).addReg(X86::ECX).addReg(X86::ECX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32rr), X86::EDX).addReg(X86::EDX).addReg(X86::EDX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32rr), X86::ECX).addReg(X86::ECX).addReg(X86::ECX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32rr), X86::ECX).addReg(X86::ECX).addReg(X86::ECX);
+#endif
+
+#if 0
+  BuildMI(MBB,MI,dl,TII->get(X86::AND8ri), X86::CX).addReg(X86::CX).addImm(255);
+  BuildMI(MBB,MI,dl,TII->get(X86::OR8ri), X86::CX).addReg(X86::CX).addImm(0);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+#endif
+
+  BuildMI(MBB,MI,dl,TII->get(X86::MOV64rr), X86::RCX).addReg(X86::RCX);
+  BuildMI(MBB,MI,dl,TII->get(X86::MOV64rr), X86::RDX).addReg(X86::RDX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
+  BuildMI(MBB,MI,dl,TII->get(X86::XCHG32ar)).addReg(X86::EAX);
   return;
 }
 
@@ -132,7 +150,12 @@ X86CFIOptPass::addCheckInstruction (MachineBasicBlock & MBB,
   // Determine which label value to use for the check.  This differs between
   // 32-bit and 64-bit code because the encoding of prefetchnta differs.
   //
-  unsigned label = (is64Bit()) ? 0x80180f67 : 0xef80180f;
+  unsigned label = (is64Bit()) ? 0x48c98948 : 0xef80180f;
+
+  //
+  // Add bitmasking code to ensure that the pointer is within the upper portion
+  // of the address space.
+  //
 
   //
   // Add an instruction to compare the label:

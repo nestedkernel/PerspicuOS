@@ -21,15 +21,25 @@
 #define RETLABEL  0xbeefbeef
 
 /* Labels used in comparisons: This includes the prefetchnta portion */
-#define CHECKLABEL 0x80180F67
+#define CHECKLABEL 0x48c98948
 
 /* Macro for call */
 #define CALLQ(x) callq x ; \
-								 prefetchnta RETLABEL(%eax)
+                 movq %rcx,%rcx ; \
+                 movq %rdx,%rdx ; \
+                 nop ; \
+                 nop ;
 
 /* Macro for start of function */
-#define STARTFUNC prefetchnta CALLLABEL(%eax)
-#define RETTARGET prefetchnta RETLABEL(%eax)
+#define STARTFUNC movq %rcx,%rcx ; \
+                  movq %rdx,%rdx ; \
+                  nop ; \
+                  nop ;
+
+#define RETTARGET movq %rcx,%rcx ; \
+                  movq %rdx,%rdx ; \
+                  nop ; \
+                  nop ;
 
 /* Macro for return */
 #define RETQ  movq  (%rsp), %rcx ; \
@@ -39,8 +49,9 @@
               addq  $8, %rsp ; \
               cmpl  $CHECKLABEL, (%rcx) ; \
               jne 23f ; \
-              addq  $0x8, %rcx ; \
               jmpq  *%rcx ; \
+              xchg %bx, %bx ; \
               23: movq $0xfea, %rax;
 
 #endif
+              /* addq  $0x8, %rcx ; \ */
