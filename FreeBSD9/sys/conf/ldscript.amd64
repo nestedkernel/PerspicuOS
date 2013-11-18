@@ -146,6 +146,7 @@ SECTIONS
     KEEP (*(.gnu.linkonce.d.*personality*))
     SORT(CONSTRUCTORS)
   }
+  .svadata : { *(.svadata) }
   .data1          : { *(.data1) }
   _edata = .; PROVIDE (edata = .);
   __bss_start = .;
