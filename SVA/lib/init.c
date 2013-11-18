@@ -151,7 +151,8 @@ struct  gate_descriptor {
  *
  *  Note that we need one of these per processor.
  */
-static struct gate_descriptor sva_idt[256];
+static struct gate_descriptor sva_idt[256]
+__attribute__ ((section ("svadata")));
 
 /* Taken from segments.h in FreeBSD */
 static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */

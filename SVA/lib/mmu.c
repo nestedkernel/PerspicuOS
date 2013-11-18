@@ -108,7 +108,7 @@ struct PTInfo {
  *  This table records information on pages fetched from the operating system
  *  that the SVA VM will use for its own purposes.
  */
-struct PTInfo PTPages[1024];
+struct PTInfo PTPages[1024] __attribute__ ((section ("svadata")));
 
 /*
  * Description:

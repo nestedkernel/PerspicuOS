@@ -73,10 +73,12 @@ invalidIC (unsigned int v) {
  *  system.  We gather this here so that it's easy to find them from the %GS
  *  register.
  */
-struct CPUState CPUState[numProcessors] __attribute__((aligned(16)));
+struct CPUState CPUState[numProcessors] __attribute__((aligned(16)))
+__attribute__ ((section ("svadata")));
 
 /* Pre-allocate a large number of SVA Threads */
-struct SVAThread Threads[4096] __attribute__ ((aligned (16)));
+struct SVAThread Threads[4096] __attribute__ ((aligned (16)))
+__attribute__ ((section ("svadata")));
 
 void
 init_threads(void) {
@@ -191,7 +193,7 @@ findNextFreeThread (void) {
 void *
 sva_getCPUState (tss_t * tssp) {
   /* Index of next available CPU state */
-  static int nextIndex=0;
+  static int nextIndex __attribute__ ((section ("svadata"))) = 0;
   struct SVAThread * st;
   int index;
 
