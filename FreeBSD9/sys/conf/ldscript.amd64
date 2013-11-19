@@ -146,7 +146,14 @@ SECTIONS
     KEEP (*(.gnu.linkonce.d.*personality*))
     SORT(CONSTRUCTORS)
   }
+
+  /* Create the SVA data section */
+  . = ALIGN(1048576);
+  svastart = .; PROVIDE (svastart = .);
   .svadata : { *(.svadata) }
+  . = ALIGN(1048576);
+  svaend = .; PROVIDE (svaend = .);
+
   .data1          : { *(.data1) }
   _edata = .; PROVIDE (edata = .);
   __bss_start = .;
