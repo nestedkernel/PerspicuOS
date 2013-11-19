@@ -882,7 +882,7 @@ getPhysicalAddr (void * v) {
 
 /* Cache of page table pages */
 extern unsigned char
-SVAPTPages[1024][X86_PAGE_SIZE];
+SVAPTPages[1024][X86_PAGE_SIZE] __attribute__ ((section ("svadata")));
 
 /*
  * Function: allocPTPage()
