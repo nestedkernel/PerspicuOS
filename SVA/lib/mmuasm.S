@@ -28,5 +28,10 @@
  *  We define this here because the align directive in Clang 3.0 doesn't seem
  *  to force 4096-byte alignment like it should.  This directive works.
  */
-.comm SVAPTPages, 4194304, 4096
+.section svadata
+
+.global SVAPTPages
+.align 4096
+SVAPTPages: .fill 4194304, 1, 0
+/* .comm SVAPTPages, 4194304, 4096 */
 
