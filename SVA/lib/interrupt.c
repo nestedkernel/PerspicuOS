@@ -73,12 +73,14 @@ invalidIC (unsigned int v) {
  *  system.  We gather this here so that it's easy to find them from the %GS
  *  register.
  */
-static struct CPUState CPUState[numProcessors] __attribute__((aligned(16)))
+static struct CPUState realCPUState[numProcessors] __attribute__((aligned(16)))
 __attribute__ ((section ("svamem")));
+static struct CPUState * CPUState = realCPUState;
 
 /* Pre-allocate a large number of SVA Threads */
-static struct SVAThread Threads[4096] __attribute__ ((aligned (16)))
+static struct SVAThread realThreads[4096] __attribute__ ((aligned (16)))
 __attribute__ ((section ("svamem")));
+static struct SVAThread * Threads = realThreads;
 
 void
 init_threads(void) {
