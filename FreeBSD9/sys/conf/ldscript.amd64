@@ -8,6 +8,7 @@ SECTIONS
   /* Read-only sections, merged into text segment: */
   kernphys = CONSTANT (MAXPAGESIZE);
   . = kernbase + kernphys + SIZEOF_HEADERS;
+
   .interp         : { *(.interp) }
   .hash           : { *(.hash) }
   .gnu.hash       : { *(.gnu.hash) }
@@ -140,19 +141,20 @@ SECTIONS
   .got            : { *(.got) }
   . = DATA_SEGMENT_RELRO_END (24, .);
   .got.plt        : { *(.got.plt) }
+
+  /* Create the SVA data section */
+  _svastart = ALIGN(0x100000);
+  .svamem ALIGN(0x100000) : {
+    *(svamem)
+    _svaend = ALIGN(0x100000);
+  }
+
   .data           :
   {
     *(.data .data.* .gnu.linkonce.d.*)
     KEEP (*(.gnu.linkonce.d.*personality*))
     SORT(CONSTRUCTORS)
   }
-
-  /* Create the SVA data section */
-  . = ALIGN(1048576);
-  svastart = .; PROVIDE (svastart = .);
-  .svadata : { *(.svadata) }
-  . = ALIGN(1048576);
-  svaend = .; PROVIDE (svaend = .);
 
   .data1          : { *(.data1) }
   _edata = .; PROVIDE (edata = .);
