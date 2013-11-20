@@ -68,11 +68,22 @@ SECTIONS
   PROVIDE (__etext = .);
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
+
   .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.*) }
   .rodata1        : { *(.rodata1) }
   .eh_frame_hdr : { *(.eh_frame_hdr) }
   .eh_frame       : ONLY_IF_RO { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RO { *(.gcc_except_table .gcc_except_table.*) }
+
+  /* Create the SVA data section */
+  _svastart = ALIGN(0x100000);
+  .svamem ALIGN(0x100000) : {
+    SVAPTPages = .;
+    . = . + 4194304;
+    *(svamem)
+    _svaend = ALIGN(0x100000);
+  }
+
   /* Adjust the address for the data segment.  We want to adjust up to
      the same address within the page on the next page up.  */
   . = ALIGN (CONSTANT (MAXPAGESIZE)) - ((CONSTANT (MAXPAGESIZE) - .) & (CONSTANT (MAXPAGESIZE) - 1)); . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE));
@@ -141,13 +152,6 @@ SECTIONS
   .got            : { *(.got) }
   . = DATA_SEGMENT_RELRO_END (24, .);
   .got.plt        : { *(.got.plt) }
-
-  /* Create the SVA data section */
-  _svastart = ALIGN(0x100000);
-  .svamem ALIGN(0x100000) : {
-    *(svamem)
-    _svaend = ALIGN(0x100000);
-  }
 
   .data           :
   {
