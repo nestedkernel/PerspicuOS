@@ -1763,9 +1763,10 @@ makePTReadOnly (void) {
  *  - nkpml4e       : The number of entries in the pml4
  */
 void 
-sva_mmu_init(pml4e_t * kpml4Mapping, unsigned long nkpml4e, uintptr_t btext,
-        uintptr_t etext)
-{
+sva_mmu_init (pml4e_t * kpml4Mapping,
+              unsigned long nkpml4e,
+              uintptr_t btext,
+              uintptr_t etext) {
     /* Get the virtual address of the pml4e mapping */
 #if USE_VIRT
     pml4e_t * kpml4eVA = (pml4e_t *) getVirtual( (uintptr_t) kpml4Mapping);
