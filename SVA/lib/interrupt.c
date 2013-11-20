@@ -73,11 +73,11 @@ invalidIC (unsigned int v) {
  *  system.  We gather this here so that it's easy to find them from the %GS
  *  register.
  */
-struct CPUState CPUState[numProcessors] __attribute__((aligned(16)))
+static struct CPUState CPUState[numProcessors] __attribute__((aligned(16)))
 __attribute__ ((section ("svamem")));
 
 /* Pre-allocate a large number of SVA Threads */
-struct SVAThread Threads[4096] __attribute__ ((aligned (16)))
+static struct SVAThread Threads[4096] __attribute__ ((aligned (16)))
 __attribute__ ((section ("svamem")));
 
 void
