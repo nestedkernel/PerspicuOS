@@ -147,7 +147,7 @@ getThreadSecret (void) {
 }
 
 /* Array of cached translations */
-struct translation translations [4096] __attribute__ ((section ("svadata")));
+struct translation translations [4096] __attribute__ ((section ("svamem")));
 
 /*
  * Function: sva_translate()

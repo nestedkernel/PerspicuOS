@@ -108,7 +108,7 @@ struct PTInfo {
  *  This table records information on pages fetched from the operating system
  *  that the SVA VM will use for its own purposes.
  */
-struct PTInfo PTPages[1024] __attribute__ ((section ("svadata")));
+struct PTInfo PTPages[1024] __attribute__ ((section ("svamem")));
 
 /*
  * Description:
@@ -882,7 +882,7 @@ getPhysicalAddr (void * v) {
 
 /* Cache of page table pages */
 extern unsigned char
-SVAPTPages[1024][X86_PAGE_SIZE] __attribute__ ((section ("svadata")));
+SVAPTPages[1024][X86_PAGE_SIZE] __attribute__ ((section ("svamem")));
 
 /*
  * Function: allocPTPage()

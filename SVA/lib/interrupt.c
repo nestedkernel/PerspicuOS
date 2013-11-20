@@ -74,11 +74,11 @@ invalidIC (unsigned int v) {
  *  register.
  */
 struct CPUState CPUState[numProcessors] __attribute__((aligned(16)))
-__attribute__ ((section ("svadata")));
+__attribute__ ((section ("svamem")));
 
 /* Pre-allocate a large number of SVA Threads */
 struct SVAThread Threads[4096] __attribute__ ((aligned (16)))
-__attribute__ ((section ("svadata")));
+__attribute__ ((section ("svamem")));
 
 void
 init_threads(void) {
@@ -193,7 +193,7 @@ findNextFreeThread (void) {
 void *
 sva_getCPUState (tss_t * tssp) {
   /* Index of next available CPU state */
-  static int nextIndex __attribute__ ((section ("svadata"))) = 0;
+  static int nextIndex __attribute__ ((section ("svamem"))) = 0;
   struct SVAThread * st;
   int index;
 
