@@ -1767,54 +1767,54 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
               unsigned long nkpml4e,
               uintptr_t btext,
               uintptr_t etext) {
-    /* Get the virtual address of the pml4e mapping */
+  /* Get the virtual address of the pml4e mapping */
 #if USE_VIRT
-    pml4e_t * kpml4eVA = (pml4e_t *) getVirtual( (uintptr_t) kpml4Mapping);
+  pml4e_t * kpml4eVA = (pml4e_t *) getVirtual( (uintptr_t) kpml4Mapping);
 #else
-    pml4e_t * kpml4eVA = kpml4Mapping;
+  pml4e_t * kpml4eVA = kpml4Mapping;
 #endif
 
-    /* Zero out the page descriptor array */
-    memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
+  /* Zero out the page descriptor array */
+  memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
 
-    /* Walk the kernel page tables and initialize the sva page_desc */
-    declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
-    
-    /* TODO: Set page_desc pages as SVA pages */
+  /* Walk the kernel page tables and initialize the sva page_desc */
+  declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
 
-    /* Identify kernel code pages and intialize the descriptors */
-    declare_kernel_code_pages(btext, etext);
-    
-    /* Now load the initial value of the cr3 to complete kernel init */
-    unprotect_paging();
-    load_cr3(*kpml4Mapping & PG_FRAME);
-    protect_paging();
+  /* TODO: Set page_desc pages as SVA pages */
 
-    /* Make existing page table pages read-only */
-    makePTReadOnly();
-    
+  /* Identify kernel code pages and intialize the descriptors */
+  declare_kernel_code_pages(btext, etext);
+
+  /* Now load the initial value of the cr3 to complete kernel init */
+  unprotect_paging();
+  load_cr3(*kpml4Mapping & PG_FRAME);
+  protect_paging();
+
+  /* Make existing page table pages read-only */
+  makePTReadOnly();
+
 #if 0//ACTIVATE_PROT
-    u_long sp;
-    __asm __volatile("movq %%rsp,%0" : "=r" (sp));
-    printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);
+  u_long sp;
+  __asm __volatile("movq %%rsp,%0" : "=r" (sp));
+  printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);
 
-    __asm __volatile("movq %%rbp,%0" : "=r" (sp));
-    printf("<<<< cpu_setregs: the base pointer: %p\n",sp);
+  __asm __volatile("movq %%rbp,%0" : "=r" (sp));
+  printf("<<<< cpu_setregs: the base pointer: %p\n",sp);
 
-    /* Enable page protection */
-    printf("==== cr0: 0x%lx\n", _rcr0());
-    protect_paging();
-    printf("==== cr0: 0x%lx\n", _rcr0());
-    __asm __volatile("int $3");
-    __asm __volatile("push %rsp");
-    printf("==== cr0: 0x%lx\n", _rcr0());
-    printf("Do we make it here?");
+  /* Enable page protection */
+  printf("==== cr0: 0x%lx\n", _rcr0());
+  protect_paging();
+  printf("==== cr0: 0x%lx\n", _rcr0());
+  __asm __volatile("int $3");
+  __asm __volatile("push %rsp");
+  printf("==== cr0: 0x%lx\n", _rcr0());
+  printf("Do we make it here?");
 #endif
 
-    /*
-     * Note that the MMU is now initialized.
-     */
-    mmuIsInitialized = 1;
+  /*
+   * Note that the MMU is now initialized.
+   */
+  mmuIsInitialized = 1;
 }
 
 /*
