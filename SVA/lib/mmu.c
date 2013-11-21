@@ -1837,6 +1837,21 @@ remap_internal_memory (uintptr_t * firstpaddr) {
     *pde = (pde_paddr & addrmask) | PTE_CANWRITE | PTE_PRESENT | PTE_PS;
     *pde |= PG_G;
 
+    /*
+     * Verify that the mapping works.
+     */
+    unsigned char * p = (unsigned char *) vaddr;
+    unsigned char * q = (unsigned char *) getVirtual (pde_paddr);
+
+    for (unsigned index = 0; index < 100; ++index) {
+      (*(p + index)) = ('a' + index);
+    }
+
+    for (unsigned index = 0; index < 100; ++index) {
+      if ((*(q + index)) != ('a' + index))
+        panic ("SVA: No match: %x: %lx != %lx\n", index, p + index, q + index);
+    }
+
     /* Move to the next virtual address */
     vaddr += (2 * 1024 * 1024);
   }
