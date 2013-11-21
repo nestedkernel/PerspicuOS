@@ -1742,6 +1742,113 @@ makePTReadOnly (void) {
 }
 
 /*
+ * Function: remap_internal_memory()
+ *
+ * Description:
+ *  Map sufficient physical memory into the SVA VM internal address space.
+ *
+ * Inputs:
+ *  firstpaddr - A pointer to the first free physical address.
+ *
+ * Outputs:
+ *  firstpaddr - The first free physical address is updated to account for the
+ *               pages used in the remapping.
+ */
+void
+remap_internal_memory (uintptr_t * firstpaddr) {
+  /* Pointers to the internal SVA VM memory */
+  extern char _svastart[];
+  extern char _svaend[];
+
+  /*
+   * Determine how much memory we need to map into the SVA VM address space.
+   */
+  uintptr_t svaSize = ((uintptr_t) _svaend) - ((uintptr_t) _svastart);
+
+  /*
+   * Disable protections.
+   */
+  unprotect_paging();
+
+  /*
+   * Create a PML4E for the SVA address space.
+   */
+  pml4e_t pml4eVal;
+
+  /*
+   * Get the PML4E of the current page table.  If there isn't one in the
+   * table, add one.
+   */
+  uintptr_t vaddr = 0xffffff8000000000u;
+  pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
+  if (!isPresent (pml4e)) {
+    /* Allocate a new frame */
+    uintptr_t paddr = *(firstpaddr);
+    (*firstpaddr) += X86_PAGE_SIZE;
+
+    /* Zero the contents of the frame */
+    memset (getVirtual (paddr), 0, X86_PAGE_SIZE);
+
+    /* Install a new PDPTE entry using the page  */
+    *pml4e = (paddr & addrmask) | PTE_CANWRITE | PTE_PRESENT;
+  }
+
+  /*
+   * Get the PDPTE entry (or add it if it is not present).
+   */
+  pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+  if (!isPresent (pdpte)) {
+    /* Allocate a new frame */
+    uintptr_t pdpte_paddr = *(firstpaddr);
+    (*firstpaddr) += X86_PAGE_SIZE;
+
+    /* Zero the contents of the frame */
+    memset (getVirtual (pdpte_paddr), 0, X86_PAGE_SIZE);
+
+    /* Install a new PDE entry using the page. */
+    *pdpte = (pdpte_paddr & addrmask) | PTE_CANWRITE | PTE_PRESENT;
+  }
+
+  /*
+   * Advance the physical address to the next 2 MB boundary.
+   */
+  if ((*firstpaddr & 0x0fffff)) {
+    uintptr_t oldpaddr = *firstpaddr;
+    *firstpaddr = ((*firstpaddr) + 0x200000) & 0xffffffffffc00000u;
+    printf ("SVA: remap: %lx %lx\n", oldpaddr, *firstpaddr);
+  }
+
+  /*
+   * Allocate 8 MB worth of SVA address space.
+   */
+  for (unsigned index = 0; index < 4; ++index) {
+    /*
+     * Get the PDE entry.
+     */
+    pde_t * pde = get_pdeVaddr (pdpte, vaddr);
+
+    /* Allocate a new frame */
+    uintptr_t pde_paddr = *(firstpaddr);
+    (*firstpaddr) += (2 * 1024 * 1024);
+
+    /*
+     * Install a new PDE entry.
+     */
+    *pde = (pde_paddr & addrmask) | PTE_CANWRITE | PTE_PRESENT | PTE_PS;
+    *pde |= PG_G;
+
+    /* Move to the next virtual address */
+    vaddr += (2 * 1024 * 1024);
+  }
+
+  /*
+   * Re-enable page protections.
+   */
+  protect_paging();
+  return;
+}
+
+/*
  * Function: sva_mmu_init
  *
  * Description:
@@ -1761,10 +1868,14 @@ makePTReadOnly (void) {
  * Inputs:
  *  - kpml4Mapping  : Mapping referencing the base kernel pml4 page table page
  *  - nkpml4e       : The number of entries in the pml4
+ *  - firstpaddr    : A pointer to the physical address of the first free frame.
+ *  - btext         : The first virtual address of the text segment.
+ *  - etext         : The last virtual address of the text segment.
  */
 void 
 sva_mmu_init (pml4e_t * kpml4Mapping,
               unsigned long nkpml4e,
+              uintptr_t * firstpaddr,
               uintptr_t btext,
               uintptr_t etext) {
   /* Get the virtual address of the pml4e mapping */
@@ -1776,6 +1887,12 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
 
   /* Zero out the page descriptor array */
   memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
+
+  /*
+   * Remap the SVA internal data structure memory into the part of the address
+   * space protected by the sandboxing (SF) instrumentation.
+   */
+  remap_internal_memory(firstpaddr);
 
   /* Walk the kernel page tables and initialize the sva page_desc */
   declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);

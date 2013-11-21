@@ -680,8 +680,11 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
      * initialization. Note that we pass in the page mapping for the pml4 page.
      * This function will also initialize the cr3.
      */
-    sva_mmu_init( &((pdp_entry_t *)KPML4phys)[PML4PML4I], NPDEPG,
-            (uintptr_t)btext, (uintptr_t)etext); 
+    sva_mmu_init (&((pdp_entry_t *)KPML4phys)[PML4PML4I],
+                  NPDEPG,
+                  firstaddr,
+                  (uintptr_t)btext,
+                  (uintptr_t)etext); 
 
 #if SVA_DEBUG
     printf("CR0 Value: 0x%lx\n",rcr0());
