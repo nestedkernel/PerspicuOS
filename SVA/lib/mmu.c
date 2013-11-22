@@ -1941,24 +1941,6 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
   /* Make existing page table pages read-only */
   makePTReadOnly();
 
-#if 0//ACTIVATE_PROT
-  u_long sp;
-  __asm __volatile("movq %%rsp,%0" : "=r" (sp));
-  printf("<<<< cpu_setregs: the stack pointer: %p\n",sp);
-
-  __asm __volatile("movq %%rbp,%0" : "=r" (sp));
-  printf("<<<< cpu_setregs: the base pointer: %p\n",sp);
-
-  /* Enable page protection */
-  printf("==== cr0: 0x%lx\n", _rcr0());
-  protect_paging();
-  printf("==== cr0: 0x%lx\n", _rcr0());
-  __asm __volatile("int $3");
-  __asm __volatile("push %rsp");
-  printf("==== cr0: 0x%lx\n", _rcr0());
-  printf("Do we make it here?");
-#endif
-
   /*
    * Note that the MMU is now initialized.
    */
