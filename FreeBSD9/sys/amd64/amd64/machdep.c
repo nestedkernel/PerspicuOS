@@ -1770,7 +1770,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
    * proper SVA interrupt handling.
    */
   for (unsigned index = 0; index < MAXCPU; ++index) {
-    if ((__pcpu[index].svaIContext = sva_getCPUState(&(common_tss[index]))) == 0) {
+    if (!(__pcpu[index].svaIContext = sva_getCPUState(&(common_tss[index])))) {
       panic ("SVA: Unable to setup interrupt context for this processor\n");
     }
   }
