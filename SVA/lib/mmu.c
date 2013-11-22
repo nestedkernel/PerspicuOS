@@ -1786,6 +1786,10 @@ remap_internal_memory (uintptr_t * firstpaddr) {
     uintptr_t paddr = *(firstpaddr);
     (*firstpaddr) += X86_PAGE_SIZE;
 
+    /* Set the type of the frame */
+    getPageDescPtr(paddr)->type = PG_L3;
+    ++(getPageDescPtr(paddr)->count);
+
     /* Zero the contents of the frame */
     memset (getVirtual (paddr), 0, X86_PAGE_SIZE);
 
@@ -1801,6 +1805,10 @@ remap_internal_memory (uintptr_t * firstpaddr) {
     /* Allocate a new frame */
     uintptr_t pdpte_paddr = *(firstpaddr);
     (*firstpaddr) += X86_PAGE_SIZE;
+
+    /* Set the type of the frame */
+    getPageDescPtr(pdpte_paddr)->type = PG_L2;
+    ++(getPageDescPtr(pdpte_paddr)->count);
 
     /* Zero the contents of the frame */
     memset (getVirtual (pdpte_paddr), 0, X86_PAGE_SIZE);
@@ -1830,6 +1838,14 @@ remap_internal_memory (uintptr_t * firstpaddr) {
     /* Allocate a new frame */
     uintptr_t pde_paddr = *(firstpaddr);
     (*firstpaddr) += (2 * 1024 * 1024);
+
+    /*
+     * Set the types of the frames
+     */
+    for (uintptr_t p = pde_paddr; p < *firstpaddr; p += X86_PAGE_SIZE) {
+      getPageDescPtr(p)->type = PG_L1;
+      ++(getPageDescPtr(p)->count);
+    }
 
     /*
      * Install a new PDE entry.
