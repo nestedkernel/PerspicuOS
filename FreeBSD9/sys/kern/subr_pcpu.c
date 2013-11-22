@@ -86,11 +86,6 @@ struct cpuhead cpuhead = STAILQ_HEAD_INITIALIZER(cpuhead);
 void
 pcpu_init(struct pcpu *pcpu, int cpuid, size_t size)
 {
-#if 1
-	/* Save the CPU state pointer that was already installed */
-	void * p = pcpu->svaIContext;
-#endif
-
 	bzero(pcpu, size);
 	KASSERT(cpuid >= 0 && cpuid < MAXCPU,
 	    ("pcpu_init: invalid cpuid %d", cpuid));
@@ -100,14 +95,6 @@ pcpu_init(struct pcpu *pcpu, int cpuid, size_t size)
 	cpu_pcpu_init(pcpu, cpuid, size);
 	pcpu->pc_rm_queue.rmq_next = &pcpu->pc_rm_queue;
 	pcpu->pc_rm_queue.rmq_prev = &pcpu->pc_rm_queue;
-#if 1
-	/* Restore the CPU state pointer that was previously installed */
-	pcpu->svaIContext = p;
-	if (!p)
-	{
-		panic ("SVA: No pcup icontext!\n");
-	}
-#endif
 }
 
 void

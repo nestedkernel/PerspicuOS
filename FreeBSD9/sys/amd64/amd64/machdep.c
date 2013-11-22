@@ -1763,6 +1763,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);		/* User value while in the kernel */
 #endif
 
+	pcpu_init(pc, 0, sizeof(struct pcpu));
 #if 1
   /*
    * Initialize the rest of the PCPU structures because we need them for
@@ -1774,7 +1775,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
     }
   }
 #endif
-	pcpu_init(pc, 0, sizeof(struct pcpu));
 	dpcpu_init((void *)(physfree + KERNBASE), 0);
 	physfree += DPCPU_SIZE;
 	PCPU_SET(prvspace, pc);
