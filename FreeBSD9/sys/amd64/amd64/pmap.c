@@ -662,6 +662,19 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	create_pagetables(firstaddr);
 
+#if 1
+  /* 
+   * Set the static address locations in the struct here to aid in kernel MMU
+   * initialization. Note that we pass in the page mapping for the pml4 page.
+   * This function will also initialize the cr3.
+   */
+  sva_mmu_init (&((pdp_entry_t *)KPML4phys)[PML4PML4I],
+                NPDEPG,
+                firstaddr,
+                (uintptr_t)btext,
+                (uintptr_t)etext); 
+#endif
+
 	virtual_avail = (vm_offset_t) KERNBASE + *firstaddr;
 	virtual_avail = pmap_kmem_choose(virtual_avail);
 	virtual_end = VM_MAX_KERNEL_ADDRESS;
@@ -670,28 +683,19 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	load_cr4(rcr4() | CR4_PGE | CR4_PSE);
 
 #ifdef SVA_MMU
+#if 0
+  /* 
+   * Set the static address locations in the struct here to aid in kernel MMU
+   * initialization. Note that we pass in the page mapping for the pml4 page.
+   * This function will also initialize the cr3.
+   */
+  sva_mmu_init (&((pdp_entry_t *)KPML4phys)[PML4PML4I],
+                NPDEPG,
+                firstaddr,
+                (uintptr_t)btext,
+                (uintptr_t)etext); 
 
-#if SVA_DEBUG
-    printf("Pre CR3 Value: 0x%lx\n",rcr3());
 #endif
-
-    /* 
-     * Set the static address locations in the struct here to aid in kernel MMU
-     * initialization. Note that we pass in the page mapping for the pml4 page.
-     * This function will also initialize the cr3.
-     */
-    sva_mmu_init (&((pdp_entry_t *)KPML4phys)[PML4PML4I],
-                  NPDEPG,
-                  firstaddr,
-                  (uintptr_t)btext,
-                  (uintptr_t)etext); 
-
-#if SVA_DEBUG
-    printf("CR0 Value: 0x%lx\n",rcr0());
-    printf("CR4 Value: 0x%lx\n",rcr4());
-    printf("Post CR3 Value: 0x%lx\n",rcr3());
-#endif
-
 #else /* !SVA_MMU */
     load_cr3(KPML4phys);
 #endif
