@@ -197,6 +197,8 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
   Value * SetMask   = ConstantInt::get (IntPtrTy, setMask);
   Value * Zero      = ConstantInt::get (IntPtrTy, 0u);
   Value * ThirtyTwo = ConstantInt::get (IntPtrTy, 32u);
+  Value * svaLow    = ConstantInt::get (IntPtrTy, 0xffffffff81a03000u);
+  Value * svaHigh   = ConstantInt::get (IntPtrTy, 0xffffffff89baaa10u);
 
   //
   // Convert the pointer into an integer and then shift the higher order bits
@@ -257,7 +259,40 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
                                            MaskValue,
                                            "setMask",
                                            &I);
-  return (new IntToPtrInst (Masked, Pointer->getType(), "masked", &I));
+
+  //
+  // Now protect SVA memory.  Compare against the first and last SVA addresses.
+  //
+  Value * svaLCmp = new ICmpInst (&I,
+                              CmpInst::ICMP_ULE,
+                              svaLow,
+                              Masked,
+                              "svacmp");
+  Value * svaHCmp = new ICmpInst (&I,
+                              CmpInst::ICMP_ULE,
+                              Masked,
+                              svaHigh,
+                              "svacmp");
+  Value * InSVA = BinaryOperator::Create (Instruction::And,
+                                           svaLCmp,
+                                           svaHCmp,
+                                           "inSVA",
+                                           &I);
+
+  //
+  // Create a value of the pointer that is zero.
+  //
+  Value * mkZero = BinaryOperator::Create (Instruction::Xor,
+                                           Masked,
+                                           Masked,
+                                           "mkZero",
+                                           &I);
+
+  //
+  // Select the correct value based on whether the pointer is in SVA memory.
+  //
+  Value * Final = SelectInst::Create (InSVA, mkZero, Masked, "fptr", &I);
+  return (new IntToPtrInst (Final, Pointer->getType(), "masked", &I));
 #else
   Module * M = I.getParent()->getParent()->getParent();
   Function * CheckFunction = cast<Function>(M->getFunction ("sva_checkptr"));
