@@ -1919,11 +1919,13 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
   /* Zero out the page descriptor array */
   memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
 
+#if 0
   /*
    * Remap the SVA internal data structure memory into the part of the address
    * space protected by the sandboxing (SF) instrumentation.
    */
   remap_internal_memory(firstpaddr);
+#endif
 
   /* Walk the kernel page tables and initialize the sva page_desc */
   declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
