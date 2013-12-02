@@ -178,9 +178,7 @@ sva_translate(void * entryPoint) {
          * Do some basic initialization of the thread.
          */
         transp->entryPoint = entryPoint;
-        if (vg) {
-          strcpy (&(transp->key), dummy256KeyPtr);
-        }
+        memcpy (&(transp->key), dummy256KeyPtr, sizeof (sva_key_t));
 
         return transp;
       }
