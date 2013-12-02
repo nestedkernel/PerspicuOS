@@ -1077,8 +1077,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     /* Page table page index */
     unsigned int ptindex;
 
-    printf ("SVA: mapSecurePage: No PML4E: %lx\n", pml4e);
-
     /* Fetch a new page table page */
     ptindex = allocPTPage ();
 
@@ -1107,8 +1105,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
     /* Page table page index */
     unsigned int ptindex;
 
-    printf ("SVA: mapSecurePage: No PDPTE!\n");
-
     /* Fetch a new page table page */
     ptindex = allocPTPage ();
 
@@ -1136,8 +1132,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
   if (!isPresent (pde)) {
     /* Page table page index */
     unsigned int ptindex;
-
-    printf ("SVA: mapSecurePage: No PDE!\n");
 
     /* Fetch a new page table page */
     ptindex = allocPTPage ();
@@ -1236,12 +1230,10 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
    */
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
   if (!isPresent (pdpte)) {
-    printf ("SVA: unmapSecurePage: No PDPTE!\n");
     return;
   }
 
   if ((*pdpte) & PTE_PS) {
-    printf ("unmapSecurePage: PDPTE has PS BIT\n");
     return;
   }
 
@@ -1250,12 +1242,10 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
    */
   pde_t * pde = get_pdeVaddr (pdpte, vaddr);
   if (!isPresent (pde)) {
-    printf ("SVA: unmapSecurePage: No PDE!\n");
     return;
   }
 
   if ((*pde) & PTE_PS) {
-    printf ("unmapSecurePage: PDE has PS BIT\n");
     return;
   }
 
@@ -1264,7 +1254,6 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
    */
   pte_t * pte = get_pteVaddr (pde, vaddr);
   if (!isPresent (pte)) {
-    printf ("SVA: unmapSecurePage: PTE is not present!\n");
     return;
   }
 
