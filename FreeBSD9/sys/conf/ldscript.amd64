@@ -69,20 +69,20 @@ SECTIONS
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
 
+  /* Create the SVA data section */
+  _svastart = ALIGN(0x1000);
+  .svamem ALIGN(0x1000) : {
+    SVAPTPages = .;
+    . = . + 4194304;
+    *(svamem)
+    _svaend = .;
+  }
+
   .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.*) }
   .rodata1        : { *(.rodata1) }
   .eh_frame_hdr : { *(.eh_frame_hdr) }
   .eh_frame       : ONLY_IF_RO { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RO { *(.gcc_except_table .gcc_except_table.*) }
-
-  /* Create the SVA data section */
-  _svastart = ALIGN(0x100000);
-  .svamem ALIGN(0x100000) : {
-    SVAPTPages = .;
-    . = . + 4194304;
-    *(svamem)
-    _svaend = ALIGN(0x100000);
-  }
 
   /* Adjust the address for the data segment.  We want to adjust up to
      the same address within the page on the next page up.  */
