@@ -224,20 +224,43 @@ sva_clear_icontext (sva_icontext_t * icontext)
     __asm__ __volatile__ ("sti":::"memory");
   return;
 }
+#endif
 
 /*
  * Intrinsic: sva_was_privileged()
  *
  * Description:
- *  This intrinsic flags whether the specified context was running in a
- *  privileged state before the interrupt/exception occurred.
+ *  This intrinsic flags whether the most recent interrupt context was running
+ *  in a privileged state before the interrupt/exception occurred.
+ *
+ * Return value:
+ *  true  - The processor was in privileged mode when interrupted.
+ *  false - The processor was in user-mode when interrupted.
  */
 unsigned char
-sva_was_privileged (sva_icontext_t * icontext)
-{
-  return (((icontext->cs) & 0x10) == 0x10);
+sva_was_privileged (void) {
+  /* Constant mask for user-space code segments */
+  const uintptr_t userCodeSegmentMask = 0x03;
+
+  /*
+   * Lookup the most recent interrupt context for this processor and see
+   * if it's code segment has the user-mode segment bits turned on.  Apparently
+   * all FreeBSD user-space code segments have 3 as the last digit.
+   */
+  return (!((getCPUState()->newCurrentIC->cs) & userCodeSegmentMask));
 }
-#endif
+
+/*
+ * Intrinsic: sva_icontext_getpc()
+ *
+ * Description:
+ *  Get the native code program counter value out of the interrupt context.
+ */
+uintptr_t
+sva_icontext_getpc (void) {
+  struct CPUState * cpuState = getCPUState();
+  return cpuState->newCurrentIC->rip;
+}
 
 /*****************************************************************************
  * Miscellaneous State Manipulation Functions
