@@ -213,8 +213,6 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
                                                 "highbits",
                                                 &I);
                                                     
-#if 1
-#if 1
   //
   // Create an instruction to mask off the proper bits to see if the pointer
   // is within the secure memory range.
@@ -224,25 +222,16 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
                                                 CheckMask,
                                                 "checkMask",
                                                 &I);
-#endif
 
   //
   // Compare the masked pointer to the mask.  If they're the same, we need to
   // set that bit.
   //
-#if 1
   Value * Cmp = new ICmpInst (&I,
                               CmpInst::ICMP_EQ,
                               CheckMasked,
                               CheckMask,
                               "cmp");
-#else
-  Value * Cmp = new ICmpInst (&I,
-                              CmpInst::ICMP_ULE,
-                              CheckMask,
-                              CastedPointer,
-                              "cmp");
-#endif
 
   //
   // Create the select instruction that, at run-time, will determine if we use
@@ -293,13 +282,6 @@ SFI::addBitMasking (Value * Pointer, Instruction & I) {
   //
   Value * Final = SelectInst::Create (InSVA, mkZero, Masked, "fptr", &I);
   return (new IntToPtrInst (Final, Pointer->getType(), "masked", &I));
-#else
-  Module * M = I.getParent()->getParent()->getParent();
-  Function * CheckFunction = cast<Function>(M->getFunction ("sva_checkptr"));
-  assert (CheckFunction && "CheckFunction not found!\n");
-  CallInst::Create (CheckFunction, CastedPointer, "", &I);
-  return Pointer;
-#endif
 }
 
 void
