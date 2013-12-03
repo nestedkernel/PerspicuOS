@@ -35,6 +35,19 @@ sva_check_buffer (uintptr_t start, uintptr_t len) {
   if ((nstart <= secmemlen) || (nend <= secmemlen)) {
     panic ("SVA: Invalid buffer access: %lx %lx\n", start, end);
   }
+
+  /*
+   * Check whether the pointer is within SVA internal memory.
+   */
+  extern char _svastart[];
+  extern char _svaend[];
+  uintptr_t svamemlen = (_svaend - _svastart);
+  uintptr_t sstart = start - (uintptr_t) _svastart;
+  uintptr_t send   = end   - (uintptr_t) _svastart;
+  if ((sstart <= svamemlen) || (send <= svamemlen)) {
+    panic ("SVA: Invalid buffer access: %lx %lx\n", start, end);
+  }
+
   return;
 }
 
