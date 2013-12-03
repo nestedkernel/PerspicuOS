@@ -310,7 +310,9 @@ SFI::instrumentMemcpy (Value * Dst, Value * Src, Value * Len, Instruction * I) {
   TargetData & TD = getAnalysis<TargetData>();
   Type * IntPtrTy = TD.getIntPtrType(I->getContext());
   Value * DstInt = new PtrToIntInst (Dst, IntPtrTy, "dst", I);
+#if 1
   Value * SrcInt = new PtrToIntInst (Src, IntPtrTy, "src", I);
+#endif
 
   //
   // Setup the function arguments.
@@ -334,8 +336,10 @@ SFI::instrumentMemcpy (Value * Dst, Value * Src, Value * Len, Instruction * I) {
   //
   // Create another call to check the source.
   //
-  Args[0] = SrcInt;
-  CallInst::Create (CheckF, Args, "", I);
+  Value * SrcArgs[2];
+  SrcArgs[0] = SrcInt;
+  SrcArgs[1] = Len;
+  CallInst::Create (CheckF, SrcArgs, "", I);
 
   return;
 }
@@ -385,6 +389,7 @@ SFI::visitCallInst (CallInst & CI) {
 //
 void
 SFI::visitLoadInst (LoadInst & LI) {
+#if 1
   //
   // Don't instrument trivially safe memory accesses.
   //
@@ -407,6 +412,7 @@ SFI::visitLoadInst (LoadInst & LI) {
   // Update the statistics.
   //
   ++LSChecks;
+#endif
   return;
 }
 
