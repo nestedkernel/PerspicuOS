@@ -314,7 +314,52 @@ getCPUState(void) {
   return cpustate;
 }
 
-extern unsigned char sva_was_privileged (void);
+/*
+ * Intrinsic: sva_was_privileged()
+ *
+ * Description:
+ *  This intrinsic flags whether the most recent interrupt context was running
+ *  in a privileged state before the interrupt/exception occurred.
+ *
+ * Return value:
+ *  true  - The processor was in privileged mode when interrupted.
+ *  false - The processor was in user-mode when interrupted.
+ */
+static inline unsigned char
+sva_was_privileged (void) {
+  /* Constant mask for user-space code segments */
+  const uintptr_t userCodeSegmentMask = 0x03;
+
+  /*
+   * Get the CPUState for the current processor.
+   */
+  struct CPUState * cpup = getCPUState();
+
+  /*
+   * Get the current interrupt context.  Use inline assembly to prevent
+   * the SVA instrumentation from preventing us from reading the data.
+   */
+  sva_icontext_t * currentIC;
+  __asm__ __volatile__ ("movq %1, %0\n"
+                       : "=r" (currentIC)
+                       : "m" ((cpup->newCurrentIC)));
+  
+  /*
+   * Get the code segment out of the interrupt context.
+   */
+  uintptr_t cs;
+  __asm__ __volatile__ ("movq %1, %0\n"
+                       : "=r" (cs)
+                       : "m" ((currentIC->cs)));
+
+  /*
+   * Lookup the most recent interrupt context for this processor and see
+   * if it's code segment has the user-mode segment bits turned on.  Apparently
+   * all FreeBSD user-space code segments have 3 as the last digit.
+   */
+  return (!(cs & userCodeSegmentMask));
+}
+
 extern uintptr_t sva_icontext_getpc (void);
 
 /*

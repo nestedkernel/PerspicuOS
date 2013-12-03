@@ -226,6 +226,7 @@ sva_clear_icontext (sva_icontext_t * icontext)
 }
 #endif
 
+#if 0
 /*
  * Intrinsic: sva_was_privileged()
  *
@@ -249,6 +250,7 @@ sva_was_privileged (void) {
    */
   return (!((getCPUState()->newCurrentIC->cs) & userCodeSegmentMask));
 }
+#endif
 
 /*
  * Intrinsic: sva_icontext_getpc()
