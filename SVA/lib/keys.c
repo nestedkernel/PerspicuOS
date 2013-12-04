@@ -73,64 +73,13 @@ void init_thread_key (struct SVAThread * thread) {
 }
 
 /*
- * Function: installKey()
- *
- * Description:
- *  This function allocates ghost memory for an application can copies the
- *  specified key into that ghost memory.
- *
- * Inputs:
- *  keyp - A pointer to the key to install.
- *  size - The size of the key in bytes.
- */
-sva_key_t *
-installKey (sva_key_t * keyp, intptr_t size) {
-  // SVA ghost memory allocator function
-  extern unsigned char * ghostMalloc (intptr_t size);
-
-  //
-  // Allocate some ghost memory for the key.
-  //
-  unsigned char * ghostKey = ghostMalloc (size);
-
-  //
-  // Copy the key into the ghost memory.
-  //
-  if (ghostKey) {
-    memcpy (ghostKey, keyp, size);
-  }
-
-  //
-  // Return a pointer to the key in ghost memory.
-  //
-  return (sva_key_t *) ghostKey;
-}
-
-/*
- * Function: getSecretFromActiveContext()
- *
- * Description:
- *  This function obtains the app secret from the currently active CPU state.
- *  It then returns a pointer to the secret key object. 
- *
- * Return value:
- *  - A pointer to the key inside the active context's
- *    thread structure.
- */
-inline sva_key_t *
-getSecretFromActiveContext() {
-  return getCPUState()->currentThread->ghostKey;
-}
-
-/*
  * Function: getThreadSecret
  *
  * Description:
- *  This is the trap handler to return a pointer to the active thread's secret
- *  key, when requested by the user mode process. The pointer is obtained from
- *  the active CPU state and placed in the EAX register. Note also the type of
- *  data structure pointed to by the pointer. It is an encapsulated key so that
- *  the representation (length) can change without modifying the interface.
+ *  This is the trap handler to return the application's private key to the
+ *  application.  For efficiency, this is done by returning the key in
+ *  registers; an application may use the key directly from registers without
+ *  ever storing it into ghost memory.
  */
 void 
 getThreadSecret (void) {
@@ -138,11 +87,15 @@ getThreadSecret (void) {
    * Get the current interrupt context; the arguments will be in it.
    */
   struct CPUState * cpup = getCPUState(); 
-  sva_key_t * tSecret = cpup->currentThread->ghostKey; 
+  sva_key_t * tSecret = &(cpup->currentThread->ghostKey); 
   sva_icontext_t * icp = cpup->newCurrentIC; 
 
-  /* Set the rax register with the pointer to the secret key */
-  icp->rax = (uintptr_t) tSecret;
+  /*
+   * The %rax register will hold the lower bits of the key while the %rdx
+   * register will hold the upper bits of the key.
+   */
+  icp->rax = *((uintptr_t *) (tSecret));
+  icp->rdx = *((uintptr_t *) (tSecret + 8));
   return;
 }
 

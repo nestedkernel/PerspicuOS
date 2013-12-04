@@ -265,8 +265,8 @@ struct SVAThread {
   /* Flag whether the thread is in use */
   unsigned char used;
 
-  /* Pointer to thread private key */
-  sva_key_t * ghostKey;
+  /* Copy of the thread's private key */
+  sva_key_t ghostKey;
 
   /* Randomly created identifier */
   uintptr_t rid;

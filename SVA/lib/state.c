@@ -1526,17 +1526,11 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
 
   /*
    * Now that ghost memory has been reinitialized, install the key for this
-   * bitcode file into the ghost memory.
+   * bitcode file into the ghost memory and then invalidate the translation
+   * handle since we've now used it.
    */
   if (vg) {
-    extern sva_key_t * installKey (sva_key_t * keyp, intptr_t size);
-    threadp->ghostKey = installKey (&(transp->key), sizeof (sva_key_t));
-  }
-
-  /*
-   * Invalidate the translation handle since we've now used it.
-   */
-  if (vg) {
+    memcpy (&(threadp->ghostKey), &(transp->key), sizeof (sva_key_t));
     memset (&(transp->key), 0, sizeof (sva_key_t));
     transp->entryPoint = 0;
     transp->used = 0;
