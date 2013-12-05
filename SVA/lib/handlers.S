@@ -292,6 +292,7 @@ Trap:
   xorq %rdx, %rdx
   xorq %rcx, %rcx
 
+  finit
   pxor %mm0,  %mm0
   pxor %mm1,  %mm1
   pxor %mm2,  %mm2
@@ -567,6 +568,7 @@ SVAsyscall:
   xorq %r11, %r11
   xorq %r10, %r10
 
+  finit
   pxor %mm0,  %mm0
   pxor %mm1,  %mm1
   pxor %mm2,  %mm2
