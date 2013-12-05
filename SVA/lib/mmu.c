@@ -1222,6 +1222,7 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
   uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (cr3, vaddr);
   if (!isPresent (pml4e)) {
+    return;
     panic ("SVA: unmapSecurePage: No PML4E!\n");
   }
 
