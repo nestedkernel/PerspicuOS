@@ -132,6 +132,7 @@ sva_translate(void * entryPoint) {
          */
         transp->entryPoint = entryPoint;
         memcpy (&(transp->key), dummy256KeyPtr, sizeof (sva_key_t));
+        transp->used = 2;
 
         return transp;
       }

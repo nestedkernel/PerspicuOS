@@ -1425,6 +1425,11 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   void * func = handle;
 
   /*
+   * Disable interrupts.
+   */
+  rflags = sva_enter_critical();
+
+  /*
    * Validate the translation handle.
    */
   struct translation * transp = (struct translation *)(handle);
@@ -1438,12 +1443,13 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
       panic ("SVA: Out of range translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
       return;
     }
-  }
 
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
+    if (transp->used != 2)
+      panic ("SVA: Bad transp: %d\n", transp->used);
+
+    /* Grab the function to call from the translation handle */
+    func = transp->entryPoint;
+  }
 
   /*
    * Get the most recent interrupt context.
@@ -1503,8 +1509,6 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
   /*
    * Setup the call to the new function.
    */
-  if (vg)
-    func = transp->entryPoint;
   ep->rip = func;
   ep->rsp = stackp;
   ep->rdi = arg;
@@ -1531,8 +1535,6 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   if (vg) {
     memcpy (&(threadp->ghostKey), &(transp->key), sizeof (sva_key_t));
-    memset (&(transp->key), 0, sizeof (sva_key_t));
-    transp->entryPoint = 0;
     transp->used = 0;
   }
 
