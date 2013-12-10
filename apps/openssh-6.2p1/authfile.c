@@ -83,6 +83,24 @@ extern ssize_t ghost_write(int d, void *buf, size_t nbytes);
 static const char authfile_id_string[] =
     "SSH PRIVATE KEY FILE FORMAT 1.1\n";
 
+#if 1
+static inline unsigned char *
+getGhostKey (void) {
+  static unsigned char * keybuf = 0;
+
+  /*
+   * If we haven't fetched the key before, go fetch it.
+   */
+  if (keybuf == 0) {
+    keybuf = malloc (16);
+    sva_get_key (keybuf);
+  }
+
+  return keybuf;
+}
+
+#endif
+
 /*
  * Serialises the authentication (private) key to a blob, encrypting it with
  * passphrase.  The identification of the blob (lowest 64 bits of n) will
@@ -286,7 +304,7 @@ key_private_to_blob(Key *key, Buffer *blob, const char *passphrase,
   /* static char internalKey[16] = "abcdefghijklmno"; */
   static char internalKey[16] = "abcdefghijklmno"; /* Be wrong for testing */
   if (getenv ("GHOSTING")) {
-    ghostKey = sva_get_key ();
+    ghostKey = getGhostKey ();
   } else {
     ghostKey = internalKey;
   }
@@ -447,7 +465,7 @@ key_load_file(int fd, const char *filename, Buffer *blob)
   /* static char internalKey[16] = "abcdefghijklmno"; */
   static char internalKey[16] = "abcdefghijklmno"; /* Be wrong for testing */
   if (getenv ("GHOSTING")) {
-    ghostKey = sva_get_key ();
+    ghostKey = getGhostKey ();
   } else {
     ghostKey = internalKey;
   }
