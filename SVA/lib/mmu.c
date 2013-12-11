@@ -1220,6 +1220,7 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
    * table, add one.
    */
   uintptr_t vaddr = (uintptr_t) v;
+#if 0
   pml4e_t * pml4e = get_pml4eVaddr (cr3, vaddr);
   if (!isPresent (pml4e)) {
     return;
@@ -1230,6 +1231,10 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
    * Get the PDPTE entry (or add it if it is not present).
    */
   pdpte_t * pdpte = get_pdpteVaddr (pml4e, vaddr);
+#else
+  struct SVAThread * thread = getCPUState()->currentThread;
+  pdpte_t * pdpte = get_pdpteVaddr (&(thread->secmemPML4e), vaddr);
+#endif
   if (!isPresent (pdpte)) {
     return;
   }
@@ -1284,11 +1289,12 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
       freePTPage (ptindex);
       *pdpte = 0;
       if ((ptindex = releaseUse (pdpte))) {
-        *pml4e = 0;
+#if 0
         freePTPage (ptindex);
-        if ((ptindex = releaseUse (pml4e))) {
+        if ((ptindex = releaseUse (getVirtual(*thread->secmemPML4e)))) {
           freePTPage (ptindex);
         }
+#endif
       }
     }
   }
