@@ -22,11 +22,14 @@
  *  Return the location within ghost memory at which SVA has placed the
  *  application's private key.
  */
-static inline unsigned char *
-sva_get_key (void) {
-  /* Pointer to the key */
-  unsigned char * keyp;
-  __asm__ __volatile__ ("int $0x7c\n" : "=a" (keyp));
-  return keyp;
+static inline void
+sva_get_key (unsigned char * keyp) {
+  uintptr_t rax;
+  uintptr_t rdx;
+  __asm__ __volatile__ ("int $0x7c\n"
+                        : "=a" (rax), "=d" (rdx));
+  *((uintptr_t *)(keyp)) = rax;
+  *((uintptr_t *)(keyp + 8)) = rdx;
+  return;
 }
 #endif
