@@ -1351,6 +1351,17 @@ trap_pfault_sva (register_t eva, unsigned long code, int usermode, struct trapfr
 	struct proc *p = td->td_proc;
 
 	va = trunc_page(eva);
+#if 1
+  /*
+   * If the fault is for a ghost memory address, let the SVA VM take care of
+   * it.
+   */
+  if ((0xffffff0000000000u <= va) && (va < 0xffffff8000000000u)) {
+    extern void sva_ghost_fault (uintptr_t);
+    sva_ghost_fault(va);
+    return 0;
+  }
+#endif
 	if (va >= VM_MIN_KERNEL_ADDRESS) {
 		/*
 		 * Don't allow user-mode faults in kernel address space.
