@@ -217,3 +217,55 @@ freeSecureMemory (void) {
 
   return;
 }
+
+void
+sva_ghost_fault (uintptr_t vaddr) {
+  /* Physical address of allocated secure memory pointer */
+  uintptr_t sp;
+
+  /* The address of the PML4e page table */
+  pml4e_t pml4e = 0;
+
+  /*
+   * Get the current interrupt context; the arguments will be in it.
+   */
+  struct CPUState * cpup = getCPUState();
+  struct SVAThread * threadp = cpup->currentThread;
+  sva_icontext_t * icp = cpup->newCurrentIC;
+
+  /*
+   * Determine if this is the first secure memory allocation.
+   */
+  unsigned char firstSecAlloc = (threadp->secmemSize == 0);
+
+  /*
+   * Get a page of memory from the operating system.  Note that the OS provides
+   * the physical address of the allocated memory.
+   */
+  if ((sp = provideSVAMemory (X86_PAGE_SIZE)) != 0) {
+    /* Physical address of the allocated page */
+    uintptr_t paddr = sp;
+
+    /*
+     * Map the memory into a part of the address space reserved for secure
+     * memory.
+     */
+    pml4e = mapSecurePage (vaddr, paddr);
+
+    /*
+     * If this is the first piece of secure memory that we've allocated,
+     * record the address of the top-level page table that maps in the secure
+     * memory region.  The context switching intrinsics will want to know
+     * where this entry is so that it can quickly enable and disable it on
+     * context switches.
+     */
+    if (firstSecAlloc) {
+      threadp->secmemPML4e = pml4e;
+    }
+  } else {
+    panic ("SVA: Kernel secure memory allocation failed!\n");
+  }
+
+  return;
+}
+
