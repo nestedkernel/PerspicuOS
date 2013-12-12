@@ -983,8 +983,9 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	td->td_retval[1] = 0;
 #else
 #if 1
-  void * handle = sva_translate (imgp->entry_addr);
-  sva_reinit_icontext (handle, 0, ((stack - 8) & ~0xFul) + 8, stack);
+  uintptr_t handle = sva_translate (imgp->entry_addr);
+  if (handle)
+    sva_reinit_icontext (handle, 0, ((stack - 8) & ~0xFul) + 8, stack);
 #endif
 #endif
 
