@@ -900,11 +900,6 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
      * Flush the secure memory page mappings.
      */
     flushSecureMemory (oldThread);
-
-    /*
-     * Flush the caches.
-     */
-    __asm__ __volatile__ ("wbinvd\n");
   }
 
   /*
@@ -1488,11 +1483,6 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
      * Flush the secure memory page mappings.
      */
     flushSecureMemory (threadp);
-
-    /*
-     * Flush the caches.
-     */
-    __asm__ __volatile__ ("wbinvd\n");
   }
 
   /*
