@@ -1057,7 +1057,7 @@ releaseUse (uintptr_t * ptp) {
  *  The value of the PML4E entry mapping the secure memory region is returned.
  */
 uintptr_t
-mapSecurePage (unsigned char * v, uintptr_t paddr) {
+mapSecurePage (uintptr_t vaddr, uintptr_t paddr) {
   /* PML4e value for the secure memory region */
   pml4e_t pml4eVal;
 
@@ -1070,7 +1070,6 @@ mapSecurePage (unsigned char * v, uintptr_t paddr) {
    * Get the PML4E of the current page table.  If there isn't one in the
    * table, add one.
    */
-  uintptr_t vaddr = (uintptr_t) v;
   pml4e_t * pml4e = get_pml4eVaddr (get_pagetable(), vaddr);
 
   if (!isPresent (pml4e)) {
