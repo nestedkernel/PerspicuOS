@@ -108,12 +108,11 @@ ghostinit (void) {
   /*
    * Open a log file.
    */
-  logfd = open ("/tmp/ghostlog", O_FSYNC | O_CREAT | O_TRUNC | O_WRONLY, 0777);
 #if 0
-  logfd = dup2 (logfd, 24);
-#endif
+  logfd = open ("/tmp/ghostlog", O_FSYNC | O_CREAT | O_TRUNC | O_WRONLY, 0777);
   snprintf (logbuf, 128, "#ghostinit: %lx %lx\n", tradBuffer, tradlen);
   write (logfd, logbuf, strlen (logbuf));
+#endif
   return;
 }
 
@@ -258,8 +257,10 @@ ghost_accept (int s, struct sockaddr * addr, socklen_t * addrlen) {
     ret = accept (s, addr, addrlen);
   }
 
+#if 0
   snprintf (logbuf, 128, "#accept: %d %d\n", ret, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -278,8 +279,10 @@ ghost_getpeereid(int s, uid_t *euid, gid_t *egid) {
   // Do the call
   int ret = getpeereid (s, newuid, newgid);
 
+#if 0
   snprintf (logbuf, 128, "#getpeereid: %d: %d %d\n", ret, s, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Copy the data back into the ghost memory
   *euid = *newuid;
@@ -300,8 +303,10 @@ ghost_connect(int s, const struct sockaddr *addr, socklen_t addrlen) {
   // Perform the system call
   ret = connect (s, newaddr, addrlen);
 
+#if 0
   snprintf (logbuf, 128, "#connect: %d %d\n", ret, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -319,8 +324,10 @@ _bind(int s, const struct sockaddr *addr, socklen_t addrlen) {
   // Perform the system call
   ret = bind (s, newaddr, addrlen);
 
+#if 0
   snprintf (logbuf, 128, "#bind: %d %d\n", ret, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -337,8 +344,10 @@ _getsockopt(int s, int level, int optname, void * optval, socklen_t * optlen) {
   // Perform the system call
   ret = getsockopt (s, level, optname, newoptval, newoptlen);
 
+#if 0
   snprintf (logbuf, 128, "#getsockopt: %d %d\n", ret, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Copy the outputs back into secure memory
   memcpy (optval, newoptval, *newoptlen);
@@ -363,16 +372,20 @@ ghost_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
   // Perform the system call
   int err = select (nfds, newreadfds, newwritefds, newexceptfds, newtimeout);
 
+#if 0
   snprintf (logbuf, 128, "#select: %d: %d %d\n", nfds, err, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Copy the outputs back into ghost memory
   if (readfds)   *readfds   = *newreadfds;
   if (writefds)  *writefds  = *newwritefds;
   if (exceptfds) *exceptfds = *newexceptfds;
 
+#if 0
   snprintf (logbuf, 128, "#select isset: %d\n", FD_ISSET (5, readfds));
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -413,8 +426,10 @@ _open (char *path, int flags, mode_t mode) {
   if (!newpath) abort();
   int fd = open (newpath, flags, mode);
 
+#if 0
   snprintf (logbuf, 128, "#open: %s: %d %d\n", newpath, fd, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -429,11 +444,13 @@ ghost_open (char *path, int flags, mode_t mode) {
 int
 _close (int fd) {
   int err;
+#if 0
   if (fd != logfd) {
     err = close (fd);
     snprintf (logbuf, 128, "#close: %d %d\n", fd, errno);
     write (logfd, logbuf, strlen (logbuf));
   }
+#endif
   return err;
 }
 
@@ -519,8 +536,10 @@ _read(int d, void *buf, size_t nbytes) {
     memcpy (buf, newbuf, size);
   }
 
+#if 0
   snprintf (logbuf, 128, "#read: %d: %d %d\n", d, size, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
@@ -541,8 +560,10 @@ _write(int d, void *buf, size_t nbytes) {
   // Perform the system call
   size = write (d, newbuf, nbytes);
 
+#if 0
   snprintf (logbuf, 128, "#write: %d: %d %d\n", d, size, errno);
   write (logfd, logbuf, strlen (logbuf));
+#endif
 
   // Restore the stack pointer
   tradsp = framep;
