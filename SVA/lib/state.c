@@ -749,18 +749,23 @@ checkIntegerForLoad (sva_integer_state_t * p) {
  */
 static inline void
 flushSecureMemory (struct SVAThread * threadp) {
-  /* Start of virtual address space used for secure memory */
-  unsigned char * secmemp = (unsigned char *) SECMEMSTART;
-
-  /* The number of flushed data measured in bytes */
-  uintptr_t flushedSize = 0;
-
-  /* Flush each secure memory page away one at a time */
-  while (flushedSize < threadp->secmemSize) {
-    sva_mm_flush_tlb (secmemp + flushedSize);
-    flushedSize += X86_PAGE_SIZE;
-  }
-
+  /*
+   * Invalidate all TLBs (including those with the global flag).  We do this
+   * by first turning on and then turning off the PCID extension.  According
+   * to the Intel Software Architecture Reference Manual, Volume 3,
+   * Section 4.10.4, this will do the invalidation that we want.
+   *
+   * Experiments show that invalidating all of the TLBs is faster than
+   * invalidating every page individually.  Since we usually flush on a context
+   * switch, we just flushed all the TLBs anyway by changing CR3.  Therefore,
+   * we lose speed by not flushing everything again.
+   */
+  __asm__ __volatile__ ("movq %cr4, %rax\n"
+                        "movq %cr4, %rcx\n"
+                        "orq $0x20000, %rax\n"
+                        "andq $0xfffffffffffdffff, %rcx\n"
+                        "movq %rax, %cr4\n"
+                        "movq %rcx, %cr4\n");
   return;
 }
 
