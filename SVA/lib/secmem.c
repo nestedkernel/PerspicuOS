@@ -19,15 +19,20 @@
 #include "sva/callbacks.h"
 #include "sva/mmu.h"
 #include "sva/state.h"
+#include "sva/util.h"
 
 /*
  * Function: getNextSecureAddress()
  *
  * Description:
  *  Find the next available address in the secure virtual address space.
+ *
+ * Inputs:
+ *  threadp - The thread for which to allocate more ghost memory.
+ *  size    - The size of memory to allocate in bytes.
  */
 static inline unsigned char *
-getNextSecureAddress (struct SVAThread * threadp) {
+getNextSecureAddress (struct SVAThread * threadp, uintptr_t size) {
   /* Start of virtual address space used for secure memory */
   unsigned char * secmemStartp = (unsigned char *) SECMEMSTART;
 
@@ -38,7 +43,7 @@ getNextSecureAddress (struct SVAThread * threadp) {
    * Advance the address by a single page frame and return the value before
    * increment.
    */
-  threadp->secmemSize += X86_PAGE_SIZE;
+  threadp->secmemSize += size;
   return secmemp;
 }
 
@@ -64,12 +69,17 @@ ghostMalloc (intptr_t size) {
    */
   struct CPUState * cpup = getCPUState();
   struct SVAThread * threadp = cpup->currentThread;
-  sva_icontext_t * icp = cpup->newCurrentIC;
 
   /*
    * Determine if this is the first secure memory allocation.
    */
   unsigned char firstSecAlloc = (threadp->secmemSize == 0);
+
+  /*
+   * Determine where this ghost memory will be allocated and update the size
+   * of the ghost memory.
+   */
+  unsigned char * vaddr = vaddrStart = getNextSecureAddress (threadp, size);
 
   /*
    * Get a page of memory from the operating system.  Note that the OS provides
@@ -79,22 +89,6 @@ ghostMalloc (intptr_t size) {
     if ((sp = provideSVAMemory (X86_PAGE_SIZE)) != 0) {
       /* Physical address of the allocated page */
       uintptr_t paddr = sp;
-
-      /* Virtual address for the current page to map */
-      unsigned char * vaddr = 0;
-
-      /*
-       * Assign the memory to live within the secure memory virtual address
-       * space.
-       */
-      vaddr = getNextSecureAddress(threadp);
-
-      /*
-       * If this is the virtual address of the first page, record it so that we
-       * can return it to the caller.
-       */
-      if (!vaddrStart)
-        vaddrStart = vaddr;
 
       /*
        * Map the memory into a part of the address space reserved for secure
@@ -112,6 +106,11 @@ ghostMalloc (intptr_t size) {
       if (firstSecAlloc) {
         threadp->secmemPML4e = pml4e;
       }
+
+      /*
+       * Move to the next virtual address.
+       */
+      vaddr += X86_PAGE_SIZE;
     } else {
       panic ("SVA: Kernel secure memory allocation failed!\n");
     }
@@ -137,24 +136,54 @@ ghostMalloc (intptr_t size) {
 unsigned char *
 allocSecureMemory (void) {
   /*
-   * Call the ghost memory allocator to allocate some ghost memory.  The number
-   * of bytes to allocate is in the %rdi register of the interrupted program
-   * state.
+   * Get the number of bytes to allocate.  This is stored in the %rdi register
+   * of the interrupted program state.
    */
-  sva_icontext_t * icp = getCPUState()->newCurrentIC;
-  unsigned char * vaddrStart = ghostMalloc (icp->rdi);
+  struct CPUState * cpup = getCPUState();
+  sva_icontext_t * icp = cpup->newCurrentIC;
+  intptr_t size = icp->rdi;
 
   /*
-   * Zero out the memory.
+   * Check that the size is positive.
    */
-  memset (vaddrStart, 0, icp->rdi);
+  if (size < 0)
+    return 0;
 
   /*
-   * Set the return value in the Interrupt Context to be a pointer to the newly
-   * allocated memory.
+   * If we have already allocated ghost memory, then merely extend the size of
+   * of the ghost partition and let the ghost memory be demand paged into
+   * memory.  Otherwise, allocate some ghost memory just to make adding the
+   * demand-paged ghost memory easier.
+   */
+  unsigned char * vaddrStart = 0;
+  struct SVAThread * threadp = cpup->currentThread;
+  if (threadp->secmemSize) {
+    /*
+     * Pretend to allocate more ghost memory (but let demand paging actually
+     * map it in.
+     */
+    vaddrStart = getNextSecureAddress (threadp, size);
+  } else {
+    /*
+     * Call the ghost memory allocator to allocate some ghost memory.
+     */
+    vaddrStart = ghostMalloc (size);
+
+    /*
+     * Zero out the memory.
+    memset (vaddrStart, 0, size);
+     */
+  }
+
+  /*
+   * Set the return value in the Interrupt Context to be a pointer to the
+   * newly allocated memory.
    */
   icp->rax = (uintptr_t) vaddrStart;
-  printf ("SVA: secmemalloc: %lx %lx\n", vaddrStart, icp->rdi);
+
+  /*
+   * Return the first address of the newly available ghost memory.
+   */
   return vaddrStart;
 }
 
@@ -220,18 +249,25 @@ freeSecureMemory (void) {
 
 void
 sva_ghost_fault (uintptr_t vaddr) {
+  /* Old interrupt flags */
+  uintptr_t rflags;
+
+  /*
+   * Disable interrupts.
+   */
+  rflags = sva_enter_critical();
+
   /* Physical address of allocated secure memory pointer */
   uintptr_t sp;
 
   /* The address of the PML4e page table */
-  pml4e_t pml4e = 0;
+  pml4e_t pml4e;
 
   /*
    * Get the current interrupt context; the arguments will be in it.
    */
   struct CPUState * cpup = getCPUState();
   struct SVAThread * threadp = cpup->currentThread;
-  sva_icontext_t * icp = cpup->newCurrentIC;
 
   /*
    * Determine if this is the first secure memory allocation.
@@ -244,7 +280,7 @@ sva_ghost_fault (uintptr_t vaddr) {
    */
   if ((sp = provideSVAMemory (X86_PAGE_SIZE)) != 0) {
     /* Physical address of the allocated page */
-    uintptr_t paddr = sp;
+    uintptr_t paddr = (uintptr_t) sp;
 
     /*
      * Map the memory into a part of the address space reserved for secure
@@ -266,6 +302,8 @@ sva_ghost_fault (uintptr_t vaddr) {
     panic ("SVA: Kernel secure memory allocation failed!\n");
   }
 
+  /* Re-enable interrupts if necessary */
+  sva_exit_critical (rflags);
   return;
 }
 

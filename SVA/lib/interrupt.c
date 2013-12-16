@@ -127,6 +127,7 @@ findNextFreeThread (void) {
       newThread->ICFPIndex = 0;
       newThread->secmemSize = 0;
       newThread->numPushTargets = 0;
+      newThread->secmemPML4e = 0;
 
       /* 
        * This function currently sets the thread secret with a default
