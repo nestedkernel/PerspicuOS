@@ -1065,7 +1065,7 @@ mapSecurePage (uintptr_t vaddr, uintptr_t paddr) {
    * Ensure that this page is not being used for something else.
    */
   page_desc_t * pgDesc = getPageDescPtr (paddr);
-  if (pgRefCount (pgDesc)) {
+  if (pgRefCount (pgDesc) > 1) {
     panic ("SVA: Ghost page still in use somewhere else!\n");
   }
   if (isPTP(pgDesc) || isCodePG (pgDesc)) {
@@ -1270,6 +1270,12 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
   if (!isPresent (pte)) {
     return;
   }
+
+  /*
+   * Mark the physical page is a regular type page now.
+   */
+  getPageDescPtr (*pte & PG_FRAME)->type = PG_UNUSED;
+  getPageDescPtr (*pte & PG_FRAME)->count = 0;
 
   /*
    * Modify the PTE so that the page is not present.
