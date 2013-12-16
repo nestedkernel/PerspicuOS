@@ -1062,6 +1062,17 @@ mapSecurePage (uintptr_t vaddr, uintptr_t paddr) {
   pml4e_t pml4eVal;
 
   /*
+   * Ensure that this page is not being used for something else.
+   */
+  page_desc_t * pgDesc = getPageDescPtr (paddr);
+  if (pgRefCount (pgDesc)) {
+    panic ("SVA: Ghost page still in use somewhere else!\n");
+  }
+  if (isPTP(pgDesc) || isCodePG (pgDesc)) {
+    panic ("SVA: Ghost page has wrong type!\n");
+  }
+
+  /*
    * Disable protections.
    */
   unprotect_paging();
