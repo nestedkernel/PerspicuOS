@@ -197,8 +197,6 @@ allocSecureMemory (void) {
  *  p    - The first virtual address of the secure memory to free.
  *  size - The amount of secure memory to allocate measured in bytes.
  *
- * TODO:
- *  o) Size should be validated to prevent a fault in supervisor mode.
  */
 void
 freeSecureMemory (void) {
@@ -218,7 +216,8 @@ freeSecureMemory (void) {
    * address space.
    */
   uintptr_t pint = (uintptr_t) p;
-  if (SECMEMSTART <= pint < SECMEMEND) {
+  if ((SECMEMSTART <= pint < SECMEMEND) &&
+     (SECMEMSTART <= (pint + size) < SECMEMEND)) {
     /*
      * Zero out the memory.
      */
