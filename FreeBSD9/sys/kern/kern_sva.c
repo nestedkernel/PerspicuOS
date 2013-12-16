@@ -66,7 +66,7 @@ provideSVAMemory (uintptr_t size)
   /*
    * Request a page from the page manager.
    */
-	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL);
+	bufferPage = vm_page_alloc (NULL, 0, VM_ALLOC_NORMAL | VM_ALLOC_NOOBJ);
 
   /*
    * Unmap the page from the 1 TB direct map.
