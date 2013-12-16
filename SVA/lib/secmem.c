@@ -171,8 +171,8 @@ allocSecureMemory (void) {
 
     /*
      * Zero out the memory.
-    memset (vaddrStart, 0, size);
      */
+    memset (vaddrStart, 0, size);
   }
 
   /*
@@ -301,6 +301,11 @@ sva_ghost_fault (uintptr_t vaddr) {
   } else {
     panic ("SVA: Kernel secure memory allocation failed!\n");
   }
+
+  /*
+   * Zero out the ghost memory contents.
+   */
+  memset (vaddr, 0, X86_PAGE_SIZE);
 
   /* Re-enable interrupts if necessary */
   sva_exit_critical (rflags);
