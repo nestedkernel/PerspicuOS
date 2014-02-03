@@ -19,7 +19,11 @@
 #include <limits.h>
 
 /* Determine whether the virtual ghost features are enabled */
+#ifdef VG
+static const unsigned char vg = 1;
+#else
 static const unsigned char vg = 0;
+#endif
 
 /* Total number of processors supported by this SVA Execution Engine */
 static const unsigned int numProcessors=64;
