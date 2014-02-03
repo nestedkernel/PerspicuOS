@@ -1886,6 +1886,18 @@ remap_internal_memory (uintptr_t * firstpaddr) {
    * Re-enable page protections.
    */
   protect_paging();
+
+  /*
+   * Zero out the memory.
+   */
+  unsigned char * p = (unsigned long *)(0xffffff8000000000u);
+  memset (p, 0, 4096);
+
+  /*
+   * Move the internal data structures into the ghost memory.
+   */
+  extern struct SVAThread * Threads;
+  Threads = (struct SVAThread *)(p);
   return;
 }
 
@@ -1929,13 +1941,11 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
   /* Zero out the page descriptor array */
   memset (page_desc, 0, numPageDescEntries * sizeof(page_desc_t));
 
-#if 0
   /*
    * Remap the SVA internal data structure memory into the part of the address
    * space protected by the sandboxing (SF) instrumentation.
    */
   remap_internal_memory(firstpaddr);
-#endif
 
   /* Walk the kernel page tables and initialize the sva page_desc */
   declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
