@@ -754,6 +754,17 @@ void X86CFIOptPass::insertIDFunction(MachineFunction& F,DebugLoc & dl,
   //
   if ((F.getFunction()->getName()).equals("main")) return;
 
+  //
+  // If this function is not visible to other compilation units and does
+  // not have its address taken, do not generate a label for it.
+  //
+  const Function * RF = F.getFunction();
+  if ((RF->hasInternalLinkage()) || (RF->hasPrivateLinkage())) {
+    if (!(RF->hasAddressTaken())) {
+      return;
+    }
+  }
+
   MachineBasicBlock& MBB = *(F.begin());
   MachineInstr* MI = MBB.begin();
   addLabelInstruction (MBB, MI, dl, TII, CFI_ID);
