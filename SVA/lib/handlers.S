@@ -281,6 +281,7 @@ Trap:
    * Zero out live registers that could be spilled to the stack.  Without
    * memory safety, we can't guarantee that they're safe.
    */
+#ifdef VG
   xorq %r15, %r15
   xorq %r14, %r14
   xorq %r13, %r13
@@ -318,6 +319,7 @@ Trap:
   pxor %xmm13, %xmm13
   pxor %xmm14, %xmm14
   pxor %xmm15, %xmm15
+#endif
 
   /*
    * Call the trap handler registered by the OS for this trap.
@@ -561,6 +563,7 @@ SVAsyscall:
    * Zero out live registers that could be spilled to the stack.  Without
    * memory safety, we can't guarantee that they're safe.
    */
+#ifdef VG
   xorq %r15, %r15
   xorq %r14, %r14
   xorq %r13, %r13
@@ -594,6 +597,7 @@ SVAsyscall:
   pxor %xmm13, %xmm13
   pxor %xmm14, %xmm14
   pxor %xmm15, %xmm15
+#endif
 
   /*
    * Call the system software system call handler.
