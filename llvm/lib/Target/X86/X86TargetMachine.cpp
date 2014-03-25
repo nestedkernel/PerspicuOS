@@ -113,6 +113,14 @@ UseVZeroUpper("x86-use-vzeroupper",
   cl::desc("Minimize AVX to SSE transition penalty"),
   cl::init(true));
 
+/*
+ * If this flag is set then we will do CFI instrumentation
+ */
+static cl::opt<bool>
+AddCFIInstrumentation("x86-add-cfi",
+  cl::desc("Add CFI instrumentation"),
+  cl::init(false));
+
 //===----------------------------------------------------------------------===//
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
@@ -180,9 +188,10 @@ bool X86PassConfig::addPreEmitPass() {
     ShouldPrint = true;
   }
 
-#if 1
-  PM->add(createX86CFIOptPass(getX86TargetMachine()));
-#endif
+  if(AddCFIInstrumentation){
+    PM->add(createX86CFIOptPass(getX86TargetMachine()));
+    ShouldPrint = true;
+  }
   return ShouldPrint;
 }
 
