@@ -40,6 +40,14 @@ UseGVNAfterVectorization("use-gvn-after-vectorization",
   cl::init(false), cl::Hidden,
   cl::desc("Run GVN instead of Early CSE after vectorization passes"));
 
+/*
+ * If this flag is set then we will do SFI instrumentation
+ */
+static cl::opt<bool>
+AddSFIInstrumentation("-add-sfi",
+  cl::desc("Add SFI instrumentation"),
+  cl::init(false));
+
 PassManagerBuilder::PassManagerBuilder() {
     OptLevel = 2;
     SizeLevel = 0;
@@ -117,9 +125,9 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
       Inliner = 0;
     }
     addExtensionsToPM(EP_EnabledOnOptLevel0, MPM);
-#if 0
-    MPM.add (createSFIPass ());
-#endif
+    if(AddSFIInstrumentation){
+      MPM.add (createSFIPass ());
+    }
     return;
   }
 
