@@ -657,9 +657,10 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
     //
     // We use %rdx since it is not used for return values.
     //
+#if 0 /* NDD: Commented out because it moves the ptr into unreadable memory */
     BuildMI(MBB,MI,dl,TII->get(X86::MOV32ri),X86::EDX).addImm(0xffffff80);
-    BuildMI(MBB,MI,dl,TII->get(X86::SHL64ri),X86::EDX)
-    .addReg(X86::EDX).addImm(32);
+    BuildMI(MBB,MI,dl,TII->get(X86::SHL64ri),X86::EDX).addReg(X86::EDX).addImm(32);
+#endif
 
     //
     // Fetch the return address from the stack and OR it with the bitmask.  We
@@ -670,8 +671,10 @@ void X86CFIOptPass::insertCheckRet(MachineBasicBlock& MBB,
     //
     BuildMI(MBB,MI,dl,TII->get(X86::MOV64rm), X86::RCX)
     .addReg(X86::RSP).addImm(1).addReg(0).addImm(0).addReg(0);
+#if 0 /* NDD Comment: Caused bugs in userspace app testing. TODO FIXME */
     BuildMI(MBB,MI,dl,TII->get(X86::OR64rr), X86::ECX)
     .addReg(X86::RCX).addReg(X86::EDX);
+#endif 
 
     //
     // Adjust the stack pointer to remove the return address:
