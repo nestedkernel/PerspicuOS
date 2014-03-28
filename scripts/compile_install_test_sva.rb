@@ -12,9 +12,10 @@ svaBaseDir = ".."
 kernelSourceDir = svaBaseDir+"/FreeBSD9"
 imageDir = svaBaseDir+"/images"
 imagePath = imageDir+"/sva_ndd.img"
-llvmSourceDir = svaBaseDir+"/llvm"
+llvmSourceDir = svaBaseDir+"/llvm-obj"
 svaSourceDir = svaBaseDir+"/SVA"
 kernCompileOpts = ""
+$instKernName = "sva"
 
 optparse = OptionParser.new do|opts|
     # Set a banner, displayed at the top
@@ -68,6 +69,13 @@ optparse = OptionParser.new do|opts|
     opts.on("-u", "--unMountImage", "Unmount the disk image [default: images/sva_ndd.img]") do
        options[:unMountImage] = true
     end
+    opts.on("-e", "--debug-make", "Build with j=1 to get the error.") do
+       options[:debugMake] = true
+    end
+    opts.on("-n", "--instType=type", "The type of security instrumentation to use <cfi,cfi+sfi,none> [default: sva].") do |flag|
+       options[:instName] = "sva-" + flag
+       $instKernName = "sva-" + flag
+    end
 
     # This displays the help screen, all programs are assumed to have this
     # option.  
@@ -94,7 +102,7 @@ begin
         #exit
     #end
     if (!options[:clean] && !options[:buildLLVM]) 
-        kernCompileOpts = "-DNO_KERNELCLEAN -DNO_KERNELCONFIG " ,
+        kernCompileOpts = "-DNO_KERNELCLEAN -DNO_KERNELCONFIG " +
             "-DNO_KERNELDEPEND -DNO_KERNELOBJ"
     end
 rescue OptionParser::InvalidOption, OptionParser::MissingArgument
@@ -106,10 +114,11 @@ end
 # Mount command to both create a vnode and image file to mount
 # Takes the path to the image, assumes we are mounting to /mnt also mounts to
 # vnode 1
+$mountDir = "/mnt/sva_qemu_image"
 def mountImage(pathToImg)
-    puts "Mounting disk image #{pathToImg} to /mnt"
+    puts "Mounting disk image #{pathToImg} to #{$mountDir}"
     system("sudo mdconfig -a -t vnode -f #{pathToImg} -u 1")
-    system("sudo mount /dev/md1p2 /mnt")
+    system("sudo mount /dev/md1p2 #{$mountDir}")
     unless($?.success?)
         puts "<<<< MOUNT FAILED >>>>"
         exit
@@ -121,7 +130,7 @@ end
 # /mnt and undoing the first vnode
 def unMountImage()
     puts "Unmounting disk"
-    system("sudo umount /mnt")
+    system("sudo umount #{$mountDir}")
     system("sudo mdconfig -d -u 1")
     unless($?.success?)
         puts "<<<< UMOUNT FAILED >>>>"
@@ -187,12 +196,16 @@ end
 #
 # Args: FreeBSD source dir and boolean clean directive
 #
-def buildKernel(kernelSourceDir, extraOpts)
+def buildKernel(kernelSourceDir, extraOpts, debug=false)
     puts "Compiling Kernel with SVA..."
 
     # CD to source dir, once block completes the function auto CDs back to orig
     Dir.chdir(kernelSourceDir) do
-        system("make -j15 buildkernel KERNCONF=SVA #{extraOpts}")
+        if(debug)
+            system("make buildkernel KERNCONF=SVA #{extraOpts}")
+        else
+            system("make -j15 buildkernel KERNCONF=SVA #{extraOpts}")
+        end
         unless($?.success?)
             puts "Error: Make failed!"
             exit
@@ -224,7 +237,7 @@ if (options[:buildSVA]) then
 end
 
 if (options[:buildKernel]) then
-    buildKernel(kernelSourceDir, kernCompileOpts)
+    buildKernel(kernelSourceDir, kernCompileOpts, options[:debugMake])
 end
 
 #===============================================================================
@@ -236,7 +249,7 @@ end
 # ------------------------------------------------------------------------------
 if (options[:instKernToMachDisk]) then
     Dir.chdir(kernelSourceDir) do
-        system("sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=sva")
+        system("sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=#{$instKernName}")
     end
 end
 
@@ -254,7 +267,8 @@ if (options[:instKernToQemuDisk]) then
     puts "Changing to kernel source dir, compiling, and installing into disk image."
     Dir.chdir(kernelSourceDir) do
         puts "Executing install command from kernel build dir"
-        system("sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=sva DESTDIR=/mnt")
+        cmd = "sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=#{$instKernName} DESTDIR=#{$mountDir}"
+        system(cmd)
     end
 
     # unmount the image
