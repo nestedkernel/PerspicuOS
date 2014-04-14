@@ -12,3 +12,6 @@ data
 
 # llvm build director 
 llvm-obj
+
+# SVA Build files
+libsva.a
