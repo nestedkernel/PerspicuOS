@@ -72,9 +72,13 @@ optparse = OptionParser.new do|opts|
     opts.on("-e", "--debug-make", "Build with j=1 to get the error.") do
        options[:debugMake] = true
     end
-    opts.on("-n", "--instType=type", "The type of security instrumentation to use <cfi,cfi+sfi,none> [default: sva].") do |flag|
-       options[:instName] = "sva-" + flag
-       $instKernName = "sva-" + flag
+    opts.on("-n", "--instType=type", "The type of security instrumentation to use <cfi,cfi+sfi,none> [default: #{$instKernName}].") do |name|
+       options[:instName] = name
+       $instKernName = name
+    end
+    
+    opts.on("-s", "--kernSourceDir=path", "The path to the kernel source. Def: #{kernelSourceDir}") do |path|
+       kernelSourceDir = path
     end
 
     # This displays the help screen, all programs are assumed to have this
