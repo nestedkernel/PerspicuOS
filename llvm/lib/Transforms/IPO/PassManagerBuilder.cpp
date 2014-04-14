@@ -44,7 +44,7 @@ UseGVNAfterVectorization("use-gvn-after-vectorization",
  * If this flag is set then we will do SFI instrumentation
  */
 static cl::opt<bool>
-AddSFIInstrumentation("-add-sfi",
+AddSFIInstrumentation("add-sfi",
   cl::desc("Add SFI instrumentation"),
   cl::init(false));
 
@@ -225,9 +225,9 @@ void PassManagerBuilder::populateModulePassManager(PassManagerBase &MPM) {
       MPM.add(createConstantMergePass());     // Merge dup global constants
   }
   addExtensionsToPM(EP_OptimizerLast, MPM);
-#if 0
-  MPM.add (createSFIPass ());
-#endif
+  if(AddSFIInstrumentation){
+    MPM.add (createSFIPass ());
+  }
 }
 
 void PassManagerBuilder::populateLTOPassManager(PassManagerBase &PM,
