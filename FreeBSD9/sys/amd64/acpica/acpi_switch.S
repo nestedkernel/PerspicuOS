@@ -33,6 +33,8 @@
 
 #include "acpi_wakedata.h"
 #include "assym.s"
+/* THEO */
+#include "opt_sva_mmu.h"
 
 #define	WAKEUP_CTX(member)	wakeup_ ## member - wakeup_ctx(%rsi)
 
@@ -97,7 +99,15 @@ ENTRY(acpi_restorecpu)
 	movq	PCB_CR0(%rdi), %rax
 	movq	%rax, %rcx
 	andq	$~(CR0_EM | CR0_TS), %rax
+    /* THEO */
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rax, %rdi
+    callq sva_load_cr0
+    popq %rdi
+#else
 	movq	%rax, %cr0
+#endif
 
 	/* Restore CR2 and CR4. */
 	movq	PCB_CR2(%rdi), %rax
@@ -149,7 +159,14 @@ ENTRY(acpi_restorecpu)
 	fxrstor	PCB_USERFPU(%rdi)
 
 	/* Reload CR0. */
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rcx, %rdi
+    callq sva_load_cr0
+    popq %rdi
+#else
 	movq	%rcx, %cr0
+#endif
 
 	/* Restore return address. */
 	movq	PCB_RIP(%rdi), %rax
