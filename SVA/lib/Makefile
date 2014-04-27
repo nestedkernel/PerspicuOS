@@ -4,7 +4,8 @@
 #
 
 # Location of the LLVM Tools
-LLVMTOOLS=/home/dautenh1/projects/sva/sva.svn/llvm
+#LLVMTOOLS=/home/dautenh1/projects/sva/sva.svn/llvm
+LLVMTOOLS=$(HOME)/box/x86/llvm-nosfi
 
 CC=${LLVMTOOLS}/Release+Asserts/bin/clang
 CXX=${LLVMTOOLS}/Release+Asserts/bin/clang++
