@@ -10,6 +10,31 @@
 // Stack-switching and other secure entry point operations.
 //
 //===----------------------------------------------------------------------===//
+//
+// Defines macro that can be used to define functions that act as
+// entry points into the secure kernel.
+//
+// Sample use:
+//
+// SECURE_WRAPPER(int, TestFunc, int a, int b) {
+//  return a + b;
+//}
+//
+// This will define a function 'TestFunc' that acts as a wrapper
+// for 'TestFunc_secure' which will contain the usual function code.
+//
+// The wrapper function handles operations needed to enter secure
+// execution (see SECURE_ENTRY macro for high-level description)
+// and return to normal execution (see SECURE_EXIT).
+//
+// As implemented, these are not reentrant.
+//
+//===----------------------------------------------------------------------===//
+//
+// TODO:
+//  * Use per-CPU stacks for SMP operation
+//
+//===----------------------------------------------------------------------===//
 
 #ifndef _STACK_SWITCH_
 #define _STACK_SWITCH_
@@ -134,10 +159,5 @@ asm( \
 RET FUNC ##_secure(__VA_ARGS__); \
 RET __attribute__((visibility("hidden"))) FUNC ##_secure(__VA_ARGS__)
 
-// Sample use of the above macro:
-//
-// SECURE_WRAPPER(int, TestFunc, int a, int b) {
-//  return a + b;
-//}
 
 #endif // _STACK_SWITCH_
