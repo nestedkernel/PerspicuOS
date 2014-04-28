@@ -668,6 +668,9 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
    */
   switch (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
     case 1:
+      if (val != setMappingReadOnly(val)) {
+        printf("Warning: RW update requested, applying as read-only!\n");
+      }
       val = setMappingReadOnly (val);
       __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
       break;
@@ -678,6 +681,7 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
 
     case 0:
       /* Silently ignore the request */
+      panic("Invalid mmu update requested!\n");
       return;
 
     default:
