@@ -126,7 +126,7 @@ extern void * interrupt_table[256];
  *   This is a pointer to the PerspicuOS SuperSpace stack, which is used on
  *   calls to SuperSpace or SuperSpace calls.
  */
-char SecureStack[1<<20];
+char SecureStack[1<<12];
 uintptr_t SecureStackBase = (uintptr_t) SecureStack + sizeof(SecureStack);
 
 /*
@@ -450,9 +450,7 @@ init_fpu () {
  *  descriptor table.  Note that this should be called by the primary processor
  *  (the first one that starts execution on system boot).
  */
-//void
-//sva_init_primary () {
-SECURE_WRAPPER(void, sva_init_primary, int x){
+void sva_init_primary() {
 #if 0
   init_segs ();
   init_debug ();
