@@ -1,0 +1,17 @@
+# global files
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+
+# ignore the images directory as it holds images that are big
+images
+
+# results data from experiments
+data
+
+# llvm build director 
+llvm-obj
+
+# SVA Build files
+libsva.a
