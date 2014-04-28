@@ -126,8 +126,8 @@ extern void * interrupt_table[256];
  *   This is a pointer to the PerspicuOS SuperSpace stack, which is used on
  *   calls to SuperSpace or SuperSpace calls.
  */
-char SecureStack[1<<12];
-uintptr_t SecureStackBase = (uintptr_t) SecureStack + sizeof(SecureStack);
+char SecureStack[1<<12] __attribute__ ((section ("svamem")));
+uintptr_t SecureStackBase __attribute__ ((section ("svamem"))) = (uintptr_t) SecureStack + sizeof(SecureStack) ;
 
 /*
  * Taken from FreeBSD: amd64/segments.h
