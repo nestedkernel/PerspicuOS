@@ -16,6 +16,11 @@
 #ifndef SVA_CFI_H
 #define SVA_CFI_H
 
+// Disable CFI for PerspicuOS.
+// #define USE_CFI
+
+#ifdef USE_CFI
+
 /* Labels for call targets and return targets, respectively */
 #define CALLLABEL 0xbeefbeef
 #define RETLABEL  0xbeefbeef
@@ -53,5 +58,18 @@
               xchg %bx, %bx ; \
               23: movq $0xfea, %rax;
 
-#endif
-              /* addq  $0x8, %rcx ; \ */
+#define CHECK_FUNC_LABEL(f) \
+    (*((unsigned int *)(f)) != CHECKLABEL)
+
+#else
+
+#define CHECK_FUNC_LABEL(f) (1)
+
+#define STARTFUNC
+#define RETTARGET
+
+#define CALLQ(x) call x ;
+#define RETQ ret ;
+
+#endif // USE_CFI
+#endif // SVA_CFI_H

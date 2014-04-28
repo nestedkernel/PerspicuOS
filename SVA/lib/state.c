@@ -1654,7 +1654,7 @@ sva_init_stack (unsigned char * start_stackp,
    * Verify that the function is a kernel function.
    */
   uintptr_t f = (uintptr_t)(func);
-  if ((f <= SECMEMEND) || (*((unsigned int *)(f)) != CHECKLABEL)) {
+  if ((f <= SECMEMEND) || !CHECK_FUNC_LABEL(f)) {
     panic ("sva_init_stack: Invalid function %p\n", func);
   }
 
