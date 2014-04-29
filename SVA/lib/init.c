@@ -450,7 +450,7 @@ init_fpu () {
  *  descriptor table.  Note that this should be called by the primary processor
  *  (the first one that starts execution on system boot).
  */
-void sva_init_primary() {
+SECURE_WRAPPER(void, sva_init_primary) {
 #if 0
   init_segs ();
   init_debug ();
@@ -482,8 +482,7 @@ void sva_init_primary() {
  *  Execution Engine.  We do things here like setting up the interrupt
  *  descriptor table.  Note that this should be called by secondary processors.
  */
-void
-sva_init_secondary () {
+SECURE_WRAPPER(void, sva_init_secondary) {
 #if 0
   init_segs ();
   init_debug ();
