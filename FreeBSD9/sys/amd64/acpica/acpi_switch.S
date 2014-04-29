@@ -33,7 +33,6 @@
 
 #include "acpi_wakedata.h"
 #include "assym.s"
-/* THEO */
 #include "opt_sva_mmu.h"
 
 #define	WAKEUP_CTX(member)	wakeup_ ## member - wakeup_ctx(%rsi)
@@ -99,7 +98,6 @@ ENTRY(acpi_restorecpu)
 	movq	PCB_CR0(%rdi), %rax
 	movq	%rax, %rcx
 	andq	$~(CR0_EM | CR0_TS), %rax
-    /* THEO */
 #ifdef SVA_MMU
     pushq %rdi
     movq %rax, %rdi

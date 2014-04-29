@@ -1401,6 +1401,19 @@ sva_load_cr0 (unsigned long val) {
 }
 
 /*
+ * Function: sva_load_cr4
+ *
+ * Description:
+ *  SVA Intrinsic to load the cr4 value. We need to make sure that the SMEP
+ *  bit is enabled. 
+ */
+void 
+sva_load_cr4 (unsigned long val) {
+    val |= CR4_SMEP;
+    _load_cr4(val);
+}
+
+/*
  * Function: declare_ptp_and_walk_pt_entries
  *
  * Descriptions:
