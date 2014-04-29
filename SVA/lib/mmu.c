@@ -23,6 +23,7 @@
 #include "sva/mmu.h"
 #include "sva/mmu_intrinsics.h"
 #include "sva/x86.h"
+#include "sva/stack.h"
 #include "sva/state.h"
 #include "sva/util.h"
 
@@ -1330,8 +1331,8 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
  * Inputs:
  *  pg - The physical address of the top-level page table page.
  */
-void
-sva_mm_load_pgtable (void * pg) {
+SECURE_WRAPPER(void,
+sva_mm_load_pgtable, void *pg) {
   /*
    * Disable interrupts so that we appear to execute as a single instruction.
    */
@@ -1398,8 +1399,8 @@ sva_mm_load_pgtable (void * pg) {
  *  SVA Intrinsic to load the cr0 value. We need to make sure write protection
  *  is enabled. 
  */
-void 
-sva_load_cr0 (unsigned long val) {
+SECURE_WRAPPER(void,
+sva_load_cr0, unsigned long val) {
     val |= CR0_WP;
     _load_cr0(val);
 }
@@ -1917,8 +1918,8 @@ remap_internal_memory (uintptr_t * firstpaddr) {
  *  - btext         : The first virtual address of the text segment.
  *  - etext         : The last virtual address of the text segment.
  */
-void 
-sva_mmu_init (pml4e_t * kpml4Mapping,
+SECURE_WRAPPER(void,
+sva_mmu_init, pml4e_t * kpml4Mapping,
               unsigned long nkpml4e,
               uintptr_t * firstpaddr,
               uintptr_t btext,
@@ -1975,8 +1976,8 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 1 page frame.
  */
-void
-sva_declare_l1_page (uintptr_t frameAddr) {
+SECURE_WRAPPER(void,
+sva_declare_l1_page, uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2040,8 +2041,8 @@ sva_declare_l1_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 2 page frame.
  */
-void
-sva_declare_l2_page (uintptr_t frameAddr) {
+SECURE_WRAPPER(void, 
+sva_declare_l2_page, uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2101,8 +2102,8 @@ sva_declare_l2_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 3 page frame.
  */
-void
-sva_declare_l3_page (uintptr_t frameAddr) {
+SECURE_WRAPPER(void,
+sva_declare_l3_page, uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction */
   unsigned long rflags = sva_enter_critical();
 
@@ -2162,8 +2163,8 @@ sva_declare_l3_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 4 page frame.
  */
-void
-sva_declare_l4_page (uintptr_t frameAddr) {
+SECURE_WRAPPER(void,
+sva_declare_l4_page, uintptr_t frameAddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2276,8 +2277,8 @@ printPTES (uintptr_t vaddr) {
  * Inputs:
  *  paddr - The physical address of the page table page.
  */
-void
-sva_remove_page (uintptr_t paddr) {
+SECURE_WRAPPER(void,
+sva_remove_page, uintptr_t paddr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2350,8 +2351,8 @@ sva_remove_page (uintptr_t paddr) {
  *  pteptr - The location within the page table page for which the translation
  *           should be removed.
  */
-void
-sva_remove_mapping(page_entry_t * pteptr) {
+SECURE_WRAPPER(void,
+sva_remove_mapping, page_entry_t *pteptr) {
   /* Disable interrupts so that we appear to execute as a single instruction. */
   unsigned long rflags = sva_enter_critical();
 
@@ -2380,8 +2381,8 @@ sva_remove_mapping(page_entry_t * pteptr) {
  *           should be place.
  *  val    - The new translation to insert into the page table.
  */
-void
-sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
+SECURE_WRAPPER(void,
+sva_update_l1_mapping, pte_t *pteptr, page_entry_t val) {
   /*
    * Disable interrupts so that we appear to execute as a single instruction.
    */
@@ -2413,8 +2414,8 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
  * are correct, ie pmdptr is a level2, and val corresponds to
  * a level1.
  */
-void
-sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
+SECURE_WRAPPER(void,
+sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
   /*
    * Disable interrupts so that we appear to execute as a single instruction.
    */
