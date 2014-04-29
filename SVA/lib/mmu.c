@@ -180,14 +180,8 @@ init_mmu () {
  */
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
-  /* Disable page protection so we can write to the referencing table entry */
-  unprotect_paging();
-    
   /* Write the new value to the page_entry */
   *page_entry = newVal;
-
-  /* Reenable page protection */
-  protect_paging();
 }
 
 /*
@@ -1348,12 +1342,6 @@ sva_mm_load_pgtable, void *pg) {
     panic ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
 
-  /* 
-   * Unset page protection so that we can write to cr3 and can write into
-   * the top-level page-table page if necessary.
-   */
-  unprotect_paging();
-
   /*
    * Load the new page table and enable paging in the CR0 register.
    */
@@ -1380,12 +1368,7 @@ sva_mm_load_pgtable, void *pg) {
      */
     *secmemp = threadp->secmemPML4e;
   }
-
-  /*
-   * Mark the page table pages as read-only again.
-   */
-  protect_paging();
-
+  
   /* Restore interrupts */
   sva_exit_critical (rflags);
 
@@ -1951,9 +1934,7 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
   declare_kernel_code_pages(btext, etext);
 
   /* Now load the initial value of the cr3 to complete kernel init */
-  unprotect_paging();
   load_cr3(*kpml4Mapping & PG_FRAME);
-  protect_paging();
 
   /* Make existing page table pages read-only */
   makePTReadOnly();
