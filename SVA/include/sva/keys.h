@@ -27,6 +27,8 @@
 #ifndef SVA_KEYS_H
 #define SVA_KEYS_H
 
+#include "sva/config.h"
+
 /*
  *****************************************************************************
  * Define structures used in SVA for key managment
@@ -74,6 +76,6 @@ void getThreadSecret (void);
  */
 
 /* Array of cached translations */
-extern struct translation translations [4096];
+extern struct translation translations [MAX_TRANSLATIONS];
 
 #endif /* SVA_KEYS_H */

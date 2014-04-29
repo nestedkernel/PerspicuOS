@@ -100,7 +100,7 @@ getThreadSecret (void) {
 }
 
 /* Array of cached translations */
-struct translation translations [4096] __attribute__ ((section ("svamem")));
+struct translation translations [MAX_TRANSLATIONS] __attribute__ ((section ("svamem")));
 
 /*
  * Function: sva_translate()
@@ -120,7 +120,7 @@ sva_translate(void * entryPoint) {
     /*
      * Find a free translation.
      */
-    for (unsigned index = 0; index < 4096; ++index) {
+    for (unsigned index = 0; index < MAX_TRANSLATIONS; ++index) {
       if (__sync_bool_compare_and_swap (&(translations[index].used), 0, 1)) {
         /*
          * Remember which thread is the one we've grabbed.

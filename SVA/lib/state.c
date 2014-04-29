@@ -1434,7 +1434,7 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   struct translation * transp = (struct translation *)(handle);
   if (vg) {
-    if ((translations <= transp) && (transp < translations + 4096)) {
+    if ((translations <= transp) && (transp < translations + MAX_TRANSLATIONS)) {
       if (((uint64_t)transp - (uint64_t)translations) % sizeof (struct translation)) {
         panic ("SVA: Invalid translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
         return;
