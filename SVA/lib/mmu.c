@@ -182,6 +182,8 @@ static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
   /* Write the new value to the page_entry */
   *page_entry = newVal;
+
+  /* TODO: Add a check here to make sure the value matches the one passed in */
 }
 
 /*
