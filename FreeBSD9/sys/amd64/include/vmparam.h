@@ -74,7 +74,7 @@
  * of the direct mapped segment.  This uses 2MB pages for reduced
  * TLB pressure.
  */
-#define	UMA_MD_SMALL_ALLOC
+// #define	UMA_MD_SMALL_ALLOC
 
 /*
  * The physical address space is densely populated.
