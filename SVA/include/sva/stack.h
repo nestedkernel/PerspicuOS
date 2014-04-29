@@ -50,15 +50,12 @@ extern uintptr_t SecureStackBase;
 // TODO: Manage stack per-cpu, do lookup here
 // Use only RAX/RCX registers to accomplish this.
 // (Or spill more in calling context)
-uintptr_t GetSecureStackRAXRCX() {
-  return SecureStackBase;
-}
 
 #define SWITCH_TO_SECURE_STACK                                                 \
   /* Spill registers for temporary use */                                      \
   "movq %rax, -8(%rsp)\n"                                                      \
   "movq %rcx, -16(%rsp)\n"                                                     \
-  "call GetSecureStackRAXRCX\n"                                                \
+  "movq SecureStackBase, %rax\n"                                               \
   /* Save normal stack pointer in rcx and on secure stack */                   \
   "mov %rsp, %rcx\n"                                                           \
   "mov %rsp, -8(%rax)\n"                                                       \
