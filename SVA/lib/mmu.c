@@ -1356,6 +1356,7 @@ sva_mm_load_pgtable, void *pg) {
    * Ensure that the secure memory region is still mapped within the current
    * set of page tables.
    */
+  /*TODO:!PERSP*/
   struct SVAThread * threadp = getCPUState()->currentThread;
   if (vg && threadp->secmemSize) {
     /*
