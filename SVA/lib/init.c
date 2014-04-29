@@ -84,6 +84,7 @@
 #include "sva/config.h"
 #include "sva/state.h"
 #include "sva/stack.h"
+#include "sva/interrupt.h"
 
 #include <string.h>
 #include <limits.h>
@@ -437,7 +438,7 @@ init_fpu () {
    * Register the co-processor trap so that we know when an FP operation has
    * been performed.
    */
-  sva_register_general_exception (0x7, fptrap);
+  SECURE_CALL(sva_register_general_exception, 0x7, fptrap);
   return;
 }
 
@@ -811,11 +812,11 @@ init_dispatcher ()
   register_x86_interrupt (0x7d, trap125, 3);
   register_x86_interrupt (0x7e, trap126, 3);
   register_x86_interrupt (0x7f, trap127, 3);
-  sva_register_general_exception (0x7b, getThreadRID);
-  sva_register_general_exception (0x7c, getThreadSecret);
-  sva_register_general_exception (0x7d, installNewPushTarget);
-  sva_register_general_exception (0x7e, freeSecureMemory);
-  sva_register_general_exception (0x7f, allocSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7b, getThreadRID);
+  SECURE_CALL(sva_register_general_exception, 0x7c, getThreadSecret);
+  SECURE_CALL(sva_register_general_exception, 0x7d, installNewPushTarget);
+  SECURE_CALL(sva_register_general_exception, 0x7e, freeSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7f, allocSecureMemory);
 
   return;
 }

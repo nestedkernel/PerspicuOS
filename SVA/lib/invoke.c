@@ -26,6 +26,7 @@
  *===----------------------------------------------------------------------===
  */
 
+#include <sva/stack.h>
 #include <sva/state.h>
 #include <sva/util.h>
 
@@ -37,19 +38,11 @@
  * Description:
  *  Unwind the stack specifed by the interrupt context.
  */
-void
-sva_iunwind (void) {
-  /* Current processor status flags */
-  uintptr_t rflags;
-
+SECURE_WRAPPER(void,
+sva_iunwind, void) {
   /* Assembly code that finishes the unwind */
   extern void sva_invoke_except(void);
   extern void sva_memcpy_except(void);
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
 
   /*
    * Get the pointer to the most recent invoke frame and interrupt context.
@@ -62,10 +55,6 @@ sva_iunwind (void) {
    * Do nothing if there is no invoke stack.
    */
   if (!gip) {
-    /*
-     * Re-enable interrupts.
-     */
-    sva_exit_critical (rflags);
     return;
   }
 
@@ -101,10 +90,6 @@ sva_iunwind (void) {
       break;
   }
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return;
 }
 
