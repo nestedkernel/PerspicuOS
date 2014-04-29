@@ -27,6 +27,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/mp_machdep.c 223758 2011-07-04 12:04:52Z attilio $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_cpu.h"
 #include "opt_kstack_pages.h"
 #include "opt_sched.h"
@@ -788,7 +793,11 @@ init_secondary(void)
 	 * This also implicitly flushes the TLB 
 	 */
 
+#ifdef SVA_MMU
+	sva_load_cr4(rcr4() | CR4_PGE);
+#else
 	load_cr4(rcr4() | CR4_PGE);
+#endif
 	load_ds(_udatasel);
 	load_es(_udatasel);
 	load_fs(_ufssel);
