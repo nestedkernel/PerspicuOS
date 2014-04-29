@@ -2443,7 +2443,7 @@ sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
 /*
  * Updates a level3 mapping 
  */
-void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
+SECURE_WRAPPER(void, sva_update_l3_mapping, pdpte_t * pdptePtr, page_entry_t val) {
   /*
    * Disable interrupts so that we appear to execute as a single instruction.
    */
@@ -2468,7 +2468,7 @@ void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
 /*
  * Updates a level4 mapping 
  */
-void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
+SECURE_WRAPPER( void, sva_update_l4_mapping ,pml4e_t * pml4ePtr, page_entry_t val) {
   /*
    * Disable interrupts so that we appear to execute as a single instruction.
    */
