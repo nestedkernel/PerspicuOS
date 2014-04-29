@@ -303,7 +303,7 @@ sva_icontext_setretval, unsigned long high,
  *  o Check that the interrupt context is for a system call.
  *  o Remove the extra parameters used for debugging.
  */
-SECURE_WRAPPER(void, 
+SECURE_WRAPPER(void,
 sva_icontext_restart, unsigned long r10, unsigned long rip) {
   /*
    * FIXME: This should ensure that the interrupt context is for a system
@@ -332,8 +332,8 @@ sva_icontext_restart, unsigned long r10, unsigned long rip) {
  *  0 - No error
  *  1 - Some error occurred.
  */
-SECURE_WRAPPER(unsigned char,
-sva_register_general_exception, unsigned char number,
+unsigned char
+sva_register_general_exception(unsigned char number,
                                 genfault_handler_t handler) {
   /*
    * First, ensure that the exception number is within range.
@@ -375,8 +375,8 @@ sva_register_general_exception, unsigned char number,
  *  Register a fault with the Execution Engine.  This fault handler will need
  *  the memory address that was used by the instruction when the fault occurred.
  */
-SECURE_WRAPPER(unsigned char,
-sva_register_memory_exception, unsigned char number, memfault_handler_t handler) {
+unsigned char
+sva_register_memory_exception(unsigned char number, memfault_handler_t handler) {
   /*
    * Ensure that this is not one of the special handlers.
    */
@@ -405,8 +405,8 @@ sva_register_memory_exception, unsigned char number, memfault_handler_t handler)
  * Description:
  *  This intrinsic registers an interrupt handler with the Execution Engine.
  */
-SECURE_WRAPPER(unsigned char,
-sva_register_interrupt, unsigned char number, interrupt_handler_t interrupt) {
+unsigned char
+sva_register_interrupt(unsigned char number, interrupt_handler_t interrupt) {
   /*
    * Ensure that the number is within range.
    */
