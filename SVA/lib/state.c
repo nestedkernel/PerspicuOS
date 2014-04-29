@@ -773,6 +773,7 @@ flushSecureMemory (struct SVAThread * threadp) {
  *  0 - State swapping failed.
  *  1 - State swapping succeeded.
  */
+/*TODO:!PERSP*/
 uintptr_t
 sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   /* Function for saving state */
