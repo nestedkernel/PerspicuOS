@@ -27,6 +27,7 @@
  */
 
 #include <sys/syscall.h>
+#include <sva/trap_entry.h>
 
 #include <machine/asmacros.h>
 
@@ -40,6 +41,7 @@
  */
 NON_GPROF_ENTRY(sigcode)
 #if 1
+    SECURE_TRAP_ENTRY
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
 #else
   /*
