@@ -1776,11 +1776,16 @@ makePTReadOnly (void) {
    */
   uintptr_t paddr;
   for (paddr = 0; paddr < memSize; paddr += pageSize) {
-    page_desc_t * pgType = getPageDescPtr(paddr)->type;
+    enum page_type_t pgType = getPageDescPtr(paddr)->type;
     if ((PG_L1 <= pgType) && (pgType <= PG_L4)) {
       page_entry_t * pageEntry = get_pgeVaddr (getVirtual(paddr));
 #if 1
-      page_entry_store (pageEntry, setMappingReadOnly(*pageEntry));
+      // Don't make direct map entries of larger sizes read-only,
+      // they're likely to be broken into smaller pieces later
+      // which is a process we don't handle precisely yet.
+      if (((*pageEntry) & PG_PS) == 0) {
+          page_entry_store (pageEntry, setMappingReadOnly(*pageEntry));
+      }
 #endif
     }
   }
