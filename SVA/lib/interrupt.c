@@ -113,7 +113,7 @@ randomNumber (void) {
  */
 struct SVAThread *
 findNextFreeThread (void) {
-  for (unsigned int index = 0; index < 4096; ++index) {
+  for (unsigned int index = 0; index < MAX_THREADS; ++index) {
     if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
       /*
        * Remember which thread is the one we've grabbed.
