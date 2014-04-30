@@ -671,9 +671,8 @@ __update_mapping (pte_t * pageEntryPtr, page_entry_t val) {
    */
   switch (pt_update_is_valid((page_entry_t *) pageEntryPtr, val)) {
     case 1:
-      if (val != setMappingReadOnly(val)) {
-        printf("Warning: RW update requested, applying as read-only!\n");
-      }
+      // Kernel thinks these should be RW, since it wants to write to them.
+      // Convert to read-only and carry on.
       val = setMappingReadOnly (val);
       __do_mmu_update ((page_entry_t *) pageEntryPtr, val);
       break;
