@@ -18,6 +18,7 @@
 #include <sva/cfi.h>
 #include <sva/callbacks.h>
 #include <sva/util.h>
+#include <sva/stack.h>
 #include <sva/state.h>
 #include <sva/interrupt.h>
 #include <sva/mmu.h>
@@ -329,20 +330,13 @@ sva_ipop_function0 (void * exceptp)
  *    accessing a stack page that isn't paged in, or by overwriting the stack).
  *    This should be addressed at some point.
  */
-void
-sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
+SECURE_WRAPPER(void,
+sva_ipush_function5, void (*newf)(uintptr_t, uintptr_t, uintptr_t),
                      uintptr_t p1,
                      uintptr_t p2,
                      uintptr_t p3,
                      uintptr_t p4,
                      uintptr_t p5) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
 
   /*
    * Get the most recent interrupt context.
@@ -366,7 +360,6 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
 
     if (!found) {
       panic ("SVA: Pushing bad value %lx\n", newf);
-      sva_exit_critical (rflags);
       return;
     }
 
@@ -380,7 +373,6 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
 
     if (!found) {
       panic ("SVA: Pushing bad sighandler value %lx\n", p5);
-      sva_exit_critical (rflags);
       return;
     }
 
@@ -418,10 +410,6 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
    */
   ep->valid = 1;
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -769,6 +757,7 @@ flushSecureMemory (struct SVAThread * threadp) {
   return;
 }
 
+#if 1
 /*
  * Intrinsic: sva_swap_integer()
  *
@@ -784,6 +773,7 @@ flushSecureMemory (struct SVAThread * threadp) {
  *  0 - State swapping failed.
  *  1 - State swapping succeeded.
  */
+/*TODO:!PERSP*/
 uintptr_t
 sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   panic("sva_swap_integer called!");
@@ -986,6 +976,7 @@ sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
   sva_exit_critical (rflags);
   return 0; 
 }
+#endif
 
 #if 0
 unsigned char
@@ -1017,21 +1008,13 @@ sva_is_privileged  (void)
  *  of kernel memory and can return EFAULT if the copy fails.  The question
  *  is how to make sva_ialloca() do the same thing.
  */
-void *
-sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
+SECURE_WRAPPER(void *,
+sva_ialloca, uintptr_t size, uintptr_t alignment, void * initp) {
   /* Pointer to allocated memory */
   void * allocap = 0;
 
   /* Determine if an allocation is permitted */
   unsigned char allocaOkay = 1;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
 
   /*
    * Get the most recent interrupt context and the current CPUState and
@@ -1121,7 +1104,6 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
     }
   }
 
-  sva_exit_critical (rflags);
   return allocap;
 }
 
@@ -1132,15 +1114,8 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
  *  This intrinsic takes state saved by the Execution Engine during an
  *  interrupt and loads it into the latest interrupt context.
  */
-void
-sva_load_icontext (void) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_load_icontext, void) {
 
   /*
    * Get the most recent interrupt context and the current CPUState and
@@ -1154,7 +1129,6 @@ sva_load_icontext (void) {
    * Verify that the interrupt context represents user-space state.
    */
   if (sva_was_privileged ()) {
-      sva_exit_critical (rflags);
       return;
   }
 
@@ -1162,7 +1136,6 @@ sva_load_icontext (void) {
    * Verify that we have a free interrupt context to use.
    */
   if (threadp->savedICIndex < 1) {
-      sva_exit_critical (rflags);
       return;
   }
 
@@ -1171,10 +1144,6 @@ sva_load_icontext (void) {
    */
   *icontextp = threadp->savedInterruptContexts[--(threadp->savedICIndex)];
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -1189,15 +1158,8 @@ sva_load_icontext (void) {
  *  0 - An error occured.
  *  1 - No error occured.
  */
-unsigned char
-sva_save_icontext (void) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
+SECURE_WRAPPER(unsigned char,
+sva_save_icontext, void) {
 
   /*
    * Get the most recent interrupt context and the current CPUState and
@@ -1211,7 +1173,6 @@ sva_save_icontext (void) {
    * Verify that the interrupt context represents user-space state.
    */
   if (sva_was_privileged ()) {
-      sva_exit_critical (rflags);
       return 0;
   }
 
@@ -1219,7 +1180,6 @@ sva_save_icontext (void) {
    * Verify that we have a free interrupt context to use.
    */
   if (threadp->savedICIndex > maxIC) {
-      sva_exit_critical (rflags);
       return 0;
   }
 
@@ -1234,10 +1194,6 @@ sva_save_icontext (void) {
    */
   unsigned char savedICIndex = ++(threadp->savedICIndex);
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return savedICIndex;
 }
 
@@ -1417,18 +1373,10 @@ svaDummy (void) {
  *  stack   - The value to set for the stack pointer.
  *  arg     - The argument to pass to the function entry point.
  */
-void
-sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
+SECURE_WRAPPER(void, 
+sva_reinit_icontext, void * handle, unsigned char priv, uintptr_t stackp, uintptr_t arg) {
   /* Function entry point */
   void * func = handle;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
 
   /*
    * Validate the translation handle.
@@ -1521,7 +1469,7 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
     ep->es = 0x3b;
     ep->fs = 0x13;
     ep->gs = 0x1b;
-    ep->rflags = (rflags & 0xfffu);
+    ep->rflags = (get_insecure_context_flags() & 0xfffu);
   }
 
   /*
@@ -1534,9 +1482,6 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
     transp->used = 0;
   }
 
-  /* Re-enable interupts if they were enabled before */
-  sva_exit_critical (rflags);
-
   return;
 }
 
@@ -1547,8 +1492,8 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
  *  This intrinsic tells the virtual machine that the specified integer state
  *  should be discarded and that its stack is no longer a kernel stack.
  */
-void
-sva_release_stack (uintptr_t id) {
+SECURE_WRAPPER(void,
+sva_release_stack, uintptr_t id) {
   /* Get a pointer to the saved state (the ID is the pointer) */
   struct SVAThread * newThread = (struct SVAThread *)(id);
   sva_integer_state_t * new =  newThread ? &(newThread->integerState) : 0;
@@ -1600,8 +1545,8 @@ sva_release_stack (uintptr_t id) {
  *  An identifier that can be passed to sva_swap_integer() to begin execution
  *  of the thread.
  */
-uintptr_t
-sva_init_stack (unsigned char * start_stackp,
+SECURE_WRAPPER(uintptr_t,
+sva_init_stack, unsigned char * start_stackp,
                 uintptr_t length,
                 void * func,
                 uintptr_t arg1,
@@ -1625,19 +1570,11 @@ sva_init_stack (unsigned char * start_stackp,
     void * return_rip;
   } * args;
 
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
   /* End of stack */
   unsigned char * stackp = 0;
 
   /* Length of Stack */
   uintptr_t stacklen = length;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
 
   /*
    * Find the last byte on the stack.
@@ -1772,9 +1709,5 @@ sva_init_stack (unsigned char * start_stackp,
   /* Mark the interrupt context as valid */
   icontextp->valid = 1;
 
-  /*
-   * Re-enable interrupts.
-   */
-  sva_exit_critical (rflags);
   return (unsigned long) newThread;
 }

@@ -23,6 +23,7 @@
 #include "sva/mmu.h"
 #include "sva/mmu_intrinsics.h"
 #include "sva/x86.h"
+#include "sva/stack.h"
 #include "sva/state.h"
 #include "sva/util.h"
 
@@ -183,14 +184,10 @@ init_mmu () {
  */
 static inline void
 page_entry_store (unsigned long *page_entry, page_entry_t newVal) {
-  /* Disable page protection so we can write to the referencing table entry */
-  unprotect_paging();
-    
   /* Write the new value to the page_entry */
   *page_entry = newVal;
 
-  /* Reenable page protection */
-  protect_paging();
+  /* TODO: Add a check here to make sure the value matches the one passed in */
 }
 
 /*
@@ -1332,13 +1329,8 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
  * Inputs:
  *  pg - The physical address of the top-level page table page.
  */
-void
-sva_mm_load_pgtable (void * pg) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned long rflags = sva_enter_critical();
-
+SECURE_WRAPPER(void,
+sva_mm_load_pgtable, void *pg) {
   /* Control Register 0 Value (which is used to enable paging) */
   unsigned int cr0;
 
@@ -1348,12 +1340,6 @@ sva_mm_load_pgtable (void * pg) {
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
     panic ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
-
-  /* 
-   * Unset page protection so that we can write to cr3 and can write into
-   * the top-level page-table page if necessary.
-   */
-  unprotect_paging();
 
   /*
    * Load the new page table and enable paging in the CR0 register.
@@ -1369,6 +1355,7 @@ sva_mm_load_pgtable (void * pg) {
    * Ensure that the secure memory region is still mapped within the current
    * set of page tables.
    */
+  /*TODO:!PERSP*/
   struct SVAThread * threadp = getCPUState()->currentThread;
   if (vg && threadp->secmemSize) {
     /*
@@ -1381,15 +1368,7 @@ sva_mm_load_pgtable (void * pg) {
      */
     *secmemp = threadp->secmemPML4e;
   }
-
-  /*
-   * Mark the page table pages as read-only again.
-   */
-  protect_paging();
-
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
-
+  
   return;
 }
 
@@ -1400,9 +1379,9 @@ sva_mm_load_pgtable (void * pg) {
  *  SVA Intrinsic to load a value in cr0. We need to make sure write protection
  *  is enabled. 
  */
-void 
-sva_load_cr0 (unsigned long val) {
-    //val |= CR0_WP;
+SECURE_WRAPPER(void,
+sva_load_cr0, unsigned long val) {
+    val |= CR0_WP;
     _load_cr0(val);
     if (!(val & CR0_WP))
       panic("SVA: attempt to clear the CR0.WP bit: %x.", val);
@@ -1956,8 +1935,8 @@ remap_internal_memory (uintptr_t * firstpaddr) {
  *  - btext         : The first virtual address of the text segment.
  *  - etext         : The last virtual address of the text segment.
  */
-void 
-sva_mmu_init (pml4e_t * kpml4Mapping,
+SECURE_WRAPPER(void,
+sva_mmu_init, pml4e_t * kpml4Mapping,
               unsigned long nkpml4e,
               uintptr_t * firstpaddr,
               uintptr_t btext,
@@ -1989,9 +1968,7 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
   declare_kernel_code_pages(btext, etext);
 
   /* Now load the initial value of the cr3 to complete kernel init */
-  unprotect_paging();
   load_cr3(*kpml4Mapping & PG_FRAME);
-  protect_paging();
 
   /* Make existing page table pages read-only */
   makePTReadOnly();
@@ -2014,10 +1991,8 @@ sva_mmu_init (pml4e_t * kpml4Mapping,
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 1 page frame.
  */
-void
-sva_declare_l1_page (uintptr_t frameAddr) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_declare_l1_page, uintptr_t frameAddr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2062,8 +2037,6 @@ sva_declare_l1_page (uintptr_t frameAddr) {
     panic ("SVA: declare L1: type = %x\n", pgDesc->type);
   }
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -2079,10 +2052,8 @@ sva_declare_l1_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 2 page frame.
  */
-void
-sva_declare_l2_page (uintptr_t frameAddr) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void, 
+sva_declare_l2_page, uintptr_t frameAddr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2123,8 +2094,6 @@ sva_declare_l2_page (uintptr_t frameAddr) {
     initDeclaredPage(frameAddr);
   }
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -2140,10 +2109,8 @@ sva_declare_l2_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 3 page frame.
  */
-void
-sva_declare_l3_page (uintptr_t frameAddr) {
-  /* Disable interrupts so that we appear to execute as a single instruction */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_declare_l3_page, uintptr_t frameAddr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2184,8 +2151,6 @@ sva_declare_l3_page (uintptr_t frameAddr) {
     initDeclaredPage(frameAddr);
   }
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -2201,10 +2166,8 @@ sva_declare_l3_page (uintptr_t frameAddr) {
  *  frameAddr - The address of the physical page frame that will be used as a
  *              Level 4 page frame.
  */
-void
-sva_declare_l4_page (uintptr_t frameAddr) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_declare_l4_page, uintptr_t frameAddr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2252,9 +2215,6 @@ sva_declare_l4_page (uintptr_t frameAddr) {
      */
     initDeclaredPage(frameAddr);
   }
-
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
 }
 
 static inline page_entry_t * 
@@ -2315,10 +2275,8 @@ printPTES (uintptr_t vaddr) {
  * Inputs:
  *  paddr - The physical address of the page table page.
  */
-void
-sva_remove_page (uintptr_t paddr) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_remove_page, uintptr_t paddr) {
 
   /* Get the entry controlling the permissions for this pte PTP */
   page_entry_t *pte = get_pgeVaddr(getVirtual (paddr));
@@ -2340,7 +2298,6 @@ sva_remove_page (uintptr_t paddr) {
     default:
       /* Restore interrupts */
       panic ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
-      sva_exit_critical (rflags);
       return;
       break;
   }
@@ -2370,8 +2327,6 @@ sva_remove_page (uintptr_t paddr) {
     printf ("SVA: remove_page: type=%x count %x\n", pgDesc->type, pgDesc->count);
   }
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -2389,10 +2344,8 @@ sva_remove_page (uintptr_t paddr) {
  *  pteptr - The location within the page table page for which the translation
  *           should be removed.
  */
-void
-sva_remove_mapping(page_entry_t * pteptr) {
-  /* Disable interrupts so that we appear to execute as a single instruction. */
-  unsigned long rflags = sva_enter_critical();
+SECURE_WRAPPER(void,
+sva_remove_mapping, page_entry_t *pteptr) {
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(*pteptr);
@@ -2400,8 +2353,6 @@ sva_remove_mapping(page_entry_t * pteptr) {
   /* Update the page table mapping to zero */
   __update_mapping (pteptr, ZERO_MAPPING);
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
 }
 
 /* 
@@ -2419,13 +2370,8 @@ sva_remove_mapping(page_entry_t * pteptr) {
  *           should be place.
  *  val    - The new translation to insert into the page table.
  */
-void
-sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned long rflags = sva_enter_critical();
-
+SECURE_WRAPPER(void,
+sva_update_l1_mapping, pte_t *pteptr, page_entry_t val) {
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2440,8 +2386,6 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
    */
   __update_mapping(pteptr, val);
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
@@ -2452,13 +2396,8 @@ sva_update_l1_mapping(pte_t * pteptr, page_entry_t val) {
  * are correct, ie pmdptr is a level2, and val corresponds to
  * a level1.
  */
-void
-sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned long rflags = sva_enter_critical();
-
+SECURE_WRAPPER(void,
+sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2473,20 +2412,13 @@ sva_update_l2_mapping(pde_t * pdePtr, page_entry_t val) {
    */
   __update_mapping(pdePtr, val);
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
 /*
  * Updates a level3 mapping 
  */
-void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned long rflags = sva_enter_critical();
-
+SECURE_WRAPPER(void, sva_update_l3_mapping, pdpte_t * pdptePtr, page_entry_t val) {
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2498,20 +2430,13 @@ void sva_update_l3_mapping(pdpte_t * pdptePtr, page_entry_t val) {
 
   __update_mapping(pdptePtr, val);
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 
 /*
  * Updates a level4 mapping 
  */
-void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
-  /*
-   * Disable interrupts so that we appear to execute as a single instruction.
-   */
-  unsigned long rflags = sva_enter_critical();
-
+SECURE_WRAPPER( void, sva_update_l4_mapping ,pml4e_t * pml4ePtr, page_entry_t val) {
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2523,8 +2448,6 @@ void sva_update_l4_mapping (pml4e_t * pml4ePtr, page_entry_t val) {
 
   __update_mapping(pml4ePtr, val);
 
-  /* Restore interrupts */
-  sva_exit_critical (rflags);
   return;
 }
 

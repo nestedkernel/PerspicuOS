@@ -84,6 +84,7 @@
 #include "sva/config.h"
 #include "sva/state.h"
 #include "sva/stack.h"
+#include "sva/interrupt.h"
 
 #include <string.h>
 #include <limits.h>
@@ -439,7 +440,7 @@ init_fpu () {
    * Register the co-processor trap so that we know when an FP operation has
    * been performed.
    */
-  sva_register_general_exception (0x7, fptrap);
+  SECURE_CALL(sva_register_general_exception, 0x7, fptrap);
   return;
 }
 #endif
@@ -453,7 +454,7 @@ init_fpu () {
  *  descriptor table.  Note that this should be called by the primary processor
  *  (the first one that starts execution on system boot).
  */
-void sva_init_primary() {
+SECURE_WRAPPER(void, sva_init_primary) {
 #if 0
 #if 0
   init_segs ();
@@ -489,8 +490,7 @@ void sva_init_primary() {
  *  Execution Engine.  We do things here like setting up the interrupt
  *  descriptor table.  Note that this should be called by secondary processors.
  */
-void
-sva_init_secondary () {
+SECURE_WRAPPER(void, sva_init_secondary) {
   panic("Not used!");
 #if 0
 #if 0
@@ -823,11 +823,11 @@ init_dispatcher ()
   register_x86_interrupt (0x7d, trap125, 3);
   register_x86_interrupt (0x7e, trap126, 3);
   register_x86_interrupt (0x7f, trap127, 3);
-  sva_register_general_exception (0x7b, getThreadRID);
-  sva_register_general_exception (0x7c, getThreadSecret);
-  sva_register_general_exception (0x7d, installNewPushTarget);
-  sva_register_general_exception (0x7e, freeSecureMemory);
-  sva_register_general_exception (0x7f, allocSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7b, getThreadRID);
+  SECURE_CALL(sva_register_general_exception, 0x7c, getThreadSecret);
+  SECURE_CALL(sva_register_general_exception, 0x7d, installNewPushTarget);
+  SECURE_CALL(sva_register_general_exception, 0x7e, freeSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7f, allocSecureMemory);
 
   return;
 }

@@ -18,6 +18,7 @@
 #include "sva/callbacks.h"
 #include "sva/config.h"
 #include "sva/interrupt.h"
+#include "sva/stack.h"
 #include "sva/state.h"
 #include "sva/keys.h"
 
@@ -195,8 +196,7 @@ findNextFreeThread (void) {
  *  the SVA interrupt handling code is working properly, this intrinsic should
  *  be removed.
  */
-void *
-sva_getCPUState (tss_t * tssp) {
+SECURE_WRAPPER(void *, sva_getCPUState, tss_t *tssp) {
   /* Index of next available CPU state */
   static int nextIndex __attribute__ ((section ("svamem"))) = 0;
   struct SVAThread * st;
@@ -262,8 +262,8 @@ sva_getCPUState (tss_t * tssp) {
  * Notes:
  *  This intrinsic mimics the syscall convention of FreeBSD.
  */
-void
-sva_icontext_setretval (unsigned long high,
+SECURE_WRAPPER(void,
+sva_icontext_setretval, unsigned long high,
                         unsigned long low,
                         unsigned char error) {
   /*
@@ -305,8 +305,8 @@ sva_icontext_setretval (unsigned long high,
  *  o Check that the interrupt context is for a system call.
  *  o Remove the extra parameters used for debugging.
  */
-void
-sva_icontext_restart (unsigned long r10, unsigned long rip) {
+SECURE_WRAPPER(void,
+sva_icontext_restart, unsigned long r10, unsigned long rip) {
   /*
    * FIXME: This should ensure that the interrupt context is for a system
    *        call.
@@ -334,8 +334,8 @@ sva_icontext_restart (unsigned long r10, unsigned long rip) {
  *  0 - No error
  *  1 - Some error occurred.
  */
-unsigned char
-sva_register_general_exception (unsigned char number,
+SECURE_WRAPPER(unsigned char,
+sva_register_general_exception, unsigned char number,
                                 genfault_handler_t handler) {
   /*
    * First, ensure that the exception number is within range.
@@ -377,8 +377,8 @@ sva_register_general_exception (unsigned char number,
  *  Register a fault with the Execution Engine.  This fault handler will need
  *  the memory address that was used by the instruction when the fault occurred.
  */
-unsigned char
-sva_register_memory_exception (unsigned char number, memfault_handler_t handler) {
+SECURE_WRAPPER(unsigned char,
+sva_register_memory_exception, unsigned char number, memfault_handler_t handler) {
   /*
    * Ensure that this is not one of the special handlers.
    */
@@ -407,8 +407,8 @@ sva_register_memory_exception (unsigned char number, memfault_handler_t handler)
  * Description:
  *  This intrinsic registers an interrupt handler with the Execution Engine.
  */
-unsigned char
-sva_register_interrupt (unsigned char number, interrupt_handler_t interrupt) {
+SECURE_WRAPPER(unsigned char,
+sva_register_interrupt, unsigned char number, interrupt_handler_t interrupt) {
   /*
    * Ensure that the number is within range.
    */

@@ -50,15 +50,12 @@ extern uintptr_t SecureStackBase;
 // TODO: Manage stack per-cpu, do lookup here
 // Use only RAX/RCX registers to accomplish this.
 // (Or spill more in calling context)
-uintptr_t GetSecureStackRAXRCX() {
-  return SecureStackBase;
-}
 
 #define SWITCH_TO_SECURE_STACK                                                 \
   /* Spill registers for temporary use */                                      \
   "movq %rax, -8(%rsp)\n"                                                      \
   "movq %rcx, -16(%rsp)\n"                                                     \
-  "call GetSecureStackRAXRCX\n"                                                \
+  "movq SecureStackBase, %rax\n"                                               \
   /* Save normal stack pointer in rcx and on secure stack */                   \
   "mov %rsp, %rcx\n"                                                           \
   "mov %rsp, -8(%rax)\n"                                                       \
@@ -159,5 +156,33 @@ asm( \
 RET FUNC ##_secure(__VA_ARGS__); \
 RET __attribute__((visibility("hidden"))) FUNC ##_secure(__VA_ARGS__)
 
+//===-- Wrapper macro for calling secure functions from secure context ---===//
+
+#define SECURE_CALL(FUNC, ...) \
+{ \
+    extern typeof(FUNC) FUNC ##_secure; \
+    (void)FUNC ##_secure(__VA_ARGS__); \
+}
+
+//===-- Utilities for accessing original context from secure functions ----===//
+
+static inline uintptr_t get_insecure_context_rsp() {
+  // Original RSP is first thing put on the secure stack:
+  uintptr_t *ptr = (uintptr_t *)SecureStackBase;
+  return ptr[-1];
+}
+
+static inline uintptr_t get_insecure_context_flags() {
+  // Insecure flags are stored on the insecure stack:
+  uintptr_t *ptr = (uintptr_t *)get_insecure_context_rsp();
+  return ptr[0];
+}
+
+static inline uintptr_t get_insecure_context_return_addr() {
+  // Original insecure return address should be above the flags:
+  // XXX: This is untested!
+  uintptr_t *ptr = (uintptr_t *)get_insecure_context_rsp();
+  return ptr[1];
+}
 
 #endif // _STACK_SWITCH_
