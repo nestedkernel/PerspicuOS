@@ -115,7 +115,7 @@
 
 /* Initial number of kernel page tables. */
 #ifndef NKPT
-#define	NKPT		32
+#define	NKPT		1024
 #endif
 
 #define NKPML4E		1		/* number of kernel PML4 slots */
