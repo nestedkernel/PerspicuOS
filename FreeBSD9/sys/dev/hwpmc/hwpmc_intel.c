@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_intel.c 206089 2010-04-02 13:23:49Z fabient $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/pmc.h>
 #include <sys/pmckern.h>
@@ -51,7 +56,11 @@ intel_switch_in(struct pmc_cpu *pc, struct pmc_process *pp)
 
 	/* allow the RDPMC instruction if needed */
 	if (pp->pp_flags & PMC_PP_ENABLE_MSR_ACCESS)
+#ifdef SVA_MMU
+		sva_load_cr4(rcr4() | CR4_PCE);
+#else
 		load_cr4(rcr4() | CR4_PCE);
+#endif
 
 	PMCDBG(MDP,SWI,1, "cr4=0x%jx", (uintmax_t) rcr4());
 
@@ -68,7 +77,11 @@ intel_switch_out(struct pmc_cpu *pc, struct pmc_process *pp)
 	    (uintmax_t) rcr4());
 
 	/* always turn off the RDPMC instruction */
+#ifdef SVA_MMU
+ 	sva_load_cr4(rcr4() & ~CR4_PCE);
+#else
  	load_cr4(rcr4() & ~CR4_PCE);
+#endif
 
 	return 0;
 }
