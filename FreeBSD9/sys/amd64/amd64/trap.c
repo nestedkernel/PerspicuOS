@@ -1361,6 +1361,7 @@ trap_pfault_sva (register_t eva, unsigned long code, int usermode, struct trapfr
    */
   if ((0xffffff0000000000u <= va) && (va < 0xffffff8000000000u)) {
     extern void sva_ghost_fault (uintptr_t);
+    panic("sva_ghost_fault shouldn't happen!");
     sva_ghost_fault(va);
     return 0;
   }
