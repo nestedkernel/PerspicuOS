@@ -111,6 +111,10 @@ struct PTInfo {
  */
 struct PTInfo PTPages[1024] __attribute__ ((section ("svamem")));
 
+/* Array describing the physical pages */
+/* The index is the physical page number */
+static page_desc_t page_desc[numPageDescEntries] __attribute__ ((section ("svamem")));
+
 /*
  * Description:
  *  Given a page table entry value, return the page description associate with
@@ -218,13 +222,14 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   unsigned long origPA = *page_entry & PG_FRAME;
   unsigned long origFrame = origPA >> PAGESHIFT;
   uintptr_t origVA = (uintptr_t) getVirtual(origPA);
-  page_desc_t *origPG = &page_desc[origFrame];
+
+  page_desc_t *origPG = getPageDescPtr(origPA);
 
   /* Get associated information for the new page being mapped */
   unsigned long newPA = newVal & PG_FRAME;
   unsigned long newFrame = newPA >> PAGESHIFT;
   uintptr_t newVA = (uintptr_t) getVirtual(newPA);
-  page_desc_t *newPG = &page_desc[newFrame];
+  page_desc_t *newPG = getPageDescPtr(newVal);
 
   /* Get the page table page descriptor. The page_entry is the viratu */
   uintptr_t ptePAddr = getPhysicalAddr (page_entry);
@@ -529,9 +534,7 @@ updateNewPageData(page_entry_t mapping) {
  */
 static inline void
 updateOrigPageData(page_entry_t mapping) {
-  uintptr_t origPA = mapping & PG_FRAME; 
-  unsigned long origFrame = origPA >> PAGESHIFT;
-  page_desc_t *origPG = &page_desc[origFrame];
+  page_desc_t *origPG = getPageDescPtr(mapping);
 
   /* 
    * Only decrement the mapping count if the page has an existing valid
