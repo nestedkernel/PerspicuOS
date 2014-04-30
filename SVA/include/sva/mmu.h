@@ -190,10 +190,6 @@ typedef struct page_desc_t {
     unsigned user : 1;
 } page_desc_t;
 
-/* Array describing the physical pages */
-/* The index is the physical page number */
-static page_desc_t page_desc[numPageDescEntries];
-
 /*
  * ===========================================================================
  * BEGIN FreeBSD CODE BLOCK
