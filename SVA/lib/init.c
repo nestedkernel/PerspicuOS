@@ -83,6 +83,7 @@
 
 #include "sva/config.h"
 #include "sva/state.h"
+#include "sva/stack.h"
 
 #include <string.h>
 #include <limits.h>
@@ -119,6 +120,14 @@ struct procMap svaProcMap[numProcessors];
  *  Note that we need one of these per processor.
  */
 extern void * interrupt_table[256];
+
+/* 
+ * Description: 
+ *   This is a pointer to the PerspicuOS SuperSpace stack, which is used on
+ *   calls to SuperSpace or SuperSpace calls.
+ */
+char SecureStack[1<<12] __attribute__ ((section ("svamem")));
+uintptr_t SecureStackBase __attribute__ ((section ("svamem"))) = (uintptr_t) SecureStack + sizeof(SecureStack) ;
 
 /*
  * Taken from FreeBSD: amd64/segments.h
@@ -441,8 +450,7 @@ init_fpu () {
  *  descriptor table.  Note that this should be called by the primary processor
  *  (the first one that starts execution on system boot).
  */
-void
-sva_init_primary () {
+void sva_init_primary() {
 #if 0
   init_segs ();
   init_debug ();
