@@ -123,7 +123,7 @@ userret(struct thread *td, struct trapframe *frame)
 	if (td->td_pflags & TDP_GEOM)
 		g_waitidle();
 
-#if 0
+#if 1
 	/*
 	 * Charge system time if profiling.
 	 */
@@ -168,7 +168,7 @@ ast(struct trapframe *framep)
 	int flags;
 	int sig;
 
-#if 1
+#if 0
   /*
    * SVA: Re-enable interrupts since the assembly dispatch code does not do
    * this anymore for us.

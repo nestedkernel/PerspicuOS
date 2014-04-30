@@ -39,7 +39,7 @@
  *
  */
 NON_GPROF_ENTRY(sigcode)
-#if 0
+#if 1
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
 #else
   /*

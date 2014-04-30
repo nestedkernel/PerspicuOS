@@ -13,6 +13,8 @@
  *===----------------------------------------------------------------------===
  */
 
+#if 0
+
 #include "sva/callbacks.h"
 #include "sva/config.h"
 #include "sva/interrupt.h"
@@ -497,4 +499,5 @@ sva_nop1 (void)
 {
   __asm__ __volatile__ ("nop" ::: "memory");
 }
+#endif
 #endif

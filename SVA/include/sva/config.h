@@ -32,6 +32,7 @@ static const unsigned MAX_THREADS = 1024;
 /* Maximum number of VG translations */
 static const unsigned MAX_TRANSLATIONS = vg ? 4096 : 0;
 
+#if 0
 /* Structure for describing processors */
 struct procMap {
   unsigned char allocated;
@@ -72,5 +73,6 @@ getProcessorID() {
 
   return ~0U;
 }
+#endif
 
 #endif

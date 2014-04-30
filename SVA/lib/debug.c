@@ -80,6 +80,7 @@ assertGoodIC (void) {
  */
 void
 sva_trapframe (struct trapframe * tf) {
+  panic("sva_trapframe called!");
   /*
    * Fetch the currently available interrupt context.
    */
@@ -149,6 +150,7 @@ sva_trapframe (struct trapframe * tf) {
  */
 void
 sva_syscall_trapframe (struct trapframe * tf) {
+  panic("sva_syscall_trapframe called!");
   /*
    * Fetch the currently available interrupt context.
    */

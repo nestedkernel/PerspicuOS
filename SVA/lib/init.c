@@ -104,10 +104,10 @@ void init_fpu ();
 static void init_dispatcher ();
 
 /* Default LLVA interrupt, exception, and system call handlers */
-extern void default_interrupt (unsigned int number, void * icontext);
+// extern void default_interrupt (unsigned int number, void * icontext);
 
 /* Map logical processor ID to an array in the SVA data structures */
-struct procMap svaProcMap[numProcessors];
+// struct procMap svaProcMap[numProcessors];
 
 /*
  * Structure: interrupt_table
@@ -119,7 +119,7 @@ struct procMap svaProcMap[numProcessors];
  *
  *  Note that we need one of these per processor.
  */
-extern void * interrupt_table[256];
+// extern void * interrupt_table[256];
 
 /* 
  * Description: 
@@ -172,6 +172,8 @@ sva_debug (void) {
   printf ("SVA: Debug!\n");
   return;
 }
+
+#if 0
 
 /*
  * Function: register_x86_interrupt()
@@ -440,6 +442,7 @@ init_fpu () {
   sva_register_general_exception (0x7, fptrap);
   return;
 }
+#endif
 
 /*
  * Intrinsic: sva_init_primary()
@@ -451,6 +454,7 @@ init_fpu () {
  *  (the first one that starts execution on system boot).
  */
 void sva_init_primary() {
+#if 0
 #if 0
   init_segs ();
   init_debug ();
@@ -466,11 +470,14 @@ void sva_init_primary() {
   init_idt (0);
   init_dispatcher ();
 
+#endif
   init_mmu ();
+#if 0
   init_fpu ();
 #if 0
   llva_reset_counters();
   llva_reset_local_counters();
+#endif
 #endif
 }
 
@@ -484,6 +491,8 @@ void sva_init_primary() {
  */
 void
 sva_init_secondary () {
+  panic("Not used!");
+#if 0
 #if 0
   init_segs ();
   init_debug ();
@@ -509,8 +518,10 @@ sva_init_secondary () {
   llva_reset_counters();
   llva_reset_local_counters();
 #endif
+#endif
 }
 
+#if 0
 #define REGISTER_EXCEPTION(number) \
   extern void trap##number(void); \
   register_x86_interrupt ((number),trap##number, 0);
@@ -821,3 +832,4 @@ init_dispatcher ()
   return;
 }
 
+#endif

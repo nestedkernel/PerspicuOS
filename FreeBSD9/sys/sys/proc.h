@@ -65,7 +65,7 @@
 #include <sys/ucred.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
-#if 1
+#if 0
 #include <sva/state.h>
 #endif
 
@@ -313,7 +313,7 @@ struct thread {
 	struct vnet	*td_vnet;	/* (k) Effective vnet. */
 	const char	*td_vnet_lpush;	/* (k) Debugging vnet push / pop. */
 	struct trapframe *td_intr_frame;/* (k) Frame of the current irq */
-#if 1
+#if 0
   /* The thread that swapped out so this thread could swap on */
   struct thread * prev;
   struct mtx * mtx;

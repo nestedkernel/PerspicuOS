@@ -148,7 +148,9 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13
 #include <isa/rtc.h>
 
 #include <sva/init.h>
+#if 0
 #include <sva/state.h>
+#endif
 
 #ifdef SVA_MMU
 #include <sva/mmu_intrinsics.h>
@@ -348,7 +350,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	sf.sf_uc.uc_stack = td->td_sigstk;
 	sf.sf_uc.uc_stack.ss_flags = (td->td_pflags & TDP_ALTSTACK)
 	    ? ((oonstack) ? SS_ONSTACK : 0) : SS_DISABLE;
-#if 0
+#if 1
 	sf.sf_uc.uc_mcontext.mc_onstack = (oonstack) ? 1 : 0;
 	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(*regs));
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext); /* magic */
@@ -364,7 +366,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	/* Allocate space for the signal handler context. */
 	if ((td->td_pflags & TDP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
-#if 1
+#if 0
     panic ("SVA: signal altstacks not supported!\n");
 #endif
 		sp = td->td_sigstk.ss_sp +
@@ -382,13 +384,13 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 		sig = p->p_sysent->sv_sigtbl[_SIG_IDX(sig)];
 
 	/* Build the argument list for the signal handler. */
-#if 0
+#if 1
 	regs->tf_rdi = sig;			/* arg 1 in %rdi */
 	regs->tf_rdx = (register_t)&sfp->sf_uc;	/* arg 3 in %rdx */
 #endif
 	bzero(&sf.sf_si, sizeof(sf.sf_si));
 	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
-#if 0
+#if 1
 		/* Signal handler installed with SA_SIGINFO. */
 		regs->tf_rsi = (register_t)&sfp->sf_si;	/* arg 2 in %rsi */
 #endif
@@ -397,12 +399,12 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 		/* Fill in POSIX parts */
 		sf.sf_si = ksi->ksi_info;
 		sf.sf_si.si_signo = sig; /* maybe a translated signal */
-#if 0
+#if 1
 		regs->tf_rcx = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
 #endif
 	} else {
 		/* Old FreeBSD-style arguments. */
-#if 0
+#if 1
 		regs->tf_rsi = ksi->ksi_code;	/* arg 2 in %rsi */
 		regs->tf_rcx = (register_t)ksi->ksi_addr; /* arg 4 in %rcx */
 #endif
@@ -411,7 +413,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	mtx_unlock(&psp->ps_mtx);
 	PROC_UNLOCK(p);
 
-#if 1
+#if 0
   /*
    * Save the interrupt context.
    */
@@ -444,7 +446,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
                        catcher);
 #endif
 
-#if 0
+#if 1
 	/*
 	 * Copy the sigframe out to the user's stack.
 	 */
@@ -457,7 +459,7 @@ sendsig(sig_t catcher, ksiginfo_t *ksi, sigset_t *mask)
 	}
 #endif
 
-#if 0
+#if 1
 	regs->tf_rsp = (long)sfp;
 	regs->tf_rip = p->p_sysent->sv_sigcode_base;
 	regs->tf_rflags &= ~(PSL_T | PSL_D);
@@ -504,7 +506,7 @@ sys_sigreturn(td, uap)
    * We need to copy in the signal mask (or store it somewhere in kernel
    * memory).
    */
-#if 0
+#if 1
 	pcb = td->td_pcb;
 	p = td->td_proc;
 #endif
@@ -516,7 +518,7 @@ sys_sigreturn(td, uap)
 		return (error);
 	}
 	ucp = &uc;
-#if 0
+#if 1
 	if ((ucp->uc_mcontext.mc_flags & ~_MC_FLAG_MASK) != 0) {
 		uprintf("pid %d (%s): sigreturn mc_flags %x\n", p->p_pid,
 		    td->td_name, ucp->uc_mcontext.mc_flags);
@@ -579,13 +581,13 @@ sys_sigreturn(td, uap)
 #endif
 #endif
 
-#if 1
+#if 0
   /* Load the old interrupted state back on into the interrupt context. */
   sva_load_icontext ();
 #endif
 
 	kern_sigprocmask(td, SIG_SETMASK, &ucp->uc_sigmask, NULL, 0);
-#if 0
+#if 1
 	set_pcb_flags(pcb, PCB_FULL_IRET);
 #endif
 	return (EJUSTRETURN);
@@ -964,13 +966,13 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	else
 		mtx_unlock(&dt_lock);
 	
-#if 0
+#if 1
 	pcb->pcb_fsbase = 0;
 	pcb->pcb_gsbase = 0;
 	clear_pcb_flags(pcb, PCB_32BIT | PCB_GS32BIT);
 #endif
 	pcb->pcb_initial_fpucw = __INITIAL_FPUCW__;
-#if 0
+#if 1
 	set_pcb_flags(pcb, PCB_FULL_IRET);
 
 	bzero((char *)regs, sizeof(struct trapframe));
@@ -987,14 +989,14 @@ exec_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 	regs->tf_flags = TF_HASSEGS;
 	td->td_retval[1] = 0;
 #else
-#if 1
+#if 0
   uintptr_t handle = sva_translate (imgp->entry_addr);
   if (handle)
     sva_reinit_icontext (handle, 0, ((stack - 8) & ~0xFul) + 8, stack);
 #endif
 #endif
 
-#if 0
+#if 1
 	/*
 	 * Reset the hardware debug registers if they were in use.
 	 * They won't have any meaning for the newly exec'd process.
@@ -1201,7 +1203,7 @@ setidt(idx, func, typ, dpl, ist)
 {
 	struct gate_descriptor *ip;
 
-#if 1
+#if 0
   switch (idx) {
     case IDT_DB:
     case IDT_BP:
@@ -1217,7 +1219,7 @@ setidt(idx, func, typ, dpl, ist)
   }
 #endif
 
-#if 1
+#if 0
   /*
    * Do not change the vectors used by SVA.
    */
@@ -1692,7 +1694,7 @@ do_next:
 	msgbufp = (struct msgbuf *)PHYS_TO_DMAP(phys_avail[pa_indx]);
 }
 
-#if 1
+#if 0
 /*
  * Function: spurious_handler()
  *
@@ -1770,7 +1772,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 	pcpu_init(pc, 0, sizeof(struct pcpu));
-#if 1
+#if 0
   /*
    * Initialize the rest of the PCPU structures because we need them for
    * proper SVA interrupt handling.
@@ -1813,21 +1815,22 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #endif
 
 	/* exceptions */
-#if 0
+#if 1
 	for (x = 0; x < NIDT; x++)
 		setidt(x, &IDTVEC(rsvd), SDT_SYSIGT, SEL_KPL, 0);
 #endif
-#if 1
+#if 0
 	extern void fr_sva_trap(int type);
 #endif
-#if 0
+#if 1
 	setidt(IDT_DE, &IDTVEC(div),  SDT_SYSIGT, SEL_KPL, 0);
 #else
 	sva_register_general_exception(IDT_DE, fr_sva_trap);
 #endif
 	setidt(IDT_DB, &IDTVEC(dbg),  SDT_SYSIGT, SEL_KPL, 0);
+	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
  	setidt(IDT_BP, &IDTVEC(bpt),  SDT_SYSIGT, SEL_UPL, 0);
-#if 0
+#if 1
 	setidt(IDT_OF, &IDTVEC(ofl),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_BR, &IDTVEC(bnd),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_UD, &IDTVEC(ill),  SDT_SYSIGT, SEL_KPL, 0);
@@ -1836,22 +1839,21 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_BR, fr_sva_trap);
 	sva_register_general_exception(IDT_UD, fr_sva_trap);
 #endif
-#if 0
+#if 1
 	setidt(IDT_NM, &IDTVEC(dna),  SDT_SYSIGT, SEL_KPL, 0);
 #endif
 	setidt(IDT_DF, &IDTVEC(dblfault), SDT_SYSIGT, SEL_KPL, 1);
-#if 0
+#if 1
 	setidt(IDT_FPUGP, &IDTVEC(fpusegm),  SDT_SYSIGT, SEL_KPL, 0);
 #else
 	sva_register_general_exception(IDT_FPUGP, fr_sva_trap);
 #endif
-#if 0
+#if 1
 	setidt(IDT_TS, &IDTVEC(tss),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_NP, &IDTVEC(missing),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_SS, &IDTVEC(stk),  SDT_SYSIGT, SEL_KPL, 0);
 #endif
-#if 0
-	setidt(IDT_NMI, &IDTVEC(nmi),  SDT_SYSIGT, SEL_KPL, 2);
+#if 1
 	setidt(IDT_GP, &IDTVEC(prot),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_PF, &IDTVEC(page),  SDT_SYSIGT, SEL_KPL, 0);
 #else
@@ -1860,7 +1862,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	sva_register_general_exception(IDT_PF, fr_sva_trap);
 #endif
 	setidt(IDT_MF, &IDTVEC(fpu),  SDT_SYSIGT, SEL_KPL, 0);
-#if 0
+#if 1
 	setidt(IDT_AC, &IDTVEC(align), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_MC, &IDTVEC(mchk),  SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_XF, &IDTVEC(xmm), SDT_SYSIGT, SEL_KPL, 0);
@@ -1873,7 +1875,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	setidt(IDT_DTRACE_RET, &IDTVEC(dtrace_ret), SDT_SYSIGT, SEL_UPL, 0);
 #endif
 
-#if 0
+#if 1
 	r_idt.rd_limit = sizeof(idt0) - 1;
 	r_idt.rd_base = (long) idt;
 	lidt(&r_idt);
@@ -1902,7 +1904,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * Point the ICU spurious interrupt vectors at the APIC spurious
 	 * interrupt handler.
 	 */
-#if 0
+#if 1
 	setidt(IDT_IO_INTS + 7, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 	setidt(IDT_IO_INTS + 15, IDTVEC(spuriousint), SDT_SYSIGT, SEL_KPL, 0);
 #else
@@ -1998,7 +2000,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	thread0.td_pcb->pcb_cr3 = KPML4phys;
 	thread0.td_frame = &proc0_tf;
 
-#if 1
+#if 0
   thread0.svaID = 0;
 #endif
         env = getenv("kernelname");
@@ -2628,6 +2630,7 @@ user_dbreg_trap(void)
         return 0;
 }
 
+#if 0
 /*
  * Function: cpu_switch_sva()
  *
@@ -2875,6 +2878,7 @@ cpu_throw_sva (struct thread * old, struct thread * new, struct mtx * mtx)
   sva_release_stack (curthread->prev->svaID);
   return;
 }
+#endif
 
 #ifdef KDB
 

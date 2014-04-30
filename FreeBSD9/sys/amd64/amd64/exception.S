@@ -356,7 +356,7 @@ IDTVEC(prot)
  * entries from an LDT).
  */
 IDTVEC(fast_syscall)
-#if 1
+#if 0
   /*
    * Determine if this is an SVA system call or an original system call.  If
    * it is an SVA system call (the upper bit in the system call number is set),

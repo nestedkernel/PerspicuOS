@@ -51,6 +51,7 @@ void releaseSVAMemory (uintptr_t p, uintptr_t size);
 uintptr_t
 provideSVAMemory (uintptr_t size)
 {
+  panic("Don't call this!");
   /* Structure to get a page */
   vm_page_t bufferPage;
 

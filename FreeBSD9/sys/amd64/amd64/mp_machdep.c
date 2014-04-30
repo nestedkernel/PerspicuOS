@@ -630,7 +630,7 @@ init_secondary(void)
 	cpu = bootAP;
 
 	/* Init tss */
-#if 0
+#if 1
 	common_tss[cpu] = common_tss[0];
 #else
   /*
@@ -690,13 +690,13 @@ init_secondary(void)
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);	/* XXX User value while we're in the kernel */
 
-#if 0
-	r_idt.rd_base = (long) idt;
+//#if 1
+//	r_idt.rd_base = (long) idt;
 	lidt(&r_idt);
-#else
-  /* Initialize SVA for this processor */
-  sva_init_secondary();
-#endif
+//#else
+//  /* Initialize SVA for this processor */
+//  sva_init_secondary();
+//#endif
 
 	gsel_tss = GSEL(GPROC0_SEL, SEL_KPL);
 	ltr(gsel_tss);

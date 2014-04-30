@@ -216,7 +216,7 @@ int	lapic_ipi_wait(int delay);
 void	lapic_handle_cmc(void);
 void	lapic_handle_error(void);
 void	lapic_handle_intr(int vector, struct trapframe *frame);
-#if 0
+#if 1
 void	lapic_handle_timer(struct trapframe *frame);
 #else
 void	lapic_handle_timer(int type);

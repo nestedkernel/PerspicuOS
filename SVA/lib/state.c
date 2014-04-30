@@ -786,6 +786,7 @@ flushSecureMemory (struct SVAThread * threadp) {
  */
 uintptr_t
 sva_swap_integer (uintptr_t newint, uintptr_t * statep) {
+  panic("sva_swap_integer called!");
   /* Function for saving state */
   extern unsigned int save_integer (sva_integer_state_t * buffer);
   extern void load_integer (sva_integer_state_t * p);

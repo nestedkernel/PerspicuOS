@@ -133,7 +133,7 @@ static struct lvt lvts[LVT_MAX + 1] = {
 	{ 1, 1, 1, 1, APIC_LVT_DM_FIXED, APIC_CMC_INT },	/* CMCI */
 };
 
-#if 0
+#if 1
 static inthand_t *ioint_handlers[] = {
 	NULL,			/* 0 - 31 */
 	IDTVEC(apic_isr1),	/* 32 - 63 */
@@ -246,7 +246,7 @@ lapic_init(vm_paddr_t addr)
 	    ("local APIC not aligned on a page boundary"));
 	lapic = pmap_mapdev(addr, sizeof(lapic_t));
 	lapic_paddr = addr;
-#if 0
+#if 1
 	setidt(APIC_SPURIOUS_INT, IDTVEC(spuriousint), SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
 #else
@@ -260,7 +260,7 @@ lapic_init(vm_paddr_t addr)
 	/* Set BSP's per-CPU local APIC ID. */
 	PCPU_SET(apic_id, lapic_id());
 
-#if 0
+#if 1
 	/* Local APIC timer interrupt. */
 	setidt(APIC_TIMER_INT, IDTVEC(timerint), SDT_APIC, SEL_KPL, GSEL_APIC);
 #else
@@ -268,7 +268,7 @@ lapic_init(vm_paddr_t addr)
 #endif
 
 	/* Local APIC error interrupt. */
-#if 0
+#if 1
 	setidt(APIC_ERROR_INT, IDTVEC(errorint), SDT_APIC, SEL_KPL, GSEL_APIC);
 #else
 	sva_register_interrupt(APIC_ERROR_INT, lapic_handle_error);
@@ -277,7 +277,7 @@ lapic_init(vm_paddr_t addr)
 	/* XXX: Thermal interrupt */
 
 	/* Local APIC CMCI. */
-#if 0
+#if 1
 	setidt(APIC_CMC_INT, IDTVEC(cmcint), SDT_APICT, SEL_KPL, GSEL_APIC);
 #else
 	sva_register_interrupt(APIC_CMC_INT, lapic_handle_cmc);
@@ -818,7 +818,7 @@ lapic_handle_intr(int vector, struct trapframe *frame)
 	intr_execute_handlers(isrc, frame);
 }
 
-#if 1
+#if 0
 /* SVA: Create C versions of the apic_isr functions */
 void
 lapic_handle_intr_sva(int vector)
@@ -907,7 +907,7 @@ apic_isr_sva7 (unsigned int vector) {
 }
 #endif
 
-#if 0
+#if 1
 void
 lapic_handle_timer(struct trapframe *frame)
 #else
@@ -918,7 +918,7 @@ lapic_handle_timer(int type)
 	struct lapic *la;
 	struct trapframe *oldframe;
 	struct thread *td;
-#if 1
+#if 0
   struct trapframe newframe;
   struct trapframe * frame = &newframe;
 
@@ -944,7 +944,7 @@ lapic_handle_timer(int type)
 	 * and unlike other schedulers it actually schedules threads to
 	 * those CPUs.
 	 */
-#if 0
+#if 1
 	if (CPU_ISSET(PCPU_GET(cpuid), &hlt_cpus_mask))
 		return;
 #else
@@ -973,7 +973,7 @@ lapic_handle_timer(int type)
 		td->td_intr_nesting_level--;
 	}
 	critical_exit();
-#if 1
+#if 0
   if (!(sva_was_privileged()))
     if (curthread->td_flags & (TDF_ASTPENDING | TDF_NEEDRESCHED))
       ast (frame);
@@ -1186,7 +1186,7 @@ apic_enable_vector(u_int apic_id, u_int vector)
 	KASSERT(vector != IDT_DTRACE_RET,
 	    ("Attempt to overwrite DTrace entry"));
 #endif
-#if 0
+#if 1
 	setidt(vector, ioint_handlers[vector / 32], SDT_APIC, SEL_KPL,
 	    GSEL_APIC);
 #else
