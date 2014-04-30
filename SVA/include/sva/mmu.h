@@ -275,6 +275,12 @@ void init_leaf_page_from_mapping(page_entry_t mapping);
 /* CR0 Flags */
 #define     CR0_WP      0x00010000      /* Write protect enable */
 
+/* CR4 Flags */
+#define     CR4_SMEP    0x00100000      /* SMEP enable */
+
+/* EFER Flags */
+#define     EFER_NXE    0x000000800     /* NXE enable */
+
 /*
  * Function: getVirtual()
  *
@@ -332,11 +338,31 @@ rdmsr(u_int msr)
 }
 
 /* 
- * Return the current value in cr0
+ * Load cr0 with the given value
  */
 static void
 _load_cr0(unsigned long val) {
     __asm __volatile("movq %0,%%cr0" : : "r" (val));
+}
+
+/* 
+ * Load cr4 with the given value
+ */
+static void
+_load_cr4(unsigned long val) {
+    __asm __volatile("movq %0,%%cr4" : : "r" (val));
+}
+
+/* 
+ * Load the MSR register EFER with the given value
+ */
+static void
+_load_EFER(uint64_t val) {
+	uint32_t low, high;
+
+	low = val;
+	high = val >> 32;
+	__asm __volatile("wrmsr" : : "a" (low), "d" (high), "c" (MSR_REG_EFER));
 }
 
 /*

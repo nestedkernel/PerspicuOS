@@ -38,6 +38,7 @@
 
 #include "assym.s"
 #include "opt_sched.h"
+#include "opt_sva_mmu.h"
 
 #include <sva/cfi.h>
 
@@ -358,7 +359,14 @@ ENTRY(savectx)
 
 	clts
 	fxsave	PCB_USERFPU(%rdi)
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rsi, %rdi
+    callq sva_load_cr0
+    popq %rdi
+#else
 	movq	%rsi,%cr0	/* The previous %cr0 is saved in %rsi. */
+#endif
 
 	movl	$1,%eax
 	RETQ

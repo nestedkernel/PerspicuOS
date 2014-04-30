@@ -320,7 +320,11 @@ amd64_mrstoreone(void *arg)
 
 	/* Disable PGE. */
 	cr4 = rcr4();
+#ifdef SVA_MMU
+    sva_load_cr4(cr4 & ~CR4_PGE);
+#else
 	load_cr4(cr4 & ~CR4_PGE);
+#endif
 
 	/* Disable caches (CD = 1, NW = 0). */
 	cr0 = rcr0();
@@ -413,7 +417,11 @@ amd64_mrstoreone(void *arg)
 #else
 	load_cr0(cr0);
 #endif
+#ifdef SVA_MMU
+    sva_load_cr4(cr4);
+#else
 	load_cr4(cr4);
+#endif
 
 	critical_exit();
 }

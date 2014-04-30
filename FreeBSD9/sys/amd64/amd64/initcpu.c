@@ -30,6 +30,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/initcpu.c 220018 2011-03-26 02:02:07Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_cpu.h"
 
 #include <sys/param.h>
@@ -125,13 +130,26 @@ initializecpu(void)
 {
 	uint64_t msr;
 
+#ifdef SVA_MMU
+#define     CR4_SMEP    0x00100000
+    sva_load_cr4(rcr4() | CR4_SMEP);
+#endif
+
 	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
+#ifdef SVA_MMU
+		sva_load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
+#else
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
+#endif
 		cpu_fxsr = hw_instruction_sse = 1;
 	}
 	if ((amd_feature & AMDID_NX) != 0) {
 		msr = rdmsr(MSR_EFER) | EFER_NXE;
+#ifdef SVA_MMU
+        sva_load_EFER(msr);
+#else
 		wrmsr(MSR_EFER, msr);
+#endif
 		pg_nx = PG_NX;
 	}
 	if (cpu_vendor_id == CPU_VENDOR_CENTAUR)

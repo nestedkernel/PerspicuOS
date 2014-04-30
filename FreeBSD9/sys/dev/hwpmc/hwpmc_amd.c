@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_amd.c 185555 2008-12-02 10:46:35Z jkoshy $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 /* Support for the AMD K7 and later processors */
 
 #include <sys/param.h>
@@ -400,7 +405,11 @@ amd_switch_in(struct pmc_cpu *pc, struct pmc_process *pp)
 
 	/* enable the RDPMC instruction if needed */
 	if (pp->pp_flags & PMC_PP_ENABLE_MSR_ACCESS)
+#ifdef SVA_MMU
+		sva_load_cr4(rcr4() | CR4_PCE);
+#else
 		load_cr4(rcr4() | CR4_PCE);
+#endif
 
 	return 0;
 }
@@ -420,7 +429,11 @@ amd_switch_out(struct pmc_cpu *pc, struct pmc_process *pp)
 	    (pp->pp_flags & PMC_PP_ENABLE_MSR_ACCESS) == 1 : 0);
 
 	/* always turn off the RDPMC instruction */
+#ifdef SVA_MMU
+	sva_load_cr4(rcr4() & ~CR4_PCE);
+#else
 	load_cr4(rcr4() & ~CR4_PCE);
+#endif
 
 	return 0;
 }

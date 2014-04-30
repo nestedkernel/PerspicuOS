@@ -1397,13 +1397,45 @@ sva_mm_load_pgtable (void * pg) {
  * Function: sva_load_cr0
  *
  * Description:
- *  SVA Intrinsic to load the cr0 value. We need to make sure write protection
+ *  SVA Intrinsic to load a value in cr0. We need to make sure write protection
  *  is enabled. 
  */
 void 
 sva_load_cr0 (unsigned long val) {
-    val |= CR0_WP;
+    //val |= CR0_WP;
     _load_cr0(val);
+    if (!(val & CR0_WP))
+      panic("SVA: attempt to clear the CR0.WP bit: %x.", val);
+}
+
+/*
+ * Function: sva_load_cr4
+ *
+ * Description:
+ *  SVA Intrinsic to load a value in cr4. We need to make sure that the SMEP
+ *  bit is enabled. 
+ */
+void 
+sva_load_cr4 (unsigned long val) {
+    //val |= CR4_SMEP;
+    _load_cr4(val);
+    if (!(val & CR4_SMEP))
+      panic("SVA: attempt to clear the CR4.SMEP bit: %x.", val);
+}
+
+/*
+ * Function: sva_load_I32_EREF
+ *
+ * Description:
+ *  SVA Intrinsic to load a value in the MSR I32_EREF. We need to make sure
+ *  that the NXE bit is enabled. 
+ */
+void
+sva_load_EFER(uint64_t val) {
+    //val |= EFER_NXE;
+    _load_EFER(val);
+    if (!(val & EFER_NXE))
+      panic("SVA: attempt to clear the EFER.NXE bit: %x.", val);
 }
 
 /*

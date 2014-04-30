@@ -105,6 +105,11 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/pmap.c 225418 2011-09-06 10:30
  *	and to when physical maps must be made correct.
  */
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_pmap.h"
 #include "opt_vm.h"
 #include "opt_sva_mmu.h"
@@ -680,7 +685,11 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	virtual_end = VM_MAX_KERNEL_ADDRESS;
 
 	/* XXX do %cr0 as well */
+#ifdef SVA_MMU
+	sva_load_cr4(rcr4() | CR4_PGE | CR4_PSE);
+#else
 	load_cr4(rcr4() | CR4_PGE | CR4_PSE);
+#endif
 
 #ifdef SVA_MMU
 #if 0
@@ -793,7 +802,11 @@ pmap_init_pat(void)
 
 	/* Disable PGE. */
 	cr4 = rcr4();
+#ifdef SVA_MMU
+	sva_load_cr4(cr4 & ~CR4_PGE);
+#else
 	load_cr4(cr4 & ~CR4_PGE);
+#endif
 
 	/* Disable caches (CD = 1, NW = 0). */
 	cr0 = rcr0();
@@ -822,7 +835,11 @@ pmap_init_pat(void)
 #else
 	load_cr0(cr0);
 #endif
+#ifdef SVA_MMU
+	sva_load_cr4(cr4);
+#else
 	load_cr4(cr4);
+#endif
 }
 
 /*
@@ -1022,7 +1039,11 @@ pmap_update_pde_invalidate(vm_offset_t va, pd_entry_t newpde)
 		 * including any global (PG_G) mappings.
 		 */
 		cr4 = rcr4();
+#ifdef SVA_MMU
+		sva_load_cr4(cr4 & ~CR4_PGE);
+#else
 		load_cr4(cr4 & ~CR4_PGE);
+#endif
 		/*
 		 * Although preemption at this point could be detrimental to
 		 * performance, it would not lead to an error.  PG_G is simply
@@ -1030,7 +1051,11 @@ pmap_update_pde_invalidate(vm_offset_t va, pd_entry_t newpde)
 		 * is re-entered, the load_cr4() either above or below will
 		 * modify CR4.PGE flushing the TLB.
 		 */
+#ifdef SVA_MMU
+		sva_load_cr4(cr4 | CR4_PGE);
+#else
 		load_cr4(cr4 | CR4_PGE);
+#endif
 	}
 }
 #ifdef SMP
