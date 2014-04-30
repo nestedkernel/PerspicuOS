@@ -41,6 +41,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/machdep.c 225617 2011-09-16 13:58:51Z kmacy $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_atalk.h"
 #include "opt_atpic.h"
 #include "opt_compat.h"
@@ -1948,7 +1953,11 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;
+#ifdef SVA_MMU
+    sva_load_EFER(msr);
+#else
 	wrmsr(MSR_EFER, msr);
+#endif
 #if 1
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));

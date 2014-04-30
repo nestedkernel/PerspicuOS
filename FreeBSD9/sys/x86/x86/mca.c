@@ -32,6 +32,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/x86/mca.c 218221 2011-02-03 13:09:22Z jhb $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #ifdef __amd64__
 #define	DEV_APIC
 #else
@@ -846,7 +851,11 @@ _mca_init(int boot)
 #endif
 	}
 
+#ifdef SVA_MMU
+	sva_load_cr4(rcr4() | CR4_MCE);
+#else
 	load_cr4(rcr4() | CR4_MCE);
+#endif
 }
 
 /* Must be executed on each CPU during boot. */

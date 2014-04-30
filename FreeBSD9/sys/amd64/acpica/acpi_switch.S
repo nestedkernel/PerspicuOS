@@ -111,7 +111,14 @@ ENTRY(acpi_restorecpu)
 	movq	PCB_CR2(%rdi), %rax
 	movq	%rax, %cr2
 	movq	PCB_CR4(%rdi), %rax
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rax, %rdi
+    callq sva_load_cr4
+    popq %rdi
+#else
 	movq	%rax, %cr4
+#endif
 
 	/* Restore descriptor tables. */
 	lidt	PCB_IDT(%rdi)

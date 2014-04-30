@@ -716,7 +716,11 @@ init_secondary(void)
 
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;
+#ifdef SVA_MMU
+    sva_load_EFER(msr);
+#else
 	wrmsr(MSR_EFER, msr);
+#endif
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
 	msr = ((u_int64_t)GSEL(GCODE_SEL, SEL_KPL) << 32) |

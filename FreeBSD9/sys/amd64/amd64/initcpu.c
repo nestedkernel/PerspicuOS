@@ -130,6 +130,11 @@ initializecpu(void)
 {
 	uint64_t msr;
 
+#ifdef SVA_MMU
+#define     CR4_SMEP    0x00100000
+    sva_load_cr4(rcr4() | CR4_SMEP);
+#endif
+
 	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
 #ifdef SVA_MMU
 		sva_load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
@@ -140,7 +145,11 @@ initializecpu(void)
 	}
 	if ((amd_feature & AMDID_NX) != 0) {
 		msr = rdmsr(MSR_EFER) | EFER_NXE;
+#ifdef SVA_MMU
+        sva_load_EFER(msr);
+#else
 		wrmsr(MSR_EFER, msr);
+#endif
 		pg_nx = PG_NX;
 	}
 	if (cpu_vendor_id == CPU_VENDOR_CENTAUR)
