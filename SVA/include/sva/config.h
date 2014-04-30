@@ -16,8 +16,6 @@
 #ifndef _SVA_CONFIG_H
 #define _SVA_CONFIG_H
 
-#include <limits.h>
-
 /* Determine whether the virtual ghost features are enabled */
 #ifdef VG
 static const unsigned char vg = 1;
@@ -27,6 +25,12 @@ static const unsigned char vg = 0;
 
 /* Total number of processors supported by this SVA Execution Engine */
 static const unsigned int numProcessors=64;
+
+/* Maximum number of kernel threads */
+static const unsigned MAX_THREADS = 1024;
+
+/* Maximum number of VG translations */
+static const unsigned MAX_TRANSLATIONS = vg ? 4096 : 0;
 
 /* Structure for describing processors */
 struct procMap {
@@ -47,7 +51,7 @@ struct procMap {
  *  An index value less than numProcessors that can be used to index into
  *  per-CPU SVA data structures.
  */
-static unsigned int
+static inline unsigned int
 getProcessorID() {
   /* Map logical processor ID to an array in the SVA data structures */
   extern struct procMap svaProcMap[numProcessors];
@@ -66,7 +70,7 @@ getProcessorID() {
       return index;
   }
 
-  return UINT_MAX;
+  return ~0U;
 }
 
 #endif

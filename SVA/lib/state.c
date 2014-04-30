@@ -1434,7 +1434,7 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   struct translation * transp = (struct translation *)(handle);
   if (vg) {
-    if ((translations <= transp) && (transp < translations + 4096)) {
+    if ((translations <= transp) && (transp < translations + MAX_TRANSLATIONS)) {
       if (((uint64_t)transp - (uint64_t)translations) % sizeof (struct translation)) {
         panic ("SVA: Invalid translation handle: %p %p %lx\n", transp, translations, sizeof (struct translation));
         return;
@@ -1654,7 +1654,7 @@ sva_init_stack (unsigned char * start_stackp,
    * Verify that the function is a kernel function.
    */
   uintptr_t f = (uintptr_t)(func);
-  if ((f <= SECMEMEND) || (*((unsigned int *)(f)) != CHECKLABEL)) {
+  if ((f <= SECMEMEND) || !CHECK_FUNC_LABEL(f)) {
     panic ("sva_init_stack: Invalid function %p\n", func);
   }
 

@@ -751,6 +751,9 @@ fr_sva_trap(unsigned trapno, void * trapAddr)
       break;
   }
 #endif
+    // If we end up calling trap_fatal, it will want this translated type,
+    // so store it back into the frame now.
+    localframe.tf_trapno = type;
 
 	PCPU_INC(cnt.v_trap);
 #if 0

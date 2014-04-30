@@ -216,8 +216,9 @@ freeSecureMemory (void) {
    * address space.
    */
   uintptr_t pint = (uintptr_t) p;
-  if ((SECMEMSTART <= pint < SECMEMEND) &&
-     (SECMEMSTART <= (pint + size) < SECMEMEND)) {
+  uintptr_t pend = pint + size;
+  if ((SECMEMSTART <= pint && pint < SECMEMEND) &&
+     (SECMEMSTART <= pend && pend < SECMEMEND)) {
     /*
      * Zero out the memory.
      */

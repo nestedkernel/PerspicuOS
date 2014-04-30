@@ -78,13 +78,13 @@ __attribute__ ((section ("svamem")));
 struct CPUState * CPUState = realCPUState;
 
 /* Pre-allocate a large number of SVA Threads */
-static struct SVAThread realThreads[4096] __attribute__ ((aligned (16)))
+static struct SVAThread realThreads[MAX_THREADS] __attribute__ ((aligned (16)))
 __attribute__ ((section ("svamem")));
 struct SVAThread * Threads = realThreads;
 
 void
 init_threads(void) {
-  for (unsigned index = 0; index < 4096; ++index) {
+  for (unsigned index = 0; index < MAX_THREADS; ++index) {
     Threads[index].used = 0;
   }
   return;
@@ -112,7 +112,7 @@ randomNumber (void) {
  */
 struct SVAThread *
 findNextFreeThread (void) {
-  for (unsigned int index = 0; index < 4096; ++index) {
+  for (unsigned int index = 0; index < MAX_THREADS; ++index) {
     if (__sync_bool_compare_and_swap (&(Threads[index].used), 0, 1)) {
       /*
        * Remember which thread is the one we've grabbed.

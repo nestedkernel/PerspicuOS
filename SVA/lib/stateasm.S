@@ -207,11 +207,13 @@ load_integer:
    * sva_swap_integer() and verify that it is correct.
    */
   movq IC_RIP(%rdi), %rcx
+#ifdef USE_CFI
   cmpl  $CHECKLABEL, (%rcx)
   je 1f
   int $3
 
 1:
+#endif
   /* Restore the %rdi register */
   movq IC_RDI(%rdi), %rdi
 
