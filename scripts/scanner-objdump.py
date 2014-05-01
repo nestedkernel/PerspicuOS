@@ -46,7 +46,7 @@ def processInput(fileObject, pattern, overlap, patname):
             objFilename = newObjFilename
         notFound = searchPattern(pattern, overlapData + line)
         if not notFound:
-            print "{:s} {:5s} pattern found near {:8s}".format(objFilename + ":", patname, address)
+            print "{:s}: {:5s} pattern found near {:8s}".format(objFilename, patname, address)
            
         overlapData = newOverlapData
         #print (line, address, newObjFilename, newOverlapData)
