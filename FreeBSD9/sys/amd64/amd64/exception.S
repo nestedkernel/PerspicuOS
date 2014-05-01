@@ -48,6 +48,7 @@
 #include "opt_sva_mmu.h"
 
 #include <sva/cfi.h>
+#include <sva/trap_entry.h>
 
 #ifdef KDTRACE_HOOKS
 	.bss
@@ -69,7 +70,7 @@ dtrace_invop_calltrap_addr:
 	ENTRY(start_exceptions)
 #endif
 
-#if 1
+#if 0
 .global SVAsyscall
 .type SVAsyscall, @function
 
@@ -110,6 +111,7 @@ MCOUNT_LABEL(btrap)
 
 /* Traps that we leave interrupts disabled for.. */
 #define	TRAP_NOEN(a)	\
+    SECURE_TRAP_ENTRY \
 	subq $TF_RIP,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -126,6 +128,7 @@ IDTVEC(dtrace_ret)
 
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
+    SECURE_TRAP_ENTRY \
 	subq $TF_RIP,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -154,6 +157,7 @@ IDTVEC(xmm)
 
 /* This group of traps have tf_err already pushed by the cpu */
 #define	TRAP_ERR(a)	\
+    SECURE_TRAP_ENTRY \
 	subq $TF_ERR,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -357,7 +361,8 @@ IDTVEC(prot)
  * entries from an LDT).
  */
 IDTVEC(fast_syscall)
-#if 1
+  SECURE_TRAP_ENTRY
+#if 0
   /*
    * Determine if this is an SVA system call or an original system call.  If
    * it is an SVA system call (the upper bit in the system call number is set),

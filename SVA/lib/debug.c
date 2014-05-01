@@ -17,6 +17,7 @@
 #include <sva/callbacks.h>
 #include <sva/config.h>
 #include <sva/state.h>
+#include <sva/stack.h>
 #include <sva/interrupt.h>
 #include <sva/mmu.h>
 #include <sva/util.h>
@@ -78,8 +79,8 @@ assertGoodIC (void) {
  *  The reason for doing this is that it allows me to progressively move the
  *  kernel to using SVA for interrupts without completely breaking it.
  */
-void
-sva_trapframe (struct trapframe * tf) {
+SECURE_WRAPPER(void, sva_trapframe, struct trapframe * tf) {
+  panic("sva_trapframe called!");
   /*
    * Fetch the currently available interrupt context.
    */
@@ -147,8 +148,8 @@ sva_trapframe (struct trapframe * tf) {
  *
  *  This version of the function does some translating between registers.
  */
-void
-sva_syscall_trapframe (struct trapframe * tf) {
+SECURE_WRAPPER(void, sva_syscall_trapframe, struct trapframe * tf) {
+  panic("sva_syscall_trapframe called!");
   /*
    * Fetch the currently available interrupt context.
    */

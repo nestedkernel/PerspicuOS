@@ -1,3 +1,4 @@
+#if 0
 #include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -245,3 +246,4 @@ casuword(volatile u_long *p, u_long oldval, u_long newval) {
     return (int)(retval);
   }
 }
+#endif

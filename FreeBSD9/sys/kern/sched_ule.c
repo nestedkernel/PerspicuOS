@@ -76,7 +76,7 @@ dtrace_vtime_switch_func_t	dtrace_vtime_switch_func;
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
-#if 1
+#if 0
 #include "sva/state.h"
 #endif
 
@@ -1849,7 +1849,7 @@ sched_switch(struct thread *td, struct thread *newtd, int flags)
 			(*dtrace_vtime_switch_func)(newtd);
 #endif
 
-#if 0
+#if 1
 		cpu_switch(td, newtd, mtx);
 #else
     extern void cpu_switch_sva (struct thread *, struct thread *, struct mtx *);
@@ -2604,7 +2604,7 @@ sched_throw(struct thread *td)
 	TDQ_LOCKPTR(tdq)->mtx_lock = (uintptr_t)newtd;
 	PCPU_SET(switchtime, cpu_ticks());
 	PCPU_SET(switchticks, ticks);
-#if 0
+#if 1
 	cpu_throw(td, newtd);		/* doesn't return */
 #else
 	cpu_throw_sva(td, newtd, td->td_lock);		/* doesn't return */

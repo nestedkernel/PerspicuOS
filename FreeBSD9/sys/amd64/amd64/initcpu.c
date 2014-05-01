@@ -140,7 +140,7 @@ initializecpu(void)
 
 #ifdef SVA_MMU
 #define     CR4_SMEP    0x00100000
-    sva_load_cr4(rcr4() | CR4_SMEP);
+    // load_cr4(rcr4() | CR4_SMEP);
 #endif
 
 	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {

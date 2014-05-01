@@ -191,7 +191,9 @@ struct pcpu {
 	 * if only to make kernel debugging easier.
 	 */
 	PCPU_MD_FIELDS;
+#if 0
   void * svaIContext;
+#endif
 } __aligned(CACHE_LINE_SIZE);
 
 #ifdef _KERNEL

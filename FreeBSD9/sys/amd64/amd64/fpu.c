@@ -147,7 +147,7 @@ void
 fpuexit(struct thread *td)
 {
 
-#if 0
+#if 1
 	critical_enter();
 	if (curthread == PCPU_GET(fpcurthread)) {
 		stop_emulating();
@@ -393,7 +393,7 @@ static int err_count = 0;
 void
 fpudna(void)
 {
-#if 0
+#if 1
 	struct pcb *pcb;
 
 	critical_enter();
@@ -461,7 +461,7 @@ fpudrop()
 int
 fpugetregs(struct thread *td)
 {
-#if 0
+#if 1
 	struct pcb *pcb;
 
 	pcb = td->td_pcb;
@@ -503,7 +503,7 @@ fpuuserinited(struct thread *td)
 void
 fpusetregs(struct thread *td, struct savefpu *addr)
 {
-#if 0
+#if 1
 	struct pcb *pcb;
 
 	pcb = td->td_pcb;

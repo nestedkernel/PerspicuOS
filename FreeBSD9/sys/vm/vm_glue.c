@@ -363,7 +363,7 @@ vm_thread_new(struct thread *td, int pages)
 	struct kstack_cache_entry *ks_ce;
 	int i;
 
-#if 1
+#if 0
   /* Initialize the SVA specific fields */
   td->svaID = 0;
   td->mtx = 0;

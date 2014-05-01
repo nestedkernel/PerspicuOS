@@ -27,6 +27,7 @@
 #include "sva/config.h"
 #include "sva/mmu_intrinsics.h"
 #include "sva/keys.h"
+#include "sva/stack.h"
 #include "sva/state.h"
 
 #define DEBUG               1
@@ -114,8 +115,7 @@ struct translation translations [MAX_TRANSLATIONS] __attribute__ ((section ("sva
  * Return value:
  *  An opaque value that can be used to calls to sva_reinit_icontext().
  */
-void *
-sva_translate(void * entryPoint) {
+SECURE_WRAPPER(void *, sva_translate, void *entryPoint) {
   if (vg) {
     /*
      * Find a free translation.
