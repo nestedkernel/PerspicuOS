@@ -1398,8 +1398,8 @@ void
 sva_load_cr4 (unsigned long val) {
     //val |= CR4_SMEP;
     _load_cr4(val);
-    if (!(val & CR4_SMEP))
-      panic("SVA: attempt to clear the CR4.SMEP bit: %x.", val);
+    //if (!(val & CR4_SMEP))
+    //  panic("SVA: attempt to clear the CR4.SMEP bit: %x.", val);
 }
 
 /*
