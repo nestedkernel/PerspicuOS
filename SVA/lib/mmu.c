@@ -1424,17 +1424,43 @@ sva_load_cr4 (unsigned long val) {
 }
 
 /*
- * Function: sva_load_I32_EREF
+ * Function: sva_load_msr
  *
  * Description:
- *  SVA Intrinsic to load a value in the MSR I32_EREF. We need to make sure
- *  that the NXE bit is enabled. 
+ *  SVA Intrinsic to load a value in an MSR. If the MSR is EFER, we need to
+ *  make sure that the NXE bit is enabled. 
  */
 void
-sva_load_EFER(uint64_t val) {
+sva_load_msr(u_int msr, uint64_t val) {
     //val |= EFER_NXE;
-    _load_EFER(val);
-    if (!(val & EFER_NXE))
+    _wrmsr(msr, val);
+    if ((msr == MSR_REG_EFER) && !(val & EFER_NXE))
+      panic("SVA: attempt to clear the EFER.NXE bit: %x.", val);
+}
+
+/*
+ * Function: sva_wrmsr
+ *
+ * Description:
+ *  SVA Intrinsic to load a value in an MSR. The given value should be
+ *  given in edx:eax and the MSR should be given in ecx. If the MSR is
+ *  EFER, we need to make sure that the NXE bit is enabled. 
+ */
+void
+sva_wrmsr() {
+    uint64_t val;
+    u_int msr;
+    __asm__ __volatile__ (
+        "movl %%ecx, %0\n"
+        "wrmsr\n"
+        "shlq $32, %%rdx\n"
+        "orl %%eax, %%edx\n"
+        "movq %%rdx, %1\n"
+        : "=r" (msr), "=r" (val)
+        :
+        : "rax", "rcx", "rdx"
+    );
+    if ((msr == MSR_REG_EFER) && !(val & EFER_NXE))
       panic("SVA: attempt to clear the EFER.NXE bit: %x.", val);
 }
 

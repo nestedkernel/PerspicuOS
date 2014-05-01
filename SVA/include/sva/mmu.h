@@ -354,15 +354,16 @@ _load_cr4(unsigned long val) {
 }
 
 /* 
- * Load the MSR register EFER with the given value
+ * Load an MSR with the given value
  */
 static void
-_load_EFER(uint64_t val) {
+_wrmsr(u_int msr, uint64_t newval)
+{
 	uint32_t low, high;
 
-	low = val;
-	high = val >> 32;
-	__asm __volatile("wrmsr" : : "a" (low), "d" (high), "c" (MSR_REG_EFER));
+	low = newval;
+	high = newval >> 32;
+	__asm __volatile("wrmsr" : : "a" (low), "d" (high), "c" (msr));
 }
 
 /*

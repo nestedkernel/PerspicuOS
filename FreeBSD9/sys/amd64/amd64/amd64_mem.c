@@ -339,7 +339,11 @@ amd64_mrstoreone(void *arg)
 	invltlb();
 
 	/* Disable MTRRs (E = 0). */
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MTRRdefType, rdmsr(MSR_MTRRdefType) & ~MTRR_DEF_ENABLE);
+#else
 	wrmsr(MSR_MTRRdefType, rdmsr(MSR_MTRRdefType) & ~MTRR_DEF_ENABLE);
+#endif
 
 	/* Set fixed-range MTRRs. */
 	if (sc->mr_cap & MR686_FIXMTRR) {
@@ -352,7 +356,11 @@ amd64_mrstoreone(void *arg)
 				msrv |= amd64_mrt2mtrr((mrd + j)->mr_flags,
 				    omsrv >> (j * 8));
 			}
+#ifdef SVA_MMU
+			sva_load_msr(msr, msrv);
+#else
 			wrmsr(msr, msrv);
+#endif
 			mrd += 8;
 		}
 		msr = MSR_MTRR16kBase;
@@ -364,7 +372,11 @@ amd64_mrstoreone(void *arg)
 				msrv |= amd64_mrt2mtrr((mrd + j)->mr_flags,
 				    omsrv >> (j * 8));
 			}
+#ifdef SVA_MMU
+			sva_load_msr(msr, msrv);
+#else
 			wrmsr(msr, msrv);
+#endif
 			mrd += 8;
 		}
 		msr = MSR_MTRR4kBase;
@@ -376,7 +388,11 @@ amd64_mrstoreone(void *arg)
 				msrv |= amd64_mrt2mtrr((mrd + j)->mr_flags,
 				    omsrv >> (j * 8));
 			}
+#ifdef SVA_MMU
+			sva_load_msr(msr, msrv);
+#else
 			wrmsr(msr, msrv);
+#endif
 			mrd += 8;
 		}
 	}
@@ -392,7 +408,11 @@ amd64_mrstoreone(void *arg)
 		} else {
 			msrv = 0;
 		}
+#ifdef SVA_MMU
+		sva_load_msr(msr, msrv);
+#else
 		wrmsr(msr, msrv);
+#endif
 
 		/* mask/active register */
 		if (mrd->mr_flags & MDF_ACTIVE) {
@@ -401,7 +421,11 @@ amd64_mrstoreone(void *arg)
 		} else {
 			msrv = 0;
 		}
+#ifdef SVA_MMU
+		sva_load_msr(msr + 1, msrv);
+#else
 		wrmsr(msr + 1, msrv);
+#endif
 	}
 
 	/* Flush caches and TLBs. */
@@ -409,7 +433,11 @@ amd64_mrstoreone(void *arg)
 	invltlb();
 
 	/* Enable MTRRs. */
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MTRRdefType, rdmsr(MSR_MTRRdefType) | MTRR_DEF_ENABLE);
+#else
 	wrmsr(MSR_MTRRdefType, rdmsr(MSR_MTRRdefType) | MTRR_DEF_ENABLE);
+#endif
 
 	/* Restore caches and PGE. */
 #ifdef SVA_MMU
@@ -726,7 +754,11 @@ amd64_mrAPinit(struct mem_range_softc *sc)
 {
 
 	amd64_mrstoreone(sc);
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MTRRdefType, mtrrdef);
+#else
 	wrmsr(MSR_MTRRdefType, mtrrdef);
+#endif
 }
 
 /*
