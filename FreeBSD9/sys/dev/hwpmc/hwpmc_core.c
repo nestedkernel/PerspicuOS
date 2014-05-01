@@ -466,7 +466,7 @@ iaf_stop_pmc(int cpu, int ri)
 	do {
 		iafc->pc_resync = 0;
 		iafc->pc_globalctrl &= ~(1ULL << (ri + IAF_OFFSET));
- 		msr = rdmsr(IA_GLOBAL_CTRL) & ~IAF_GLOBAL_CTRL_MASK;i
+ 		msr = rdmsr(IA_GLOBAL_CTRL) & ~IAF_GLOBAL_CTRL_MASK;
 #ifdef SVA_MMU
  		sva_loas_msr(IA_GLOBAL_CTRL, msr | (iafc->pc_globalctrl &
  					     IAF_GLOBAL_CTRL_MASK));

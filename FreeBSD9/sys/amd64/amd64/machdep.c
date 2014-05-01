@@ -1986,7 +1986,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 #else
 	wrmsr(MSR_EFER, msr);
 #endif
-#endif
 #if 1
 #ifdef SVA_MMU
 	sva_load_msr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
