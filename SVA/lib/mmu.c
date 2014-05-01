@@ -2034,7 +2034,7 @@ sva_declare_l1_page, uintptr_t frameAddr) {
      */
     initDeclaredPage(frameAddr);
   } else {
-    panic ("SVA: declare L1: type = %x\n", pgDesc->type);
+    // panic ("SVA: declare L1: type = %x\n", pgDesc->type);
   }
 
   return;

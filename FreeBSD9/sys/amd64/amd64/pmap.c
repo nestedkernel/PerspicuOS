@@ -3045,6 +3045,7 @@ pmap_demote_pde(pmap_t pmap, pd_entry_t *pde, vm_offset_t va)
 	/*
 	 * Declare the new PTE page as a page table page.
 	 */
+    // TODO: Maybe this should be moved into conditional below?
 	sva_declare_l1_page (mptepa);
 #endif
 
@@ -4069,7 +4070,7 @@ pmap_enter_object(pmap_t pmap, vm_offset_t start, vm_offset_t end,
         {
 			m = &m[NBPDR / PAGE_SIZE - 1];
 #ifdef SVA_MMU
-            printf("\n\n Got a 2mb page!!");
+            // printf("\n\n Got a 2mb page!!");
 #endif
         }
 		else
