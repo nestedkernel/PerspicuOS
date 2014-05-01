@@ -146,8 +146,12 @@ done_store_dr:
 swinact:
 #ifdef SVA_MMU
     pushq %rdi
+    pushq %rsi
+    pushq %rdx
     movq %rcx, %rdi
-    callq sva_mm_load_pgtable_safe
+    callq sva_mm_load_pgtable
+    popq %rdx
+    popq %rsi
     popq %rdi
 #else
 	movq	%rcx,%cr3			/* new address space */
@@ -385,21 +389,3 @@ ENTRY(savectx)
 	movl	$1,%eax
 	RETQ
 END(savectx)
-
-sva_mm_load_pgtable_safe:
-	pushq	%rax
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%rsi
-	pushq	%rdi
-	pushq	%r8
-	pushq	%r9
-    callq sva_mm_load_pgtable
-	popq	%r9
-	popq	%r8
-	popq	%rdi
-	popq	%rsi
-	popq	%rcx
-	popq	%rdx
-	popq	%rax
-    retq
