@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_ppro.c 196224 2009-08-14 21:05:08Z jhb $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
@@ -731,8 +736,13 @@ p6_intr(int cpu, struct trapframe *tf)
 
 		/* reload sampling count */
 		v = pm->pm_sc.pm_reloadcount;
+#ifdef SVA_MMU
+		sva_load_msr(P6_MSR_PERFCTR0 + ri,
+		    P6_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#else
 		wrmsr(P6_MSR_PERFCTR0 + ri,
 		    P6_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#endif
 
 	}
 

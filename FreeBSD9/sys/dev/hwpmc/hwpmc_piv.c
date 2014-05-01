@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_piv.c 196224 2009-08-14 21:05:08Z jhb $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
@@ -656,8 +661,13 @@ p4_pcpu_fini(struct pmc_mdep *md, int cpu)
 
 	/* Turn off all PMCs on this CPU */
 	for (i = 0; i < P4_NPMCS - 1; i++)
+#ifdef SVA_MMU
+		sva_load_msr(P4_CCCR_MSR_FIRST + i,
+		    rdmsr(P4_CCCR_MSR_FIRST + i) & ~P4_CCCR_ENABLE);
+#else
 		wrmsr(P4_CCCR_MSR_FIRST + i,
 		    rdmsr(P4_CCCR_MSR_FIRST + i) & ~P4_CCCR_ENABLE);
+#endif
 
 	mtx_destroy(&p4c->pc_mtx);
 
@@ -1233,8 +1243,13 @@ p4_start_pmc(int cpu, int ri)
 			cpu, ri, pd->pm_cccr_msr));
 
 		/* write out the low 40 bits of the saved value to hardware */
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_pmc_msr,
+		    P4_PCPU_PMC_VALUE(pc,ri,cpu) & P4_PERFCTR_MASK);
+#else
 		wrmsr(pd->pm_pmc_msr,
 		    P4_PCPU_PMC_VALUE(pc,ri,cpu) & P4_PERFCTR_MASK);
+#endif
 
 	} else if (rc == 1) {		/* 2nd CPU */
 
@@ -1341,8 +1356,13 @@ p4_stop_pmc(int cpu, int ri)
 	PMCDBG(MDP,STO,1, "p4-stop cpu=%d ri=%d", cpu, ri);
 
 	if (PMC_IS_SYSTEM_MODE(PMC_TO_MODE(pm))) {
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_cccr_msr,
+		    pm->pm_md.pm_p4.pm_p4_cccrvalue & ~P4_CCCR_ENABLE);
+#else
 		wrmsr(pd->pm_cccr_msr,
 		    pm->pm_md.pm_p4.pm_p4_cccrvalue & ~P4_CCCR_ENABLE);
+#endif
 		return (0);
 	}
 
@@ -1569,8 +1589,13 @@ p4_intr(int cpu, struct trapframe *tf)
 		wrmsr(P4_PERFCTR_MSR_FIRST + ri, v);
 #endif
 		if (error == 0)
+#ifdef SVA_MMU
+			sva_load_msr(P4_CCCR_MSR_FIRST + ri,
+			    cccrval | P4_CCCR_ENABLE);
+#else
 			wrmsr(P4_CCCR_MSR_FIRST + ri,
 			    cccrval | P4_CCCR_ENABLE);
+#endif
 	}
 
 	/* allow the other CPU to proceed */

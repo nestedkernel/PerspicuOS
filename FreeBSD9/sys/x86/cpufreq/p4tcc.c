@@ -39,6 +39,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/cpufreq/p4tcc.c 193530 2009-06-05 18:44:36Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
@@ -266,7 +271,11 @@ p4tcc_set(device_t dev, const struct cf_setting *set)
 	msr &= ~(mask | TCC_ENABLE_ONDEMAND);
 	if (val < TCC_NUM_SETTINGS)
 		msr |= (val << TCC_REG_OFFSET) | TCC_ENABLE_ONDEMAND;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_THERM_CONTROL, msr);
+#else
 	wrmsr(MSR_THERM_CONTROL, msr);
+#endif
 
 	/*
 	 * Record whether we're now in Automatic or On-Demand mode.  We have

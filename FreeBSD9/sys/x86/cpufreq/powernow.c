@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/cpufreq/powernow.c 221102 2011-04-27 00:32:35Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/cpu.h>
@@ -145,9 +150,15 @@ struct pst_header {
 #define ACPI_PN8_CTRL_TO_IRT(x)		(((x) >> 30) & 0x03)
 
 
+#ifdef SVA_MMU
 #define WRITE_FIDVID(fid, vid, ctrl)	\
 	wrmsr(MSR_AMDK7_FIDVID_CTL,	\
 	    (((ctrl) << 32) | (1ULL << 16) | ((vid) << 8) | (fid)))
+#else
+#define WRITE_FIDVID(fid, vid, ctrl)	\
+	sva_load_msr(MSR_AMDK7_FIDVID_CTL,	\
+	    (((ctrl) << 32) | (1ULL << 16) | ((vid) << 8) | (fid)))
+#endif
 
 #define COUNT_OFF_IRT(irt)	DELAY(10 * (1 << (irt)))
 #define COUNT_OFF_VST(vst)	DELAY(20 * (vst))
@@ -297,13 +308,29 @@ pn7_setfidvid(struct pn_softc *sc, int fid, int vid)
 		disable_intr();
 
 	if (pn7_fid_to_mult[fid] < pn7_fid_to_mult[cfid]) {
+#ifdef SVA_MMU
+		sva_load_msr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_FIDC);
+#else
 		wrmsr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_FIDC);
+#endif
 		if (vid != cvid)
+#ifdef SVA_MMU
+			sva_load_msr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_VIDC);
+#else
 			wrmsr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_VIDC);
+#endif
 	} else {
+#ifdef SVA_MMU
+		sva_load_msr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_VIDC);
+#else
 		wrmsr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_VIDC);
+#endif
 		if (fid != cfid)
+#ifdef SVA_MMU
+			sva_load_msr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_FIDC);
+#else
 			wrmsr(MSR_AMDK7_FIDVID_CTL, ctl | PN7_CTR_FIDC);
+#endif
 	}
 
 	if (sc->errata & A0_ERRATA)
