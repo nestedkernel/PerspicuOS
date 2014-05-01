@@ -212,9 +212,9 @@ END(fillw)
  * copyout(from_kernel, to_user, len)  - MP SAFE
  *         %rdi,        %rsi,    %rdx
  */
-ENTRY(real_copyout)
+ENTRY(copyout)
 	movq	PCPU(CURPCB),%rax
-#if 0
+#if 1
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
 #else
 	movq	$1,PCB_ONFAULT(%rax)
@@ -276,9 +276,9 @@ END(copyout)
  * copyin(from_user, to_kernel, len) - MP SAFE
  *        %rdi,      %rsi,      %rdx
  */
-ENTRY(real_copyin)
+ENTRY(copyin)
 	movq	PCPU(CURPCB),%rax
-#if 0
+#if 1
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
 #else
 	movq	$1,PCB_ONFAULT(%rax)
@@ -326,9 +326,9 @@ END(copyin)
  * casuword32.  Compare and set user integer.  Returns -1 or the current value.
  *        dst = %rdi, old = %rsi, new = %rdx
  */
-ENTRY(real_casuword32)
+ENTRY(casuword32)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -359,9 +359,9 @@ END(casuword32)
  * casuword.  Compare and set user word.  Returns -1 or the current value.
  *        dst = %rdi, old = %rsi, new = %rdx
  */
-ENTRY(real_casuword)
+ENTRY(casuword)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -395,10 +395,10 @@ END(casuword)
  * addr = %rdi
  */
 
-ALTENTRY(real_fuword64)
-ENTRY(real_fuword)
+ALTENTRY(fuword64)
+ENTRY(fuword)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -414,9 +414,9 @@ ENTRY(real_fuword)
 END(fuword64)	
 END(fuword)
 
-ENTRY(real_fuword32)
+ENTRY(fuword32)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -445,9 +445,9 @@ ENTRY(fuswintr)
 END(suswintr)
 END(fuswintr)
 
-ENTRY(real_fuword16)
+ENTRY(fuword16)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -462,9 +462,9 @@ ENTRY(real_fuword16)
 	RETQ
 END(fuword16)
 
-ENTRY(real_fubyte)
+ENTRY(fubyte)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -492,10 +492,10 @@ fusufault:
  * user memory.  All these functions are MPSAFE.
  * addr = %rdi, value = %rsi
  */
-ALTENTRY(real_suword64)
-ENTRY(real_suword)
+ALTENTRY(suword64)
+ENTRY(suword)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -513,9 +513,9 @@ ENTRY(real_suword)
 END(suword64)
 END(suword)
 
-ENTRY(real_suword32)
+ENTRY(suword32)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -532,9 +532,9 @@ ENTRY(real_suword32)
 	RETQ
 END(suword32)
 
-ENTRY(real_suword16)
+ENTRY(suword16)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -551,9 +551,9 @@ ENTRY(real_suword16)
 	RETQ
 END(suword16)
 
-ENTRY(real_subyte)
+ENTRY(subyte)
 	movq	PCPU(CURPCB),%rcx
-#if 0
+#if 1
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 #else
 	movq	$1,PCB_ONFAULT(%rcx)
@@ -580,7 +580,7 @@ END(subyte)
  *	EFAULT on protection violations. If lencopied is non-zero,
  *	return the actual length in *lencopied.
  */
-#if 0
+#if 1
 ENTRY(copyinstr)
 	movq	%rdx,%r8			/* %r8 = maxlen */
 	movq	%rcx,%r9			/* %r9 = *len */

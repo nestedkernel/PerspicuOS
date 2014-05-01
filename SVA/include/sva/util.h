@@ -24,6 +24,7 @@ static inline void
 sva_check_memory_read (void * memory, unsigned int size) {
   volatile unsigned char value;
   volatile unsigned char * p = (unsigned char *)(memory);
+  panic("sva_check_memory_read called");
 
   /*
    * For now, we assume that all memory buffers are less than 4K in size, so
@@ -39,6 +40,7 @@ sva_check_memory_write (void * memory, unsigned int size) {
   volatile unsigned char value1;
   volatile unsigned char value2;
   volatile unsigned char * p = (unsigned char *)memory;
+  panic("sva_check_memory_write called");
 
   /*
    * For now, we assume that all memory buffers are less than 4K in size, so
@@ -51,6 +53,9 @@ sva_check_memory_write (void * memory, unsigned int size) {
   return;
 }
 
+// WD - Disable these to flag their uses more easily.
+// Prefer SECURE_WRAPPER for these since we need to switch to a secure stack.
+#if 1
 /*
  * Function: sva_enter_critical()
  *
@@ -82,6 +87,7 @@ sva_exit_critical (unsigned long rflags) {
     __asm__ __volatile__ ("sti":::"memory");
   return;
 }
+#endif
 
 /*
  * Function: isNotWithinSecureMemory()

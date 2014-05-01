@@ -13,6 +13,7 @@
  *
  *===----------------------------------------------------------------------===
  */
+#if 0
 
 /*****************************************************************************
  * Macros
@@ -23,6 +24,36 @@
 
 /* FreeBSD segment selector for kernel code segment */
 #define USERCS 0x43
+
+#define DISABLE_INTERRUPTS \
+  /* ENSURE that interrupts are disabled */ \
+  cli;
+
+#define ENABLE_WP_BIT \
+  /* Save scratch register to stack */ \
+  pushq %rax; \
+  /* Get current cr0 value */ \
+  movq %cr0, %rax; \
+  /* Set WP bit in copy */ \
+  orq $0x10000, %rax; \
+  /* Replace cr0 with updated value */ \
+  movq %rax, %cr0; \
+  /* Restore clobbered register */ \
+  popq %rax
+
+#define SECURE_TRAP_ENTRY \
+  /* And that WP is enabled! */ \
+  DISABLE_INTERRUPTS
+  ENABLE_WP_BIT
+
+/*
+ * Don't re-assert WP bit on the resume path,
+ * avoiding adding another jump-to-cr0 CFI attack.
+ * Since we set WP before invoking the interrupt handler,
+ * it should still be set afterwards.
+ */
+#define SECURE_TRAP_RESUME \
+    DISABLE_INTERRUPTS
 
 /*
  * Macro: TRAP
@@ -36,6 +67,8 @@
   .type   trap##x, @function ; \
 ; \
 trap##x: \
+  SECURE_TRAP_ENTRY \
+\
   /* Adjust the stack pointer so that we can push items using %ds */ \
   subq $16, %rsp ; \
  \
@@ -67,6 +100,8 @@ trap##x: \
   .type   trap##x, @function ; \
 ; \
 trap##x: \
+  SECURE_TRAP_ENTRY \
+\
   /* Adjust the stack pointer so that we can push items using %ds */ \
   subq $8, %rsp ; \
  \
@@ -328,10 +363,7 @@ Trap:
   callq *(%rax,%rdi,8)
   RETTARGET
 
-  /*
-   * Disable interrupts.
-   */
-  cli
+  SECURE_TRAP_RESUME
 
   /*
    * Reload the floating point state if necessary.
@@ -433,8 +465,7 @@ Trap:
  *    assumption that we need to use swapgs to configure the %GS register.
  */
 SVAsyscall:
-  /* ENSURE that interrupts are disabled */
-  cli
+  SECURE_TRAP_ENTRY
 
   /* We came from user mode.  First switch to the kernel %GS register. */
   swapgs
@@ -606,10 +637,7 @@ SVAsyscall:
 sc_ret:
   RETTARGET
 
-  /*
-   * Disable interrupts.
-   */
-  cli
+  SECURE_TRAP_RESUME
 
   /*
    * Reload the floating point state if necessary.
@@ -940,3 +968,4 @@ INTERRUPT(252)
 INTERRUPT(253)
 INTERRUPT(254)
 INTERRUPT(255)
+#endif

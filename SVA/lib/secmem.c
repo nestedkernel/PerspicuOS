@@ -18,6 +18,7 @@
 
 #include "sva/callbacks.h"
 #include "sva/mmu.h"
+#include "sva/stack.h"
 #include "sva/state.h"
 #include "sva/util.h"
 
@@ -247,16 +248,8 @@ freeSecureMemory (void) {
   return;
 }
 
-void
-sva_ghost_fault (uintptr_t vaddr) {
-  /* Old interrupt flags */
-  uintptr_t rflags;
-
-  /*
-   * Disable interrupts.
-   */
-  rflags = sva_enter_critical();
-
+SECURE_WRAPPER(void,
+sva_ghost_fault, uintptr_t vaddr) {
   /* Physical address of allocated secure memory pointer */
   uintptr_t sp;
 
@@ -307,8 +300,6 @@ sva_ghost_fault (uintptr_t vaddr) {
    */
   memset (vaddr, 0, X86_PAGE_SIZE);
 
-  /* Re-enable interrupts if necessary */
-  sva_exit_critical (rflags);
   return;
 }
 

@@ -1049,7 +1049,7 @@ fork_return(struct thread *td, struct trapframe *frame)
 
 	userret(td, frame);
 
-#if 1
+#if 0
   /* For SVA, we have to set the return value here */
   td->td_retval[0] = 0;
   td->td_retval[1] = 0;

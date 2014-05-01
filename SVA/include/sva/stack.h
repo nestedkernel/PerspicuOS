@@ -50,15 +50,12 @@ extern uintptr_t SecureStackBase;
 // TODO: Manage stack per-cpu, do lookup here
 // Use only RAX/RCX registers to accomplish this.
 // (Or spill more in calling context)
-uintptr_t GetSecureStackRAXRCX() {
-  return SecureStackBase;
-}
 
 #define SWITCH_TO_SECURE_STACK                                                 \
   /* Spill registers for temporary use */                                      \
   "movq %rax, -8(%rsp)\n"                                                      \
   "movq %rcx, -16(%rsp)\n"                                                     \
-  "call GetSecureStackRAXRCX\n"                                                \
+  "movq SecureStackBase, %rax\n"                                               \
   /* Save normal stack pointer in rcx and on secure stack */                   \
   "mov %rsp, %rcx\n"                                                           \
   "mov %rsp, -8(%rax)\n"                                                       \
@@ -125,6 +122,7 @@ uintptr_t GetSecureStackRAXRCX() {
 
 //===-- Entry/Exit High-Level Descriptions --------------------------------===//
 
+#ifdef __MODULAR_AND_READABLE
 #define SECURE_ENTRY                                                           \
   DISABLE_INTERRUPTS                                                           \
   DISABLE_WP_BIT                                                               \
@@ -134,6 +132,54 @@ uintptr_t GetSecureStackRAXRCX() {
   SWITCH_BACK_TO_NORMAL_STACK                                                  \
   ENABLE_WP_BIT                                                                \
   ENABLE_INTERRUPTS
+#else
+// More optimized variants
+
+#define SECURE_ENTRY                                                           \
+  /* Save current flags */                                                     \
+  "pushf\n"                                                                    \
+  /* Disable interrupts */                                                     \
+  "cli\n"                                                                      \
+  /* Spill registers for temporary use */                                      \
+  "movq %rax, -8(%rsp)\n"                                                      \
+  "movq %rcx, -16(%rsp)\n"                                                     \
+  /* Save initial stack pointer in rcx */                                      \
+  "movq %rsp, %rcx\n"                                                          \
+  /* Get current cr0 value */                                                  \
+  "movq %cr0, %rax\n"                                                          \
+  /* Clear WP bit in copy */                                                   \
+  "andq $0xfffffffffffeffff, %rax\n"                                           \
+  /* Replace cr0 with updated value */                                         \
+  "movq %rax, %cr0\n"                                                          \
+  /* Switch to secure stack! */                                                \
+  "movq SecureStackBase, %rsp\n"                                               \
+  /* Save original stack pointer for later restoration */                      \
+  "pushq %rcx\n"                                                               \
+  /* Restore spilled registers from original stack (rcx) */                    \
+  "movq -8(%rcx), %rax\n"                                                      \
+  "movq -16(%rcx), %rcx\n"
+
+#define SECURE_EXIT                                                            \
+  /* Switch back to original stack */                                          \
+  "movq 0(%rsp), %rsp\n"                                                       \
+  /* Save scratch register to stack */                                         \
+  "pushq %rax\n"                                                               \
+  /* Get current cr0 value */                                                  \
+  "movq %cr0, %rax\n"                                                          \
+  "1:\n"                                                                       \
+  /* Set bit for WP enable */                                                  \
+  "orq $0x10000, %rax\n"                                                       \
+  /* Replace cr0 with updated value */                                         \
+  "movq %rax, %cr0\n"                                                          \
+  /* Ensure WP bit was set */                                                  \
+  "test $0x10000, %eax\n"                                                      \
+  "je 1b\n"                                                                    \
+  /* Restore clobbered register */                                             \
+  "popq %rax\n"                                                                \
+  /* Restore flags, enabling interrupts if they were before */                 \
+  "popf\n"
+
+#endif
 
 //===-- Wrapper macro for marking Secure Entrypoints ----------------------===//
 
@@ -159,5 +205,33 @@ asm( \
 RET FUNC ##_secure(__VA_ARGS__); \
 RET __attribute__((visibility("hidden"))) FUNC ##_secure(__VA_ARGS__)
 
+//===-- Wrapper macro for calling secure functions from secure context ---===//
+
+#define SECURE_CALL(FUNC, ...) \
+{ \
+    extern typeof(FUNC) FUNC ##_secure; \
+    (void)FUNC ##_secure(__VA_ARGS__); \
+}
+
+//===-- Utilities for accessing original context from secure functions ----===//
+
+static inline uintptr_t get_insecure_context_rsp() {
+  // Original RSP is first thing put on the secure stack:
+  uintptr_t *ptr = (uintptr_t *)SecureStackBase;
+  return ptr[-1];
+}
+
+static inline uintptr_t get_insecure_context_flags() {
+  // Insecure flags are stored on the insecure stack:
+  uintptr_t *ptr = (uintptr_t *)get_insecure_context_rsp();
+  return ptr[0];
+}
+
+static inline uintptr_t get_insecure_context_return_addr() {
+  // Original insecure return address should be above the flags:
+  // XXX: This is untested!
+  uintptr_t *ptr = (uintptr_t *)get_insecure_context_rsp();
+  return ptr[1];
+}
 
 #endif // _STACK_SWITCH_

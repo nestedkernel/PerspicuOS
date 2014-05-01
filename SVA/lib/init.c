@@ -84,6 +84,7 @@
 #include "sva/config.h"
 #include "sva/state.h"
 #include "sva/stack.h"
+#include "sva/interrupt.h"
 
 #include <string.h>
 #include <limits.h>
@@ -104,10 +105,10 @@ void init_fpu ();
 static void init_dispatcher ();
 
 /* Default LLVA interrupt, exception, and system call handlers */
-extern void default_interrupt (unsigned int number, void * icontext);
+// extern void default_interrupt (unsigned int number, void * icontext);
 
 /* Map logical processor ID to an array in the SVA data structures */
-struct procMap svaProcMap[numProcessors];
+// struct procMap svaProcMap[numProcessors];
 
 /*
  * Structure: interrupt_table
@@ -119,7 +120,7 @@ struct procMap svaProcMap[numProcessors];
  *
  *  Note that we need one of these per processor.
  */
-extern void * interrupt_table[256];
+// extern void * interrupt_table[256];
 
 /* 
  * Description: 
@@ -172,6 +173,8 @@ sva_debug (void) {
   printf ("SVA: Debug!\n");
   return;
 }
+
+#if 0
 
 /*
  * Function: register_x86_interrupt()
@@ -437,9 +440,10 @@ init_fpu () {
    * Register the co-processor trap so that we know when an FP operation has
    * been performed.
    */
-  sva_register_general_exception (0x7, fptrap);
+  SECURE_CALL(sva_register_general_exception, 0x7, fptrap);
   return;
 }
+#endif
 
 /*
  * Intrinsic: sva_init_primary()
@@ -450,7 +454,8 @@ init_fpu () {
  *  descriptor table.  Note that this should be called by the primary processor
  *  (the first one that starts execution on system boot).
  */
-void sva_init_primary() {
+SECURE_WRAPPER(void, sva_init_primary) {
+#if 0
 #if 0
   init_segs ();
   init_debug ();
@@ -466,11 +471,14 @@ void sva_init_primary() {
   init_idt (0);
   init_dispatcher ();
 
+#endif
   init_mmu ();
+#if 0
   init_fpu ();
 #if 0
   llva_reset_counters();
   llva_reset_local_counters();
+#endif
 #endif
 }
 
@@ -482,8 +490,9 @@ void sva_init_primary() {
  *  Execution Engine.  We do things here like setting up the interrupt
  *  descriptor table.  Note that this should be called by secondary processors.
  */
-void
-sva_init_secondary () {
+SECURE_WRAPPER(void, sva_init_secondary) {
+  panic("Not used!");
+#if 0
 #if 0
   init_segs ();
   init_debug ();
@@ -509,8 +518,10 @@ sva_init_secondary () {
   llva_reset_counters();
   llva_reset_local_counters();
 #endif
+#endif
 }
 
+#if 0
 #define REGISTER_EXCEPTION(number) \
   extern void trap##number(void); \
   register_x86_interrupt ((number),trap##number, 0);
@@ -812,12 +823,13 @@ init_dispatcher ()
   register_x86_interrupt (0x7d, trap125, 3);
   register_x86_interrupt (0x7e, trap126, 3);
   register_x86_interrupt (0x7f, trap127, 3);
-  sva_register_general_exception (0x7b, getThreadRID);
-  sva_register_general_exception (0x7c, getThreadSecret);
-  sva_register_general_exception (0x7d, installNewPushTarget);
-  sva_register_general_exception (0x7e, freeSecureMemory);
-  sva_register_general_exception (0x7f, allocSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7b, getThreadRID);
+  SECURE_CALL(sva_register_general_exception, 0x7c, getThreadSecret);
+  SECURE_CALL(sva_register_general_exception, 0x7d, installNewPushTarget);
+  SECURE_CALL(sva_register_general_exception, 0x7e, freeSecureMemory);
+  SECURE_CALL(sva_register_general_exception, 0x7f, allocSecureMemory);
 
   return;
 }
 
+#endif

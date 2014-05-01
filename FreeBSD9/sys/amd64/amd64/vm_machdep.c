@@ -83,7 +83,7 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/vm_machdep.c 223758 2011-07-04
 
 #include <x86/isa/isa.h>
 
-#if 1
+#if 0
 #include <sva/interrupt.h>
 #endif
 
@@ -94,7 +94,7 @@ static u_int	cpu_reset_proxyid;
 static volatile u_int	cpu_reset_proxy_active;
 #endif
 
-#if 1
+#if 0
 void
 kernel_thread_trampoline (struct thread * td)
 {
@@ -236,7 +236,7 @@ cpu_fork(td1, p2, td2, flags)
 		mdp2->md_ldt = NULL;
 	mtx_unlock(&dt_lock);
 
-#if 1
+#if 0
 	/*
 	 * Compute the length of the stack.
 	 */
@@ -286,7 +286,7 @@ cpu_set_fork_handler(td, func, arg)
 	 */
 	td->td_pcb->pcb_r12 = (long) func;	/* function */
 	td->td_pcb->pcb_rbx = (long) arg;	/* first arg */
-#if 1
+#if 0
   td->callout = func;
   td->callarg = arg;
 #endif
@@ -304,7 +304,7 @@ cpu_exit(struct thread *td)
 		user_ldt_free(td);
 	else
 		mtx_unlock(&dt_lock);
-#if 1
+#if 0
   /* SVA:
    *  Destroy the integer state to release resources and mark that the thread
    *  can never be put on to the processor again.
@@ -381,7 +381,7 @@ cpu_set_syscall_retval(struct thread *td, int error)
 {
 	switch (error) {
 	case 0:
-#if 0
+#if 1
 		td->td_frame->tf_rax = td->td_retval[0];
 		td->td_frame->tf_rdx = td->td_retval[1];
 		td->td_frame->tf_rflags &= ~PSL_C;
@@ -400,10 +400,10 @@ cpu_set_syscall_retval(struct thread *td, int error)
 		 * %r10 restore is only required for freebsd/amd64 processes,
 		 * but shall be innocent for any ia32 ABI.
 		 */
-#if 0
+#if 1
 		td->td_frame->tf_rip -= td->td_frame->tf_err;
 		td->td_frame->tf_r10 = td->td_frame->tf_rcx;
-    sva_icontext_restart(td->td_frame->tf_r10, td->td_frame->tf_rip);
+    // sva_icontext_restart(td->td_frame->tf_r10, td->td_frame->tf_rip);
 #else
     sva_icontext_restart(0, 0);
 #endif
@@ -419,7 +419,7 @@ cpu_set_syscall_retval(struct thread *td, int error)
 			else
 				error = td->td_proc->p_sysent->sv_errtbl[error];
 		}
-#if 0
+#if 1
 		td->td_frame->tf_rax = error;
 		td->td_frame->tf_rflags |= PSL_C;
 #else
@@ -488,7 +488,7 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
 	/* Setup to release spin count in fork_exit(). */
 	td->td_md.md_spinlock_count = 1;
 	td->td_md.md_saved_flags = PSL_KERNEL | PSL_I;
-#if 1
+#if 0
   /*
    * SVA: Initialize the new thread state.
    */
@@ -507,7 +507,7 @@ cpu_set_upcall(struct thread *td, struct thread *td0)
 #endif
 }
 
-#if 1
+#if 0
 /*
  * Initialize machine state (pcb and trap frame) for a new thread about to
  * upcall. Put enough state in the new thread's PCB to get it to go back 
