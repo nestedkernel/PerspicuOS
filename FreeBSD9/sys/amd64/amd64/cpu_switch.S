@@ -81,7 +81,14 @@ ENTRY(cpu_throw)
 1:
 	movq	TD_PCB(%rsi),%r8		/* newtd->td_proc */
 	movq	PCB_CR3(%r8),%rdx
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rdx, %rdi
+    callq sva_mm_load_pgtable
+    popq %rdi
+#else
 	movq	%rdx,%cr3			/* new address space */
+#endif
 	jmp	swact
 END(cpu_throw)
 
@@ -137,7 +144,14 @@ done_store_dr:
 	SETLK	%rdx, TD_LOCK(%rdi)		/* Release the old thread */
 	jmp	sw1
 swinact:
+#ifdef SVA_MMU
+    pushq %rdi
+    movq %rcx, %rdi
+    callq sva_mm_load_pgtable_safe
+    popq %rdi
+#else
 	movq	%rcx,%cr3			/* new address space */
+#endif
 	movl	PCPU(CPUID), %eax
 	/* Release bit from old pmap->pm_active */
 	movq	PCPU(CURPMAP),%rcx
@@ -371,3 +385,21 @@ ENTRY(savectx)
 	movl	$1,%eax
 	RETQ
 END(savectx)
+
+sva_mm_load_pgtable_safe:
+	pushq	%rax
+	pushq	%rdx
+	pushq	%rcx
+	pushq	%rsi
+	pushq	%rdi
+	pushq	%r8
+	pushq	%r9
+    callq sva_mm_load_pgtable
+	popq	%r9
+	popq	%r8
+	popq	%rdi
+	popq	%rsi
+	popq	%rcx
+	popq	%rdx
+	popq	%rax
+    retq
