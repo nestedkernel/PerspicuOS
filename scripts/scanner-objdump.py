@@ -36,7 +36,7 @@ wrmsrOverlap = 1
 def searchPattern(pattern, byteString):
     return not re.search(pattern, byteString)
 
-def processInput(fileObject, pattern, overlap):
+def processInput(fileObject, pattern, overlap, patname):
     overlapData = ""
     objFilename = ""
     notFound = True
@@ -46,7 +46,8 @@ def processInput(fileObject, pattern, overlap):
             objFilename = newObjFilename
         notFound = searchPattern(pattern, overlapData + line)
         if not notFound:
-            print objFilename + ": Pattern found near address " + address
+            print "{:s} {:5s} pattern found near {:8s}".format(objFilename + ":", patname, address)
+           
         overlapData = newOverlapData
         #print (line, address, newObjFilename, newOverlapData)
 
@@ -114,19 +115,19 @@ def main() :
     # process input file contents
     if options.cr0Check or options.checkAll:
         tmpFile.seek(0)
-        processInput(tmpFile, movcr0Pattern, movcr0Overlap)
+        processInput(tmpFile, movcr0Pattern, movcr0Overlap, "cr0")
 
     if options.cr3Check or options.checkAll:
         tmpFile.seek(0)
-        processInput(tmpFile, movcr3Pattern, movcr3Overlap)
+        processInput(tmpFile, movcr3Pattern, movcr3Overlap, "cr3")
 
     if options.cr4Check or options.checkAll:
         tmpFile.seek(0)
-        processInput(tmpFile, movcr4Pattern, movcr4Overlap)
+        processInput(tmpFile, movcr4Pattern, movcr4Overlap, "cr4")
 
     if options.wrmsrCheck or options.checkAll:
         tmpFile.seek(0)
-        processInput(tmpFile, wrmsrPattern, wrmsrOverlap)
+        processInput(tmpFile, wrmsrPattern, wrmsrOverlap, "wrmsr")
 
     # close the temporary file
     tmpFile.close()
