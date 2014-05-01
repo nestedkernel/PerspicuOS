@@ -30,6 +30,7 @@
 #include <machine/specialreg.h>
 
 #include "assym.s"
+#include "opt_sva_mmu.h"
 
 	.data				/* So we can modify it */
 
@@ -103,7 +104,11 @@ protmode:
 	movl	$MSR_EFER, %ecx
 	rdmsr
 	orl	$EFER_LME | EFER_SCE, %eax
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 
 	/*
 	 * Point to the embedded page tables for startup.  Note that this

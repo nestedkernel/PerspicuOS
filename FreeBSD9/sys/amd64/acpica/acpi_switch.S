@@ -69,9 +69,7 @@ ENTRY(acpi_restorecpu)
 	movl	PCB_FSBASE(%rdi), %eax
 	movl	4 + PCB_FSBASE(%rdi), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -79,9 +77,7 @@ ENTRY(acpi_restorecpu)
 	movl	PCB_GSBASE(%rdi), %eax
 	movl	4 + PCB_GSBASE(%rdi), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -89,9 +85,7 @@ ENTRY(acpi_restorecpu)
 	movl	PCB_KGSBASE(%rdi), %eax
 	movl	4 + PCB_KGSBASE(%rdi), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -100,9 +94,7 @@ ENTRY(acpi_restorecpu)
 	movl	$MSR_EFER, %ecx
 	movl	WAKEUP_CTX(efer), %eax
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -112,9 +104,7 @@ ENTRY(acpi_restorecpu)
 	movl	WAKEUP_CTX(star), %eax
 	movl	4 + WAKEUP_CTX(star), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -122,9 +112,7 @@ ENTRY(acpi_restorecpu)
 	movl	WAKEUP_CTX(lstar), %eax
 	movl	4 + WAKEUP_CTX(lstar), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
@@ -132,18 +120,14 @@ ENTRY(acpi_restorecpu)
 	movl	WAKEUP_CTX(cstar), %eax
 	movl	4 + WAKEUP_CTX(cstar), %edx
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif
 	movl	$MSR_SF_MASK, %ecx
 	movl	WAKEUP_CTX(sfmask), %eax
 #ifdef SVA_MMU
-    pushq %rdi
     callq sva_wrmsr
-    popq %rdi
 #else
 	wrmsr
 #endif

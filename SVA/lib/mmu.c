@@ -1451,12 +1451,8 @@ sva_wrmsr() {
     uint64_t val;
     u_int msr;
     __asm__ __volatile__ (
-        "movl %%ecx, %0\n"
         "wrmsr\n"
-        "shlq $32, %%rdx\n"
-        "orl %%eax, %%edx\n"
-        "movq %%rdx, %1\n"
-        : "=r" (msr), "=r" (val)
+        : "=c" (msr), "=a" (val)
         :
         : "rax", "rcx", "rdx"
     );

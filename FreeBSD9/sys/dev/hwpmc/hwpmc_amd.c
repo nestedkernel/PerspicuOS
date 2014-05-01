@@ -347,7 +347,11 @@ amd_write_pmc(int cpu, int ri, pmc_value_t v)
 	PMCDBG(MDP,WRI,1,"amd-write cpu=%d ri=%d v=%jx", cpu, ri, v);
 
 	/* write the PMC value */
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_perfctr, v);
+#else
 	wrmsr(pd->pm_perfctr, v);
+#endif
 	return 0;
 }
 
@@ -591,7 +595,11 @@ amd_start_pmc(int cpu, int ri)
 
 	PMCDBG(MDP,STA,2,"amd-start config=0x%x", config);
 
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_evsel, config);
+#else
 	wrmsr(pd->pm_evsel, config);
+#endif
 	return 0;
 }
 
@@ -627,7 +635,11 @@ amd_stop_pmc(int cpu, int ri)
 
 	/* turn off the PMC ENABLE bit */
 	config = pm->pm_md.pm_amd.pm_amd_evsel & ~AMD_PMC_ENABLE;
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_evsel, config);
+#else
 	wrmsr(pd->pm_evsel, config);
+#endif
 	return 0;
 }
 
@@ -696,13 +708,25 @@ amd_intr(int cpu, struct trapframe *tf)
 		    ("[amd,%d] config mismatch reg=0x%x pm=0x%x", __LINE__,
 			config, pm->pm_md.pm_amd.pm_amd_evsel));
 
+#ifdef SVA_MMU
+		sva_load_msr(evsel, config & ~AMD_PMC_ENABLE);
+#else
 		wrmsr(evsel, config & ~AMD_PMC_ENABLE);
+#endif
+#ifdef SVA_MMU
+		sva_load_msr(perfctr, AMD_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#else
 		wrmsr(perfctr, AMD_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#endif
 
 		/* Restart the counter if logging succeeded. */
 		error = pmc_process_interrupt(cpu, pm, tf, TRAPF_USERMODE(tf));
 		if (error == 0)
+#ifdef SVA_MMU
+			sva_load_msr(evsel, config | AMD_PMC_ENABLE);
+#else
 			wrmsr(evsel, config | AMD_PMC_ENABLE);
+#endif
 	}
 
 	atomic_add_int(retval ? &pmc_stats.pm_intr_processed :
@@ -836,7 +860,11 @@ amd_pcpu_fini(struct pmc_mdep *md, int cpu)
 	for (i = 0; i < 4; i++) { /* XXX this loop is now not needed */
 		evsel = rdmsr(AMD_PMC_EVSEL_0 + i);
 		evsel &= ~AMD_PMC_ENABLE;
+#ifdef SVA_MMU
+		sva_load_msr(AMD_PMC_EVSEL_0 + i, evsel);
+#else
 		wrmsr(AMD_PMC_EVSEL_0 + i, evsel);
+#endif
 	}
 
 	/*

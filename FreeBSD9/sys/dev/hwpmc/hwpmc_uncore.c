@@ -141,9 +141,17 @@ uncore_pcpu_fini(struct pmc_mdep *md, int cpu)
 	uncore_ri = md->pmd_classdep[PMC_MDEP_CLASS_INDEX_UCP].pcd_ri;
 
 	for (n = 0; n < npmc; n++)
+#ifdef SVA_MMU
+		sva_load_msr(UCP_EVSEL0 + n, 0);
+#else
 		wrmsr(UCP_EVSEL0 + n, 0);
+#endif
 
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTRL, 0);
+#else
 	wrmsr(UCF_CTRL, 0);
+#endif
 	npmc += md->pmd_classdep[PMC_MDEP_CLASS_INDEX_UCF].pcd_num;
 
 	for (n = 0; n < npmc; n++)
@@ -323,12 +331,20 @@ ucf_start_pmc(int cpu, int ri)
 
 	ucfc->pc_ucfctrl |= pm->pm_md.pm_ucf.pm_ucf_ctrl;
 
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTRL, ucfc->pc_ucfctrl);
+#else
 	wrmsr(UCF_CTRL, ucfc->pc_ucfctrl);
+#endif
 
 	do {
 		ucfc->pc_resync = 0;
 		ucfc->pc_globalctrl |= (1ULL << (ri + UCF_OFFSET));
+#ifdef SVA_MMU
+		sva_load_msr(UC_GLOBAL_CTRL, ucfc->pc_globalctrl);
+#else
 		wrmsr(UC_GLOBAL_CTRL, ucfc->pc_globalctrl);
+#endif
 	} while (ucfc->pc_resync != 0);
 
 	PMCDBG(MDP,STA,1,"ucfctrl=%x(%x) globalctrl=%jx(%jx)",
@@ -358,12 +374,20 @@ ucf_stop_pmc(int cpu, int ri)
 	ucfc->pc_ucfctrl &= ~fc;
 
 	PMCDBG(MDP,STO,1,"ucf-stop ucfctrl=%x", ucfc->pc_ucfctrl);
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTRL, ucfc->pc_ucfctrl);
+#else
 	wrmsr(UCF_CTRL, ucfc->pc_ucfctrl);
+#endif
 
 	do {
 		ucfc->pc_resync = 0;
 		ucfc->pc_globalctrl &= ~(1ULL << (ri + UCF_OFFSET));
+#ifdef SVA_MMU
+		sva_load_msr(UC_GLOBAL_CTRL, ucfc->pc_globalctrl);
+#else
 		wrmsr(UC_GLOBAL_CTRL, ucfc->pc_globalctrl);
+#endif
 	} while (ucfc->pc_resync != 0);
 
 	PMCDBG(MDP,STO,1,"ucfctrl=%x(%x) globalctrl=%jx(%jx)",
@@ -393,9 +417,21 @@ ucf_write_pmc(int cpu, int ri, pmc_value_t v)
 	if (PMC_IS_SAMPLING_MODE(PMC_TO_MODE(pm)))
 		v = ucf_reload_count_to_perfctr_value(v);
 
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTRL, 0);	/* Turn off fixed counters */
+#else
 	wrmsr(UCF_CTRL, 0);	/* Turn off fixed counters */
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTR0 + ri, v);
+#else
 	wrmsr(UCF_CTR0 + ri, v);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(UCF_CTRL, cc->pc_ucfctrl);
+#else
 	wrmsr(UCF_CTRL, cc->pc_ucfctrl);
+#endif
 
 	PMCDBG(MDP,WRI,1, "ucf-write cpu=%d ri=%d v=%jx ucfctrl=%jx ",
 	    cpu, ri, v, (uintmax_t) rdmsr(UCF_CTRL));
@@ -965,12 +1001,20 @@ ucp_start_pmc(int cpu, int ri)
 	PMCDBG(MDP,STA,2, "ucp-start/2 cpu=%d ri=%d evselmsr=0x%x evsel=0x%x",
 	    cpu, ri, UCP_EVSEL0 + ri, evsel);
 
+#ifdef SVA_MMU
+	sva_load_msr(UCP_EVSEL0 + ri, evsel);
+#else
 	wrmsr(UCP_EVSEL0 + ri, evsel);
+#endif
 
 	do {
 		cc->pc_resync = 0;
 		cc->pc_globalctrl |= (1ULL << ri);
+#ifdef SVA_MMU
+		sva_load_msr(UC_GLOBAL_CTRL, cc->pc_globalctrl);
+#else
 		wrmsr(UC_GLOBAL_CTRL, cc->pc_globalctrl);
+#endif
 	} while (cc->pc_resync != 0);
 
 	return (0);
@@ -996,12 +1040,20 @@ ucp_stop_pmc(int cpu, int ri)
 
 	PMCDBG(MDP,STO,1, "ucp-stop cpu=%d ri=%d", cpu, ri);
 
+#ifdef SVA_MMU
+	sva_load_msr(UCP_EVSEL0 + ri, 0);	/* stop hw */
+#else
 	wrmsr(UCP_EVSEL0 + ri, 0);	/* stop hw */
+#endif
 
 	do {
 		cc->pc_resync = 0;
 		cc->pc_globalctrl &= ~(1ULL << ri);
+#ifdef SVA_MMU
+		sva_load_msr(UC_GLOBAL_CTRL, cc->pc_globalctrl);
+#else
 		wrmsr(UC_GLOBAL_CTRL, cc->pc_globalctrl);
+#endif
 	} while (cc->pc_resync != 0);
 
 	return (0);
@@ -1036,7 +1088,11 @@ ucp_write_pmc(int cpu, int ri, pmc_value_t v)
 	 * a stopped state when the pcd_write() entry point is called.
 	 */
 
+#ifdef SVA_MMU
+	sva_load_msr(UCP_PMC0 + ri, v);
+#else
 	wrmsr(UCP_PMC0 + ri, v);
+#endif
 
 	return (0);
 }

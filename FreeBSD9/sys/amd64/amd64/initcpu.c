@@ -106,7 +106,11 @@ init_via(void)
 	/* Enable RNG if present. */
 	if ((val & VIA_CPUID_HAS_RNG) != 0) {
 		via_feature_rng = VIA_HAS_RNG;
+#ifdef SVA_MMU
+		sva_load_msr(0x110B, rdmsr(0x110B) | VIA_CPUID_DO_RNG);
+#else
 		wrmsr(0x110B, rdmsr(0x110B) | VIA_CPUID_DO_RNG);
+#endif
 	}
 
 	/* Enable PadLock if present. */
@@ -119,7 +123,11 @@ init_via(void)
 	if ((val & VIA_CPUID_HAS_PMM) != 0)
 		via_feature_xcrypt |= VIA_HAS_MM;
 	if (via_feature_xcrypt != 0)
+#ifdef SVA_MMU
+		sva_load_msr(0x1107, rdmsr(0x1107) | (1 << 28));
+#else
 		wrmsr(0x1107, rdmsr(0x1107) | (1 << 28));
+#endif
 }
 
 /*
@@ -146,7 +154,7 @@ initializecpu(void)
 	if ((amd_feature & AMDID_NX) != 0) {
 		msr = rdmsr(MSR_EFER) | EFER_NXE;
 #ifdef SVA_MMU
-        sva_load_EFER(msr);
+		sva_load_msr(MSR_EFER, msr);
 #else
 		wrmsr(MSR_EFER, msr);
 #endif

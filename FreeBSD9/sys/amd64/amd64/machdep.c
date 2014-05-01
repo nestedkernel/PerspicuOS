@@ -652,8 +652,16 @@ cpu_est_clockrate(int cpu_id, uint64_t *rate)
 	/* Calibrate by measuring a short delay. */
 	reg = intr_disable();
 	if (tsc_is_invariant) {
+#ifdef SVA_MMU
+		sva_load_msr(MSR_MPERF, 0);
+#else
 		wrmsr(MSR_MPERF, 0);
+#endif
+#ifdef SVA_MMU
+		sva_load_msr(MSR_APERF, 0);
+#else
 		wrmsr(MSR_APERF, 0);
+#endif
 		tsc1 = rdtsc();
 		DELAY(1000);
 		mcnt = rdmsr(MSR_MPERF);
@@ -836,7 +844,11 @@ cpu_idle(int busy)
 	if (cpu_ident_amdc1e && cpu_disable_deep_sleep) {
 		msr = rdmsr(MSR_AMDK8_IPM);
 		if (msr & AMDK8_CMPHALT)
+#ifdef SVA_MMU
+			sva_load_msr(MSR_AMDK8_IPM, msr & ~AMDK8_CMPHALT);
+#else
 			wrmsr(MSR_AMDK8_IPM, msr & ~AMDK8_CMPHALT);
+#endif
 	}
 
 	/* Call main idle method. */
@@ -1761,12 +1773,28 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	lgdt(&r_gdt);
 	pc = &__pcpu[0];
 
+#ifdef SVA_MMU
+	sva_load_msr(MSR_FSBASE, 0);		/* User value */
+#else
 	wrmsr(MSR_FSBASE, 0);		/* User value */
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(MSR_GSBASE, (u_int64_t)pc);
+#else
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
+#endif
 #if 0
+#ifdef SVA_MMU
+	sva_load_msr(MSR_KGSBASE, 0);		/* User value while in the kernel */
+#else
 	wrmsr(MSR_KGSBASE, 0);		/* User value while in the kernel */
+#endif
+#else
+#ifdef SVA_MMU
+	sva_load_msr(MSR_KGSBASE, (u_int64_t)pc);		/* User value while in the kernel */
 #else
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);		/* User value while in the kernel */
+#endif
 #endif
 
 	pcpu_init(pc, 0, sizeof(struct pcpu));
@@ -1954,24 +1982,49 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;
 #ifdef SVA_MMU
-    sva_load_EFER(msr);
+	sva_load_msr(MSR_EFER, msr);
 #else
 	wrmsr(MSR_EFER, msr);
 #endif
+#endif
 #if 1
+#ifdef SVA_MMU
+	sva_load_msr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
+#else
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#else
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#endif
 #else
   {
     extern void SVAsyscall(void);
+#ifdef SVA_MMU
+    sva_load_msr(MSR_LSTAR, (u_int64_t)SVAsyscall);
+#else
     wrmsr(MSR_LSTAR, (u_int64_t)SVAsyscall);
+#endif
+#ifdef SVA_MMU
+    sva_load_msr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#else
     wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#endif
   }
 #endif
 	msr = ((u_int64_t)GSEL(GCODE_SEL, SEL_KPL) << 32) |
 	      ((u_int64_t)GSEL(GUCODE32_SEL, SEL_UPL) << 48);
+#ifdef SVA_MMU
+	sva_load_msr(MSR_STAR, msr);
+#else
 	wrmsr(MSR_STAR, msr);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D);
+#else
 	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D);
+#endif
 
 	getmemsize(kmdp, physfree);
 	init_param2(physmem);

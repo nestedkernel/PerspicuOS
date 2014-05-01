@@ -41,6 +41,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/amd64/identcpu.c 222043 2011-05-17 22:36:16Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_cpu.h"
 
 #include <sys/param.h>
@@ -495,7 +500,11 @@ identify_cpu(void)
 		uint64_t msr;
 		msr = rdmsr(MSR_IA32_MISC_ENABLE);
 		if ((msr & 0x400000ULL) != 0) {
+#ifdef SVA_MMU
+			sva_load_msr(MSR_IA32_MISC_ENABLE, msr & ~0x400000ULL);
+#else
 			wrmsr(MSR_IA32_MISC_ENABLE, msr & ~0x400000ULL);
+#endif
 			do_cpuid(0, regs);
 			cpu_high = regs[0];
 		}

@@ -32,6 +32,11 @@
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_core.c 212224 2010-09-05 13:31:14Z fabient $");
 
 #include <sys/param.h>
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/bus.h>
 #include <sys/pmc.h>
 #include <sys/pmckern.h>
@@ -169,12 +174,20 @@ core_pcpu_fini(struct pmc_mdep *md, int cpu)
 
 	for (n = 0; n < npmc; n++) {
 		msr = rdmsr(IAP_EVSEL0 + n) & ~IAP_EVSEL_MASK;
+#ifdef SVA_MMU
+		sva_load_msr(IAP_EVSEL0 + n, msr);
+#else
 		wrmsr(IAP_EVSEL0 + n, msr);
+#endif
 	}
 
 	if (core_cputype != PMC_CPU_INTEL_CORE) {
 		msr = rdmsr(IAF_CTRL) & ~IAF_CTRL_MASK;
+#ifdef SVA_MMU
+		sva_load_msr(IAF_CTRL, msr);
+#else
 		wrmsr(IAF_CTRL, msr);
+#endif
 		npmc += md->pmd_classdep[PMC_MDEP_CLASS_INDEX_IAF].pcd_num;
 	}
 
@@ -393,14 +406,23 @@ iaf_start_pmc(int cpu, int ri)
 	iafc->pc_iafctrl |= pm->pm_md.pm_iaf.pm_iaf_ctrl;
 
  	msr = rdmsr(IAF_CTRL) & ~IAF_CTRL_MASK;
+#ifdef SVA_MMU
+ 	sva_load_msr(IAF_CTRL, msr | (iafc->pc_iafctrl & IAF_CTRL_MASK));
+#else
  	wrmsr(IAF_CTRL, msr | (iafc->pc_iafctrl & IAF_CTRL_MASK));
+#endif
 
 	do {
 		iafc->pc_resync = 0;
 		iafc->pc_globalctrl |= (1ULL << (ri + IAF_OFFSET));
  		msr = rdmsr(IA_GLOBAL_CTRL) & ~IAF_GLOBAL_CTRL_MASK;
+#ifdef SVA_MMU
+ 		sva_load_msr(IA_GLOBAL_CTRL, msr | (iafc->pc_globalctrl & 
+ 					     IAF_GLOBAL_CTRL_MASK));
+#else
  		wrmsr(IA_GLOBAL_CTRL, msr | (iafc->pc_globalctrl & 
  					     IAF_GLOBAL_CTRL_MASK));
+#endif
 	} while (iafc->pc_resync != 0);
 
 	PMCDBG(MDP,STA,1,"iafctrl=%x(%x) globalctrl=%jx(%jx)",
@@ -435,14 +457,23 @@ iaf_stop_pmc(int cpu, int ri)
 
 	PMCDBG(MDP,STO,1,"iaf-stop iafctrl=%x", iafc->pc_iafctrl);
  	msr = rdmsr(IAF_CTRL) & ~IAF_CTRL_MASK;
+#ifdef SVA_MMU
+ 	sva_load_msr(IAF_CTRL, msr | (iafc->pc_iafctrl & IAF_CTRL_MASK));
+#else
  	wrmsr(IAF_CTRL, msr | (iafc->pc_iafctrl & IAF_CTRL_MASK));
+#endif
 
 	do {
 		iafc->pc_resync = 0;
 		iafc->pc_globalctrl &= ~(1ULL << (ri + IAF_OFFSET));
- 		msr = rdmsr(IA_GLOBAL_CTRL) & ~IAF_GLOBAL_CTRL_MASK;
+ 		msr = rdmsr(IA_GLOBAL_CTRL) & ~IAF_GLOBAL_CTRL_MASK;i
+#ifdef SVA_MMU
+ 		sva_loas_msr(IA_GLOBAL_CTRL, msr | (iafc->pc_globalctrl &
+ 					     IAF_GLOBAL_CTRL_MASK));
+#else
  		wrmsr(IA_GLOBAL_CTRL, msr | (iafc->pc_globalctrl &
  					     IAF_GLOBAL_CTRL_MASK));
+#endif
 	} while (iafc->pc_resync != 0);
 
 	PMCDBG(MDP,STO,1,"iafctrl=%x(%x) globalctrl=%jx(%jx)",
@@ -475,13 +506,25 @@ iaf_write_pmc(int cpu, int ri, pmc_value_t v)
 
 	/* Turn off fixed counters */
 	msr = rdmsr(IAF_CTRL) & ~IAF_CTRL_MASK;
+#ifdef SVA_MMU
+	sva_load_msr(IAF_CTRL, msr); 
+#else
 	wrmsr(IAF_CTRL, msr); 
+#endif
 
+#ifdef SVA_MMU
+	sva_load_msr(IAF_CTR0 + ri, v & ((1ULL << core_iaf_width) - 1));
+#else
 	wrmsr(IAF_CTR0 + ri, v & ((1ULL << core_iaf_width) - 1));
+#endif
 
 	/* Turn on fixed counters */
 	msr = rdmsr(IAF_CTRL) & ~IAF_CTRL_MASK;
+#ifdef SVA_MMU
+	sva_load_msr(IAF_CTRL, msr | (cc->pc_iafctrl & IAF_CTRL_MASK));
+#else
 	wrmsr(IAF_CTRL, msr | (cc->pc_iafctrl & IAF_CTRL_MASK));
+#endif
 
 	PMCDBG(MDP,WRI,1, "iaf-write cpu=%d ri=%d msr=0x%x v=%jx iafctrl=%jx "
 	    "pmc=%jx", cpu, ri, IAF_RI_TO_MSR(ri), v,
@@ -1870,16 +1913,28 @@ iap_start_pmc(int cpu, int ri)
 	/* Event specific configuration. */
 	switch (pm->pm_event) {
 	case PMC_EV_IAP_EVENT_B7H_01H:
+#ifdef SVA_MMU
+		sva_load_msr(IA_OFFCORE_RSP0, pm->pm_md.pm_iap.pm_iap_rsp);
+#else
 		wrmsr(IA_OFFCORE_RSP0, pm->pm_md.pm_iap.pm_iap_rsp);
+#endif
 		break;
 	case PMC_EV_IAP_EVENT_BBH_01H:
+#ifdef SVA_MMU
+		sva_load_msr(IA_OFFCORE_RSP1, pm->pm_md.pm_iap.pm_iap_rsp);
+#else
 		wrmsr(IA_OFFCORE_RSP1, pm->pm_md.pm_iap.pm_iap_rsp);
+#endif
 		break;
 	default:
 		break;
 	}
 
+#ifdef SVA_MMU
+	sva_load_msr(IAP_EVSEL0 + ri, evsel | IAP_EN);
+#else
 	wrmsr(IAP_EVSEL0 + ri, evsel | IAP_EN);
+#endif
 
 	if (core_cputype == PMC_CPU_INTEL_CORE)
 		return (0);
@@ -1887,7 +1942,11 @@ iap_start_pmc(int cpu, int ri)
 	do {
 		cc->pc_resync = 0;
 		cc->pc_globalctrl |= (1ULL << ri);
+#ifdef SVA_MMU
+		sva_load_msr(IA_GLOBAL_CTRL, cc->pc_globalctrl);
+#else
 		wrmsr(IA_GLOBAL_CTRL, cc->pc_globalctrl);
+#endif
 	} while (cc->pc_resync != 0);
 
 	return (0);
@@ -1915,7 +1974,11 @@ iap_stop_pmc(int cpu, int ri)
 	PMCDBG(MDP,STO,1, "iap-stop cpu=%d ri=%d", cpu, ri);
 
 	msr = rdmsr(IAP_EVSEL0 + ri) & ~IAP_EVSEL_MASK;
+#ifdef SVA_MMU
+	sva_load_msr(IAP_EVSEL0 + ri, msr);	/* stop hw */
+#else
 	wrmsr(IAP_EVSEL0 + ri, msr);	/* stop hw */
+#endif
 
 	if (core_cputype == PMC_CPU_INTEL_CORE)
 		return (0);
@@ -1925,7 +1988,11 @@ iap_stop_pmc(int cpu, int ri)
 		cc->pc_resync = 0;
 		cc->pc_globalctrl &= ~(1ULL << ri);
 		msr = rdmsr(IA_GLOBAL_CTRL) & ~IA_GLOBAL_CTRL_MASK;
+#ifdef SVA_MMU
+		sva_load_msr(IA_GLOBAL_CTRL, cc->pc_globalctrl);
+#else
 		wrmsr(IA_GLOBAL_CTRL, cc->pc_globalctrl);
+#endif
 	} while (cc->pc_resync != 0);
 
 	return (0);
@@ -1960,7 +2027,11 @@ iap_write_pmc(int cpu, int ri, pmc_value_t v)
 	 * a stopped state when the pcd_write() entry point is called.
 	 */
 
+#ifdef SVA_MMU
+	sva_load_msr(IAP_PMC0 + ri, v & ((1ULL << core_iap_width) - 1));
+#else
 	wrmsr(IAP_PMC0 + ri, v & ((1ULL << core_iap_width) - 1));
+#endif
 
 	return (0);
 }
@@ -2043,14 +2114,27 @@ core_intr(int cpu, struct trapframe *tf)
 		 * the PMC is not stalled.
 		 */
 		msr = rdmsr(IAP_EVSEL0 + ri) & ~IAP_EVSEL_MASK;
+#ifdef SVA_MMU
+		sva_load_msr(IAP_EVSEL0 + ri, msr);
+#else
 		wrmsr(IAP_EVSEL0 + ri, msr);
+#endif
+#ifdef SVA_MMU
+		sva_load_msr(IAP_PMC0 + ri, v);
+#else
 		wrmsr(IAP_PMC0 + ri, v);
+#endif
 
 		if (error)
 			continue;
 
+#ifdef SVA_MMU
+		sva_load_msr(IAP_EVSEL0 + ri, msr | (pm->pm_md.pm_iap.pm_iap_evsel | 
+					      IAP_EN));
+#else
 		wrmsr(IAP_EVSEL0 + ri, msr | (pm->pm_md.pm_iap.pm_iap_evsel | 
 					      IAP_EN));
+#endif
 	}
 
 	if (found_interrupt)
@@ -2098,10 +2182,20 @@ core2_intr(int cpu, struct trapframe *tf)
 	 * Stop PMCs and clear overflow status bits.
 	 */
 	msr = rdmsr(IA_GLOBAL_CTRL) & ~IA_GLOBAL_CTRL_MASK;
+#ifdef SVA_MMU
+	sva_load_msr(IA_GLOBAL_CTRL, msr);
+#else
 	wrmsr(IA_GLOBAL_CTRL, msr);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(IA_GLOBAL_OVF_CTRL, intrenable |
+	    IA_GLOBAL_STATUS_FLAG_OVFBUF |
+	    IA_GLOBAL_STATUS_FLAG_CONDCHG);
+#else
 	wrmsr(IA_GLOBAL_OVF_CTRL, intrenable |
 	    IA_GLOBAL_STATUS_FLAG_OVFBUF |
 	    IA_GLOBAL_STATUS_FLAG_CONDCHG);
+#endif
 
 	/*
 	 * Look for interrupts from fixed function PMCs.
@@ -2127,7 +2221,11 @@ core2_intr(int cpu, struct trapframe *tf)
 		v = iaf_reload_count_to_perfctr_value(pm->pm_sc.pm_reloadcount);
 
 		/* Reload sampling count. */
+#ifdef SVA_MMU
+		sva_load_msr(IAF_CTR0 + n, v);
+#else
 		wrmsr(IAF_CTR0 + n, v);
+#endif
 
 		PMCDBG(MDP,INT, 1, "iaf-intr cpu=%d error=%d v=%jx(%jx)", cpu, error,
 		    (uintmax_t) v, (uintmax_t) rdpmc(IAF_RI_TO_MSR(n)));
@@ -2158,7 +2256,11 @@ core2_intr(int cpu, struct trapframe *tf)
 		    (uintmax_t) v);
 
 		/* Reload sampling count. */
+#ifdef SVA_MMU
+		sva_load_msr(IAP_PMC0 + n, v);
+#else
 		wrmsr(IAP_PMC0 + n, v);
+#endif
 	}
 
 	/*
@@ -2169,7 +2271,11 @@ core2_intr(int cpu, struct trapframe *tf)
 
 	cc->pc_globalctrl |= intrenable;
 
+#ifdef SVA_MMU
+	sva_load_msr(IA_GLOBAL_CTRL, cc->pc_globalctrl & IA_GLOBAL_CTRL_MASK);
+#else
 	wrmsr(IA_GLOBAL_CTRL, cc->pc_globalctrl & IA_GLOBAL_CTRL_MASK);
+#endif
 
 	PMCDBG(MDP,INT, 1, "cpu=%d fixedctrl=%jx globalctrl=%jx status=%jx "
 	    "ovf=%jx", cpu, (uintmax_t) rdmsr(IAF_CTRL),
