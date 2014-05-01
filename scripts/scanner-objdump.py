@@ -33,8 +33,14 @@ wrmsrOverlap = 1
 
 # check a byte string for the given pattern
 # and return True if the pattern is not found
-def searchPattern(pattern, byteString):
-    return not re.search(pattern, byteString)
+# Also return the offset after the match (or -1 if no match)
+def searchPattern(pattern, byteString, startOffs):
+    searchResult = pattern.search(byteString, startOffs)
+    if not searchResult:
+        return (True, -1)
+    if (searchResult.start() - startOffs) % 2 == 1:
+        return (True, searchResult.end())
+    return (False, searchResult.end())
 
 def processInput(fileObject, pattern, overlap, patname):
     overlapData = ""
@@ -44,10 +50,11 @@ def processInput(fileObject, pattern, overlap, patname):
         (line, address, newObjFilename, newOverlapData) = parseInputLine(inputLine, overlap)
         if newObjFilename:
             objFilename = newObjFilename
-        notFound = searchPattern(pattern, overlapData + line)
-        if not notFound:
-            print "{:s}: {:5s} pattern found near {:8s}".format(objFilename, patname, address)
-           
+        startOffs = 0
+        while startOffs > -1:
+            (notFound, startOffs) = searchPattern(pattern, overlapData + line, startOffs)
+            if not notFound:
+                print "{:s}: {:5s} pattern found near {:8s}".format(objFilename, patname, address)
         overlapData = newOverlapData
         #print (line, address, newObjFilename, newOverlapData)
 
