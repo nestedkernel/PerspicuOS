@@ -41,7 +41,7 @@
  */
 NON_GPROF_ENTRY(sigcode)
 #if 1
-    SECURE_TRAP_ENTRY
+    // SECURE_TRAP_ENTRY
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */
 #else
   /*

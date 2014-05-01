@@ -1765,7 +1765,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 
 	wrmsr(MSR_FSBASE, 0);		/* User value */
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
-#if 0
+#if 1
 	wrmsr(MSR_KGSBASE, 0);		/* User value while in the kernel */
 #else
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);		/* User value while in the kernel */
