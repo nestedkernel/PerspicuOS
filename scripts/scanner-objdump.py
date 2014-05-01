@@ -92,6 +92,7 @@ parser.add_option("--write-to-cr0",action="store_true",default=False,dest="cr0Ch
 parser.add_option("--write-to-cr3",action="store_true",default=False,dest="cr3Check")
 parser.add_option("--write-to-cr4",action="store_true",default=False,dest="cr4Check")
 parser.add_option("--wrmsr",action="store_true",default=False,dest="wrmsrCheck")
+parser.add_option("--all",action="store_true",default=False,dest="checkAll")
 
 # main
 def main() :
@@ -111,19 +112,19 @@ def main() :
     tmpFile = applyObjdump(filename)
 
     # process input file contents
-    if options.cr0Check:
+    if options.cr0Check or options.checkAll:
         tmpFile.seek(0)
         processInput(tmpFile, movcr0Pattern, movcr0Overlap)
 
-    if options.cr3Check:
+    if options.cr3Check or options.checkAll:
         tmpFile.seek(0)
         processInput(tmpFile, movcr3Pattern, movcr3Overlap)
 
-    if options.cr4Check:
+    if options.cr4Check or options.checkAll:
         tmpFile.seek(0)
         processInput(tmpFile, movcr4Pattern, movcr4Overlap)
 
-    if options.wrmsrCheck:
+    if options.wrmsrCheck or options.checkAll:
         tmpFile.seek(0)
         processInput(tmpFile, wrmsrPattern, wrmsrOverlap)
 
