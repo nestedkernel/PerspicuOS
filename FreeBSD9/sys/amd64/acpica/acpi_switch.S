@@ -39,13 +39,7 @@
 
 ENTRY(acpi_restorecpu)
 	/* Switch to KPML4phys. */
-#ifdef SVA_MMU
-    pushq %rdi
-    callq sva_mm_load_pgtable
-    popq %rdi
-#else
 	movq	%rdi, %cr3
-#endif
 
 	/* Restore GDT. */
 	lgdt	WAKEUP_CTX(gdt)
