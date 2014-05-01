@@ -27,6 +27,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/x86/tsc.c 225069 2011-08-22 03:10:29Z silby $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_clock.h"
 
 #include <sys/param.h>
@@ -243,8 +248,16 @@ probe_tsc_freq(void)
 			 * support for these MSRs.  We must test whether they
 			 * really work.
 			 */
+#ifdef SVA_MMU
+			sva_load_msr(MSR_MPERF, 0);
+#else
 			wrmsr(MSR_MPERF, 0);
+#endif
+#ifdef SVA_MMU
+			sva_load_msr(MSR_APERF, 0);
+#else
 			wrmsr(MSR_APERF, 0);
+#endif
 			DELAY(10);
 			if (rdmsr(MSR_MPERF) > 0 && rdmsr(MSR_APERF) > 0)
 				tsc_perf_stat = 1;

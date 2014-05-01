@@ -34,6 +34,11 @@
 __FBSDID("$FreeBSD: release/9.0.0/sys/amd64/linux32/linux32_sysvec.c 220026 2011-03-26 09:25:35Z dchagin $");
 #include "opt_compat.h"
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #ifndef COMPAT_FREEBSD32
 #error "Unable to compile Linux-emulator due to missing COMPAT_FREEBSD32 option!"
 #endif
@@ -843,8 +848,16 @@ exec_linux_setregs(struct thread *td, struct image_params *imgp, u_long stack)
 		mtx_unlock(&dt_lock);
 
 	critical_enter();
+#ifdef SVA_MMU
+	sva_load_msr(MSR_FSBASE, 0);
+#else
 	wrmsr(MSR_FSBASE, 0);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(MSR_KGSBASE, 0);	/* User value while we're in the kernel */
+#else
 	wrmsr(MSR_KGSBASE, 0);	/* User value while we're in the kernel */
+#endif
 	pcb->pcb_fsbase = 0;
 	pcb->pcb_gsbase = 0;
 	critical_exit();

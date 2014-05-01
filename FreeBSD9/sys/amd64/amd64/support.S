@@ -37,6 +37,7 @@
 #include <machine/pmap.h>
 
 #include "assym.s"
+#include "opt_sva_mmu.h"
 
 #include <sva/cfi.h>
 
@@ -773,8 +774,12 @@ ENTRY(wrmsr_safe)
 	movl	%esi,%eax
 	sarq	$32,%rsi
 	movl	%esi,%edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr			/* Write MSR pointed by %ecx. Accepts
 				   hi byte in edx, lo in %eax. */
+#endif
 	xorq	%rax,%rax
 	movq	%rax,PCB_ONFAULT(%r8)
 	RETQ

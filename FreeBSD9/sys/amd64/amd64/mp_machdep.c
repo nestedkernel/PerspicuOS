@@ -686,9 +686,21 @@ init_secondary(void)
 	/* Save the per-cpu pointer for use by the NMI handler. */
 	np->np_pcpu = (register_t) pc;
 
+#ifdef SVA_MMU
 	wrmsr(MSR_FSBASE, 0);		/* User value */
+#else
+	wrmsr(MSR_FSBASE, 0);		/* User value */
+#endif
+#ifdef SVA_MMU
 	wrmsr(MSR_GSBASE, (u_int64_t)pc);
+#else
+	wrmsr(MSR_GSBASE, (u_int64_t)pc);
+#endif
+#ifdef SVA_MMU
 	wrmsr(MSR_KGSBASE, (u_int64_t)pc);	/* XXX User value while we're in the kernel */
+#else
+	wrmsr(MSR_KGSBASE, (u_int64_t)pc);	/* XXX User value while we're in the kernel */
+#endif
 
 //#if 1
 //	r_idt.rd_base = (long) idt;
@@ -717,16 +729,32 @@ init_secondary(void)
 	/* Set up the fast syscall stuff */
 	msr = rdmsr(MSR_EFER) | EFER_SCE;
 #ifdef SVA_MMU
-    sva_load_EFER(msr);
+	wrmsr(MSR_EFER, msr);
 #else
 	wrmsr(MSR_EFER, msr);
 #endif
+#endif
+#ifdef SVA_MMU
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
+#else
+	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
+#ifdef SVA_MMU
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#else
+	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
+#endif
 	msr = ((u_int64_t)GSEL(GCODE_SEL, SEL_KPL) << 32) |
 	      ((u_int64_t)GSEL(GUCODE32_SEL, SEL_UPL) << 48);
+#ifdef SVA_MMU
 	wrmsr(MSR_STAR, msr);
+#else
+	wrmsr(MSR_STAR, msr);
+#endif
+#ifdef SVA_MMU
 	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D);
+#else
+	wrmsr(MSR_SF_MASK, PSL_NT|PSL_T|PSL_I|PSL_C|PSL_D);
+#endif
 
 	/* Disable local APIC just to be sure. */
 	lapic_disable();

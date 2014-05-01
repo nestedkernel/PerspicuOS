@@ -46,6 +46,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/cpufreq/hwpstate.c 215398 2010-11-16 12:43:45Z avg $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/cpu.h>
@@ -183,7 +188,11 @@ hwpstate_goto_pstate(device_t dev, int pstate)
 		HWPSTATE_DEBUG(dev, "setting P%d-state on cpu%d\n",
 			id, PCPU_GET(cpuid));
 		/* Go To Px-state */
+#ifdef SVA_MMU
+		sva_load_msr(MSR_AMD_10H_11H_CONTROL, id);
+#else
 		wrmsr(MSR_AMD_10H_11H_CONTROL, id);
+#endif
 		/* wait loop (100*100 usec is enough ?) */
 		for(j = 0; j < 100; j++){
 			msr = rdmsr(MSR_AMD_10H_11H_STATUS);

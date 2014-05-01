@@ -27,6 +27,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/agp/agp_nvidia.c 209329 2010-06-19 08:42:29Z brian $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 /*
  * Written using information gleaned from the
  * NVIDIA nForce/nForce2 AGPGART Linux Kernel Patch.
@@ -413,12 +418,24 @@ nvidia_init_iorr(u_int32_t addr, u_int32_t size)
 
 	base = (addr & ~0xfff) | 0x18;
 	mask = (0xfULL << 32) | ((~(size - 1)) & 0xfffff000) | 0x800;
+#ifdef SVA_MMU
+	sva_load_msr(IORR_BASE0 + 2 * iorr_addr, base);
+#else
 	wrmsr(IORR_BASE0 + 2 * iorr_addr, base);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(IORR_MASK0 + 2 * iorr_addr, mask);
+#else
 	wrmsr(IORR_MASK0 + 2 * iorr_addr, mask);
+#endif
 
 	sys = rdmsr(SYSCFG);
 	sys |= 0x00100000ULL;
+#ifdef SVA_MMU
+	sva_load_msr(SYSCFG, sys);
+#else
 	wrmsr(SYSCFG, sys);
+#endif
 
 	return (0);
 }

@@ -28,6 +28,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/cpufreq/est.c 220433 2011-04-07 23:28:28Z jkim $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/cpu.h>
@@ -1008,7 +1013,11 @@ est_probe(device_t dev)
 	/* Attempt to enable SpeedStep if not currently enabled. */
 	msr = rdmsr(MSR_MISC_ENABLE);
 	if ((msr & MSR_SS_ENABLE) == 0) {
+#ifdef SVA_MMU
+		sva_load_msr(MSR_MISC_ENABLE, msr | MSR_SS_ENABLE);
+#else
 		wrmsr(MSR_MISC_ENABLE, msr | MSR_SS_ENABLE);
+#endif
 		if (bootverbose)
 			device_printf(dev, "enabling SpeedStep\n");
 
@@ -1286,7 +1295,11 @@ est_set_id16(device_t dev, uint16_t id16, int need_check)
 	/* Read the current register, mask out the old, set the new id. */
 	msr = rdmsr(MSR_PERF_CTL);
 	msr = (msr & ~0xffff) | id16;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_PERF_CTL, msr);
+#else
 	wrmsr(MSR_PERF_CTL, msr);
+#endif
 
 	/* Wait a short while for the new setting.  XXX Is this necessary? */
 	DELAY(EST_TRANS_LAT);

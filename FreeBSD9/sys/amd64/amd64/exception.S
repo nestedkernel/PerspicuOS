@@ -45,6 +45,7 @@
 #include <machine/specialreg.h>
 
 #include "assym.s"
+#include "opt_sva_mmu.h"
 
 #include <sva/cfi.h>
 #include <sva/trap_entry.h>
@@ -522,7 +523,11 @@ IDTVEC(nmi)
 	movq	TF_SIZE(%rsp),%rdx
 	movl	%edx,%eax
 	shrq	$32,%rdx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	jmp	nmi_calltrap
 nmi_fromuserspace:
 	incl	%ebx
@@ -610,7 +615,11 @@ nmi_kernelexit:
 	movq	%r12,%rdx
 	movl	%edx,%eax
 	shrq	$32,%rdx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 nmi_restoreregs:
 	movq	TF_RDI(%rsp),%rdi
 	movq	TF_RSI(%rsp),%rsi
@@ -748,7 +757,11 @@ ld_fs:
 	movl	PCB_FSBASE+4(%r8),%edx
 	.globl	ld_fsbase
 ld_fsbase:
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 1:
 	/* Restore %gs and gsbase */
 	movw	TF_GS(%rsp),%si
@@ -759,7 +772,11 @@ ld_fsbase:
 	.globl	ld_gs
 ld_gs:
 	movw	%si,%gs
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	popfq
 	cmpw	$KUG32SEL,%si
 	jne	1f
@@ -768,7 +785,11 @@ ld_gs:
 	movl	PCB_GSBASE+4(%r8),%edx
 	.globl	ld_gsbase
 ld_gsbase:
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 1:
 	.globl	ld_es
 ld_es:

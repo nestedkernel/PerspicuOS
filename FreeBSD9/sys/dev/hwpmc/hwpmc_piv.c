@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_piv.c 196224 2009-08-14 21:05:08Z jhb $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
@@ -656,8 +661,13 @@ p4_pcpu_fini(struct pmc_mdep *md, int cpu)
 
 	/* Turn off all PMCs on this CPU */
 	for (i = 0; i < P4_NPMCS - 1; i++)
+#ifdef SVA_MMU
+		sva_load_msr(P4_CCCR_MSR_FIRST + i,
+		    rdmsr(P4_CCCR_MSR_FIRST + i) & ~P4_CCCR_ENABLE);
+#else
 		wrmsr(P4_CCCR_MSR_FIRST + i,
 		    rdmsr(P4_CCCR_MSR_FIRST + i) & ~P4_CCCR_ENABLE);
+#endif
 
 	mtx_destroy(&p4c->pc_mtx);
 
@@ -766,7 +776,11 @@ p4_write_pmc(int cpu, int ri, pmc_value_t v)
 		v = P4_RELOAD_COUNT_TO_PERFCTR_VALUE(v);
 
 	if (PMC_IS_SYSTEM_MODE(mode))
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_pmc_msr, v);
+#else
 		wrmsr(pd->pm_pmc_msr, v);
+#endif
 	else
 		P4_PCPU_PMC_VALUE(pc,ri,cpu) = v;
 
@@ -1192,8 +1206,16 @@ p4_start_pmc(int cpu, int ri)
 
 	/* start system mode PMCs directly */
 	if (PMC_IS_SYSTEM_MODE(PMC_TO_MODE(pm))) {
+#ifdef SVA_MMU
+		sva_load_msr(escrmsr, escrvalue | escrtbits);
+#else
 		wrmsr(escrmsr, escrvalue | escrtbits);
+#endif
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_cccr_msr, cccrvalue | cccrtbits | P4_CCCR_ENABLE);
+#else
 		wrmsr(pd->pm_cccr_msr, cccrvalue | cccrtbits | P4_CCCR_ENABLE);
+#endif
 		return 0;
 	}
 
@@ -1221,8 +1243,13 @@ p4_start_pmc(int cpu, int ri)
 			cpu, ri, pd->pm_cccr_msr));
 
 		/* write out the low 40 bits of the saved value to hardware */
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_pmc_msr,
+		    P4_PCPU_PMC_VALUE(pc,ri,cpu) & P4_PERFCTR_MASK);
+#else
 		wrmsr(pd->pm_pmc_msr,
 		    P4_PCPU_PMC_VALUE(pc,ri,cpu) & P4_PERFCTR_MASK);
+#endif
 
 	} else if (rc == 1) {		/* 2nd CPU */
 
@@ -1233,7 +1260,11 @@ p4_start_pmc(int cpu, int ri)
 		 */
 
 		cccrvalue = rdmsr(pd->pm_cccr_msr);
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_cccr_msr, cccrvalue & ~P4_CCCR_ENABLE);
+#else
 		wrmsr(pd->pm_cccr_msr, cccrvalue & ~P4_CCCR_ENABLE);
+#endif
 
 		/* check that the configuration bits read back match the PMC */
 		KASSERT((cccrvalue & P4_CCCR_Tx_MASK) ==
@@ -1272,8 +1303,16 @@ p4_start_pmc(int cpu, int ri)
 	P4_PCPU_HW_VALUE(pc,ri,cpu) = rdmsr(pd->pm_pmc_msr);
 
 	/* Program the ESCR and CCCR and start the PMC */
+#ifdef SVA_MMU
+	sva_load_msr(escrmsr, escrvalue);
+#else
 	wrmsr(escrmsr, escrvalue);
+#endif
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_cccr_msr, cccrvalue);
+#else
 	wrmsr(pd->pm_cccr_msr, cccrvalue);
+#endif
 
 	++rc;
 	P4_PCPU_SET_RUNCOUNT(pc,ri,rc);
@@ -1317,8 +1356,13 @@ p4_stop_pmc(int cpu, int ri)
 	PMCDBG(MDP,STO,1, "p4-stop cpu=%d ri=%d", cpu, ri);
 
 	if (PMC_IS_SYSTEM_MODE(PMC_TO_MODE(pm))) {
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_cccr_msr,
+		    pm->pm_md.pm_p4.pm_p4_cccrvalue & ~P4_CCCR_ENABLE);
+#else
 		wrmsr(pd->pm_cccr_msr,
 		    pm->pm_md.pm_p4.pm_p4_cccrvalue & ~P4_CCCR_ENABLE);
+#endif
 		return (0);
 	}
 
@@ -1355,7 +1399,11 @@ p4_stop_pmc(int cpu, int ri)
 
 	/* Stop this PMC */
 	cccrvalue = rdmsr(pd->pm_cccr_msr);
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_cccr_msr, cccrvalue & ~P4_CCCR_ENABLE);
+#else
 	wrmsr(pd->pm_cccr_msr, cccrvalue & ~P4_CCCR_ENABLE);
+#endif
 
 	escrmsr   = pm->pm_md.pm_p4.pm_p4_escrmsr;
 	escrvalue = rdmsr(escrmsr);
@@ -1376,8 +1424,16 @@ p4_stop_pmc(int cpu, int ri)
 	if (rc == 1) {		/* need to keep the PMC running */
 		escrvalue &= ~escrtbits;
 		cccrvalue &= ~cccrtbits;
+#ifdef SVA_MMU
+		sva_load_msr(escrmsr, escrvalue);
+#else
 		wrmsr(escrmsr, escrvalue);
+#endif
+#ifdef SVA_MMU
+		sva_load_msr(pd->pm_cccr_msr, cccrvalue);
+#else
 		wrmsr(pd->pm_cccr_msr, cccrvalue);
+#endif
 	}
 
 	mtx_unlock_spin(&pc->pc_mtx);
@@ -1493,7 +1549,11 @@ p4_intr(int cpu, struct trapframe *tf)
 
 		/* Stop the counter, and reset the overflow  bit */
 		cccrval &= ~(P4_CCCR_OVF | P4_CCCR_ENABLE);
+#ifdef SVA_MMU
+		sva_load_msr(P4_CCCR_MSR_FIRST + ri, cccrval);
+#else
 		wrmsr(P4_CCCR_MSR_FIRST + ri, cccrval);
+#endif
 
 		did_interrupt = 1;
 
@@ -1523,10 +1583,19 @@ p4_intr(int cpu, struct trapframe *tf)
 		 */
 		v = P4_RELOAD_COUNT_TO_PERFCTR_VALUE(
 			pm->pm_sc.pm_reloadcount);
+#ifdef SVA_MMU
+		sva_load_msr(P4_PERFCTR_MSR_FIRST + ri, v);
+#else
 		wrmsr(P4_PERFCTR_MSR_FIRST + ri, v);
+#endif
 		if (error == 0)
+#ifdef SVA_MMU
+			sva_load_msr(P4_CCCR_MSR_FIRST + ri,
+			    cccrval | P4_CCCR_ENABLE);
+#else
 			wrmsr(P4_CCCR_MSR_FIRST + ri,
 			    cccrval | P4_CCCR_ENABLE);
+#endif
 	}
 
 	/* allow the other CPU to proceed */

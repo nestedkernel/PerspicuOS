@@ -34,6 +34,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/x86/x86/local_apic.c 222813 2011-06-07 08:46:13Z attilio $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include "opt_hwpmc_hooks.h"
 #include "opt_kdtrace.h"
 
@@ -1465,7 +1470,11 @@ apic_init(void *dummy __unused)
 	    (cpu_id & 0xff0) == 0x610) {
 		apic_base = rdmsr(MSR_APICBASE);
 		apic_base |= APICBASE_ENABLED;
+#ifdef SVA_MMU
+		sva_load_msr(MSR_APICBASE, apic_base);
+#else
 		wrmsr(MSR_APICBASE, apic_base);
+#endif
 	}
 #endif
 

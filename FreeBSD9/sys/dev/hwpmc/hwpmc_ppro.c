@@ -31,6 +31,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/hwpmc/hwpmc_ppro.c 196224 2009-08-14 21:05:08Z jhb $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/lock.h>
@@ -317,7 +322,11 @@ static struct p6_cpu **p6_pcpu;
 			    P6_EVSEL_EN;			\
 		else						\
 			_config = 0;				\
+#ifdef SVA_MMU
+		sva_load_msr(P6_MSR_EVSEL0, _config | _enable);	\
+#else
 		wrmsr(P6_MSR_EVSEL0, _config | _enable);	\
+#endif
 	} while (0)
 
 #define	P6_MARK_STARTED(PC,RI) do {				\
@@ -441,7 +450,11 @@ p6_write_pmc(int cpu, int ri, pmc_value_t v)
 	if (PMC_IS_SAMPLING_MODE(PMC_TO_MODE(pm)))
 		v = P6_RELOAD_COUNT_TO_PERFCTR_VALUE(v);
 
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_pmc_msr, v & P6_PERFCTR_WRITE_MASK);
+#else
 	wrmsr(pd->pm_pmc_msr, v & P6_PERFCTR_WRITE_MASK);
+#endif
 
 	return (0);
 }
@@ -631,7 +644,11 @@ p6_start_pmc(int cpu, int ri)
 	    cpu, ri, pd->pm_evsel_msr, config);
 
 	P6_MARK_STARTED(pc, ri);
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_evsel_msr, config);
+#else
 	wrmsr(pd->pm_evsel_msr, config);
+#endif
 
 	P6_SYNC_CTR_STATE(pc);
 
@@ -660,7 +677,11 @@ p6_stop_pmc(int cpu, int ri)
 
 	PMCDBG(MDP,STO,1, "p6-stop cpu=%d ri=%d", cpu, ri);
 
+#ifdef SVA_MMU
+	sva_load_msr(pd->pm_evsel_msr, 0);	/* stop hw */
+#else
 	wrmsr(pd->pm_evsel_msr, 0);	/* stop hw */
+#endif
 	P6_MARK_STOPPED(pc, ri);	/* update software state */
 
 	P6_SYNC_CTR_STATE(pc);		/* restart CTR1 if need be */
@@ -687,7 +708,11 @@ p6_intr(int cpu, struct trapframe *tf)
 
 	/* stop both PMCs */
 	perf0cfg = rdmsr(P6_MSR_EVSEL0);
+#ifdef SVA_MMU
+	sva_load_msr(P6_MSR_EVSEL0, perf0cfg & ~P6_EVSEL_EN);
+#else
 	wrmsr(P6_MSR_EVSEL0, perf0cfg & ~P6_EVSEL_EN);
+#endif
 
 	for (ri = 0; ri < P6_NPMCS; ri++) {
 
@@ -711,8 +736,13 @@ p6_intr(int cpu, struct trapframe *tf)
 
 		/* reload sampling count */
 		v = pm->pm_sc.pm_reloadcount;
+#ifdef SVA_MMU
+		sva_load_msr(P6_MSR_PERFCTR0 + ri,
+		    P6_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#else
 		wrmsr(P6_MSR_PERFCTR0 + ri,
 		    P6_RELOAD_COUNT_TO_PERFCTR_VALUE(v));
+#endif
 
 	}
 

@@ -68,37 +68,69 @@ ENTRY(acpi_restorecpu)
 	movl	$MSR_FSBASE, %ecx
 	movl	PCB_FSBASE(%rdi), %eax
 	movl	4 + PCB_FSBASE(%rdi), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	movl	$MSR_GSBASE, %ecx
 	movl	PCB_GSBASE(%rdi), %eax
 	movl	4 + PCB_GSBASE(%rdi), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	movl	$MSR_KGSBASE, %ecx
 	movl	PCB_KGSBASE(%rdi), %eax
 	movl	4 + PCB_KGSBASE(%rdi), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 
 	/* Restore EFER. */
 	movl	$MSR_EFER, %ecx
 	movl	WAKEUP_CTX(efer), %eax
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 
 	/* Restore fast syscall stuff. */
 	movl	$MSR_STAR, %ecx
 	movl	WAKEUP_CTX(star), %eax
 	movl	4 + WAKEUP_CTX(star), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	movl	$MSR_LSTAR, %ecx
 	movl	WAKEUP_CTX(lstar), %eax
 	movl	4 + WAKEUP_CTX(lstar), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	movl	$MSR_CSTAR, %ecx
 	movl	WAKEUP_CTX(cstar), %eax
 	movl	4 + WAKEUP_CTX(cstar), %edx
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 	movl	$MSR_SF_MASK, %ecx
 	movl	WAKEUP_CTX(sfmask), %eax
+#ifdef SVA_MMU
+    callq sva_wrmsr
+#else
 	wrmsr
+#endif
 
 	/* Restore CR0 except for FPU mode. */
 	movq	PCB_CR0(%rdi), %rax

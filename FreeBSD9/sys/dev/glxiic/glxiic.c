@@ -25,6 +25,11 @@
 
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/glxiic/glxiic.c 221971 2011-05-15 19:04:08Z brix $");
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 /*
  * AMD Geode LX CS5536 System Management Bus controller.
  *
@@ -999,7 +1004,11 @@ glxiic_smb_map_interrupt(int irq)
 	if (irq != old_irq) {
 		irq_map &= ~GLXIIC_SMB_IRQ_TO_MAP(old_irq);
 		irq_map |= GLXIIC_SMB_IRQ_TO_MAP(irq);
+#ifdef SVA_MMU
+		sva_load_msr(GLXIIC_MSR_PIC_YSEL_HIGH, irq_map);
+#else
 		wrmsr(GLXIIC_MSR_PIC_YSEL_HIGH, irq_map);
+#endif
 	}
 
 	critical_exit();

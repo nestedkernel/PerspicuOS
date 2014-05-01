@@ -27,6 +27,11 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: release/9.0.0/sys/dev/xen/xenpci/xenpci.c 214077 2010-10-19 20:53:30Z gibbs $");
 
+#include "opt_sva_mmu.h"
+#ifdef SVA_MMU
+#include <sva/mmu_intrinsics.h>
+#endif
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
@@ -119,7 +124,11 @@ xenpci_init_hypercall_stubs(device_t dev, struct xenpci_softc * scp)
 	hypercall_stubs = malloc(regs[0] * PAGE_SIZE, M_TEMP, M_WAITOK);
 
 	for (i = 0; i < regs[0]; i++) {
+#ifdef SVA_MMU
+		sva_load_msr(regs[1], vtophys(hypercall_stubs + i * PAGE_SIZE) + i);
+#else
 		wrmsr(regs[1], vtophys(hypercall_stubs + i * PAGE_SIZE) + i);
+#endif
 	}
 
 	return (0);
@@ -138,7 +147,11 @@ xenpci_resume_hypercall_stubs(device_t dev, struct xenpci_softc * scp)
 
 	do_cpuid(base + 2, regs);
 	for (i = 0; i < regs[0]; i++) {
+#ifdef SVA_MMU
+		sva_load_msr(regs[1], vtophys(hypercall_stubs + i * PAGE_SIZE) + i);
+#else
 		wrmsr(regs[1], vtophys(hypercall_stubs + i * PAGE_SIZE) + i);
+#endif
 	}
 }
 

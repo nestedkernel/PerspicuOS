@@ -41,6 +41,7 @@
 
 #if 1
 #include "sva/interrupt.h"
+#include "opt_sva_mmu.h"
 #endif
 
 #ifndef _SYS_CDEFS_H_
@@ -508,8 +509,13 @@ static __inline void
 load_fs(u_short sel)
 {
 	/* Preserve the fsbase value across the selector load */
+#ifdef SVA_MMU
+	__asm __volatile("rdmsr; movw %0,%%fs; callq sva_wrmsr"
+	    : : "rm" (sel), "c" (MSR_FSBASE) : "eax", "edx");
+#else
 	__asm __volatile("rdmsr; movw %0,%%fs; wrmsr"
 	    : : "rm" (sel), "c" (MSR_FSBASE) : "eax", "edx");
+#endif
 }
 
 #ifndef	MSR_GSBASE
@@ -523,8 +529,13 @@ load_gs(u_short sel)
 	 * Note that we have to disable interrupts because the gsbase
 	 * being trashed happens to be the kernel gsbase at the time.
 	 */
+#ifdef SVA_MMU
+	__asm __volatile("pushfq; cli; rdmsr; movw %0,%%gs; callq sva_wrmsr; popfq"
+	    : : "rm" (sel), "c" (MSR_GSBASE) : "eax", "edx");
+#else
 	__asm __volatile("pushfq; cli; rdmsr; movw %0,%%gs; wrmsr; popfq"
 	    : : "rm" (sel), "c" (MSR_GSBASE) : "eax", "edx");
+#endif
 }
 #else
 /* Usable by userland */

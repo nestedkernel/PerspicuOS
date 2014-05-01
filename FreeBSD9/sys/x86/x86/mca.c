@@ -414,7 +414,11 @@ mca_check_status(int bank, struct mca_record *rec)
 	 * errors so that the BIOS can see them.
 	 */
 	if (!(rec->mr_status & (MC_STATUS_PCC | MC_STATUS_UC))) {
+#ifdef SVA_MMU
+		sva_load_msr(MSR_MC_STATUS(bank), 0);
+#else
 		wrmsr(MSR_MC_STATUS(bank), 0);
+#endif
 		do_cpuid(0, p);
 	}
 	return (1);
@@ -476,7 +480,11 @@ cmci_update(enum scan_mode mode, int bank, int valid, struct mca_record *rec)
 			limit = min(limit << 1, cc->max_threshold);
 			ctl &= ~MC_CTL2_THRESHOLD;
 			ctl |= limit;
+#ifdef SVA_MMU
+			sva_load_msr(MSR_MC_CTL2(bank), limit);
+#else
 			wrmsr(MSR_MC_CTL2(bank), limit);
+#endif
 		}
 		cc->last_intr = ticks;
 		return;
@@ -509,7 +517,11 @@ cmci_update(enum scan_mode mode, int bank, int valid, struct mca_record *rec)
 	if ((ctl & MC_CTL2_THRESHOLD) != limit) {
 		ctl &= ~MC_CTL2_THRESHOLD;
 		ctl |= limit;
+#ifdef SVA_MMU
+		sva_load_msr(MSR_MC_CTL2(bank), limit);
+#else
 		wrmsr(MSR_MC_CTL2(bank), limit);
+#endif
 	}
 }
 #endif
@@ -722,7 +734,11 @@ cmci_monitor(int i)
 	/* Set the threshold to one event for now. */
 	ctl &= ~MC_CTL2_THRESHOLD;
 	ctl |= MC_CTL2_CMCI_EN | 1;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MC_CTL2(i), ctl);
+#else
 	wrmsr(MSR_MC_CTL2(i), ctl);
+#endif
 	ctl = rdmsr(MSR_MC_CTL2(i));
 	if (!(ctl & MC_CTL2_CMCI_EN))
 		/* This bank does not support CMCI. */
@@ -733,14 +749,22 @@ cmci_monitor(int i)
 	/* Determine maximum threshold. */
 	ctl &= ~MC_CTL2_THRESHOLD;
 	ctl |= 0x7fff;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MC_CTL2(i), ctl);
+#else
 	wrmsr(MSR_MC_CTL2(i), ctl);
+#endif
 	ctl = rdmsr(MSR_MC_CTL2(i));
 	cc->max_threshold = ctl & MC_CTL2_THRESHOLD;
 
 	/* Start off with a threshold of 1. */
 	ctl &= ~MC_CTL2_THRESHOLD;
 	ctl |= 1;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MC_CTL2(i), ctl);
+#else
 	wrmsr(MSR_MC_CTL2(i), ctl);
+#endif
 
 	/* Mark this bank as monitored. */
 	PCPU_SET(cmci_mask, PCPU_GET(cmci_mask) | 1 << i);
@@ -767,7 +791,11 @@ cmci_resume(int i)
 	ctl = rdmsr(MSR_MC_CTL2(i));
 	ctl &= ~MC_CTL2_THRESHOLD;
 	ctl |= MC_CTL2_CMCI_EN | 1;
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MC_CTL2(i), ctl);
+#else
 	wrmsr(MSR_MC_CTL2(i), ctl);
+#endif
 }
 #endif
 
@@ -793,7 +821,11 @@ _mca_init(int boot)
 		mcg_cap = rdmsr(MSR_MCG_CAP);
 		if (mcg_cap & MCG_CAP_CTL_P)
 			/* Enable MCA features. */
+#ifdef SVA_MMU
+			sva_load_msr(MSR_MCG_CTL, MCG_CTL_ENABLE);
+#else
 			wrmsr(MSR_MCG_CTL, MCG_CTL_ENABLE);
+#endif
 		if (PCPU_GET(cpuid) == 0 && boot)
 			mca_setup(mcg_cap);
 
@@ -808,7 +840,11 @@ _mca_init(int boot)
 		    CPUID_TO_FAMILY(cpu_id) == 0x10 && !amd10h_L1TP) {
 			mask = rdmsr(MSR_MC0_CTL_MASK);
 			if ((mask & (1UL << 5)) == 0)
+#ifdef SVA_MMU
+				sva_load_msr(MSR_MC0_CTL_MASK, mask | (1UL << 5));
+#else
 				wrmsr(MSR_MC0_CTL_MASK, mask | (1UL << 5));
+#endif
 		}
 		for (i = 0; i < (mcg_cap & MCG_CAP_COUNT); i++) {
 			/* By default enable logging of all errors. */
@@ -830,7 +866,11 @@ _mca_init(int boot)
 			}
 
 			if (!skip)
+#ifdef SVA_MMU
+				sva_load_msr(MSR_MC_CTL(i), ctl);
+#else
 				wrmsr(MSR_MC_CTL(i), ctl);
+#endif
 
 #ifdef DEV_APIC
 			if (mcg_cap & MCG_CAP_CMCI_P) {
@@ -842,7 +882,11 @@ _mca_init(int boot)
 #endif
 
 			/* Clear all errors. */
+#ifdef SVA_MMU
+			sva_load_msr(MSR_MC_STATUS(i), 0);
+#else
 			wrmsr(MSR_MC_STATUS(i), 0);
+#endif
 		}
 
 #ifdef DEV_APIC
@@ -912,7 +956,11 @@ mca_intr(void)
 		recoverable = 0;
 
 	/* Clear MCIP. */
+#ifdef SVA_MMU
+	sva_load_msr(MSR_MCG_STATUS, mcg_status & ~MCG_STATUS_MCIP);
+#else
 	wrmsr(MSR_MCG_STATUS, mcg_status & ~MCG_STATUS_MCIP);
+#endif
 	return (recoverable);
 }
 

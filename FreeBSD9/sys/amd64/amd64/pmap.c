@@ -821,7 +821,11 @@ pmap_init_pat(void)
 	invltlb();
 
 	/* Update PAT and index table. */
+#ifdef SVA_MMU
+	sva_load_msr(MSR_PAT, pat_msr);
+#else
 	wrmsr(MSR_PAT, pat_msr);
+#endif
 	for (i = 0; i < PAT_INDEX_SIZE; i++)
 		pat_index[i] = pat_table[i];
 
