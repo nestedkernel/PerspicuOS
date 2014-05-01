@@ -81,6 +81,10 @@ optparse = OptionParser.new do|opts|
        kernelSourceDir = path
     end
 
+    opts.on("-S", "--scan-objects", "Run scanner on built binaries") do
+        options[:runScanner] = true
+    end
+
     # This displays the help screen, all programs are assumed to have this
     # option.  
     opts.on( '-h', '--help', 'Display this screen' ) do
@@ -108,6 +112,9 @@ begin
     if (!options[:clean] && !options[:buildLLVM]) 
         kernCompileOpts = "-DNO_KERNELCLEAN -DNO_KERNELCONFIG " +
             "-DNO_KERNELDEPEND -DNO_KERNELOBJ"
+    end
+    if (options[:runScanner])
+        kernCompileOpts += " -DRUN_SCANNER"
     end
 rescue OptionParser::InvalidOption, OptionParser::MissingArgument
     puts $!.to_s        # Friendly output when parsing fails
@@ -204,6 +211,7 @@ def buildKernel(kernelSourceDir, extraOpts, debug=false)
     puts "Compiling Kernel with SVA..."
 
     # CD to source dir, once block completes the function auto CDs back to orig
+    puts extraOpts
     Dir.chdir(kernelSourceDir) do
         if(debug)
             system("make buildkernel KERNCONF=SVA #{extraOpts}")

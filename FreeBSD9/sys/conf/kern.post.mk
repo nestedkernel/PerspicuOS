@@ -90,7 +90,29 @@ gdbinit:
 .endif
 .endif
 
-${FULLKERNEL}: ${SYSTEM_DEP} vers.o ${SVA_HOME}/SVA/lib/libsva.a
+SCANNER_SCRIPT=${SVA_HOME}/scripts/scanner-objdump.py
+
+# TODO: Run in parallel, but don't know bsd make well enough
+scan-report: ${SYSTEM_DEP} ${SCANNER_SCRIPT}
+	@echo "Scanning kernel objects..."
+	@for obj in ${SYSTEM_OBJS}; do ${SCANNER_SCRIPT} --all -f $$obj; done 2>&1 > ${.TARGET}
+
+FORCE:
+
+print-scan-report: scan-report FORCE
+	@echo
+	@echo
+	@echo "========= Scanner report ========="
+	@cat scan-report
+	@echo "========= End report     ========="
+
+.if defined(RUN_SCANNER)
+SCANNER_DEP=print-scan-report
+.else
+SCANNER_DEP=${SYSTEM_DEP}
+.endif
+
+${FULLKERNEL}: ${SCANNER_DEP} vers.o ${SVA_HOME}/SVA/lib/libsva.a
 	@rm -f ${.TARGET}
 	@echo linking SVA ${.TARGET}
 	${SYSTEM_LD} -L${SVA_HOME}/SVA/lib -lsva
