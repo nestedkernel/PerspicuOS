@@ -15,3 +15,6 @@ llvm-obj
 
 # SVA Build files
 libsva.a
+
+# C build files
+*.o
