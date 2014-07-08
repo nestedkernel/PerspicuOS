@@ -38,7 +38,7 @@ def searchPattern(pattern, byteString, startOffs):
     searchResult = pattern.search(byteString, startOffs)
     if not searchResult:
         return (True, -1)
-    if (searchResult.start() - startOffs) % 2 == 1:
+    if searchResult.start() % 2 == 1:
         return (True, searchResult.end())
     return (False, searchResult.end())
 
