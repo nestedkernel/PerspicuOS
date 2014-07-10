@@ -39,7 +39,7 @@ optparse = OptionParser.new do|opts|
     opts.on("-k", "--buildKernel", "Build the SVA kernel") do 
        options[:buildKernel] = true
     end
-    opts.on("-p", "--buildSVA", "Build SVA") do
+    opts.on("-s", "--buildSVA", "Build SVA") do
        options[:buildSVA] = true
     end
     opts.on("-l", "--buildLLVM", "Build llvm, also builds SVA and the kernel.") do
@@ -77,7 +77,7 @@ optparse = OptionParser.new do|opts|
        $instKernName = name
     end
     
-    opts.on("-s", "--kernSourceDir=path", "The path to the kernel source. Def: #{kernelSourceDir}") do |path|
+    opts.on("-p", "--kernSourceDir=path", "The path to the kernel source. Def: #{kernelSourceDir}") do |path|
        kernelSourceDir = path
     end
 
