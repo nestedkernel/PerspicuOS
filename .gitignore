@@ -18,3 +18,7 @@ libsva.a
 
 # C build files
 *.o
+
+# Vim Temporary Files
+*.swp
+*.swo
