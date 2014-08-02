@@ -270,6 +270,8 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
 
   /*
    * Add check that the direct map is not being modified.
+   *
+   * TODO: This should be a check to make sure that we are updating a PTP page.
    */
   if ((PG_DML1 <= ptePG->type) && (ptePG->type <= PG_DML4)) {
     panic ("SVA: MMU: Modifying direct map!\n");
