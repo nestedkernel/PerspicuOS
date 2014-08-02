@@ -15,7 +15,8 @@ imagePath = imageDir+"/sva_ndd.img"
 llvmSourceDir = svaBaseDir+"/llvm-obj"
 svaSourceDir = svaBaseDir+"/SVA"
 kernCompileOpts = ""
-$instKernName = "sva"
+qemuGDBOpt = ""
+$instKernName = "perspicuos"
 
 optparse = OptionParser.new do|opts|
     # Set a banner, displayed at the top
@@ -53,6 +54,9 @@ optparse = OptionParser.new do|opts|
     end
     opts.on("-i", "--instKernToQemuDisk", "Install the sva+llvm built kernel to Qemu disk") do
        options[:instKernToQemuDisk] = true
+    end
+    opts.on("-g", "--gdbQemuOpt", "Execute Qemu command with -s -S for GDB stub") do
+       qemuGDBOpt = "-s -S" 
     end
     opts.on("-d", "--diskImage FILE", 
             "Path to the disk image file for intallation and qemu. ", 
@@ -295,7 +299,7 @@ if (options[:testSVAQemu]) then
     if ( `mount` =~ /md1/ ) then puts "Drive still mounted, exiting."; exit; end
 
     # setup qemu options
-    qemuOpts = "-curses -no-reboot -m 2G"
+    qemuOpts = "-curses -no-reboot -m 2G " + qemuGDBOpt
 
     # start qemu with specified disk image
     system("qemu-system-x86_64 #{qemuOpts} -hda #{imagePath}")
