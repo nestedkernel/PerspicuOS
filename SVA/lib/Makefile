@@ -16,8 +16,12 @@ CFLAGS := -I../include -O2 -fno-omit-frame-pointer -mno-aes -mno-avx -mcmodel=ke
 OFILES = init.o secmem.o handlers.o mmu.o interrupt.o state.o debug.o \
          stateasm.o invoke.o invokeasm.o checks.o keys.o
 
+HFILES = $(wildcard ../include/sva/*.h)
+
 libsva.a: $(OFILES)
 	$(AR) -r $@ $(OFILES)
+
+$(OFILES): $(HFILES)
 
 clean:
 	rm -f *.a *.o
