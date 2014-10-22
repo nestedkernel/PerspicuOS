@@ -3,8 +3,9 @@
 from optparse import OptionParser
 import csv
 import os
-import subprocess
+import re
 import shutil
+import subprocess
 
 parser = OptionParser()
 parser.add_option("-k","--kernel",action="store",type="string",dest="kernel")
@@ -63,8 +64,42 @@ def applyObjdump(filename):
     subprocess.check_call(cmd, stdout=tmpFile)
     return tmpFile
 
-def dumpIsnsAround(addr, isnsF):
-    return
+def dumpInsnsAround(addr, insnsF, symInfo):
+    # Not actually sure this is useful...
+    symName,symStart,symEnd = symInfo
+
+    symPattern=re.compile("<%s>" % symName)
+    dAddr = int(addr, 16)
+
+    # TODO: Smarter searching!!
+    # (Or ask objdump to gen dis for just this)
+    insnsF.seek(0)
+    for line in insnsF:
+        symMatch = symPattern.search(line)
+        if not symMatch:
+            continue
+
+        # Okay, now let's scan up to our addr
+        last = "??"
+        for line in insnsF:
+            vals = line.split()
+            if len(vals) < 2:
+                continue
+
+            start = int(vals[0][:-1], 16)
+            if start < dAddr:
+                last = line
+                continue
+            print "Insns for match at 0x%s:" % addr
+            print "\t%s" % last.strip()
+            print "\t%s" % line.strip()
+            print "\t%s" % insnsF.next().strip()
+            return
+
+    print "Symbol %s not found in disassembly?!" % symName
+    raise Exception("Symbol not found")
+
+
 
 def getSymbolFor(addr, symsF):
     symsF.seek(0)
@@ -90,10 +125,10 @@ def getSymbolFor(addr, symsF):
         if start > hAddr:
             if lastend > hAddr and laststart <= hAddr:
                 # print "Found addr %x in %s" % (hAddr, lastSym)
-                return lastSym
+                return (lastSym,laststart,lastend)
             elif lastend == laststart and laststart <= hAddr:
                 # print "Found addr %x in %s (unsized, maybe)" % (hAddr, lastSym)
-                return lastSym
+                return (lastSym,laststart,lastend)
             else:
                 print "Address not found!!"
                 raise Exception("Address not found")
@@ -122,17 +157,17 @@ def main():
 
     # Get dis for matching
     objdumpFunc = lambda: applyObjdump(kernel)
-    isnsF = cachedOrTmpExec(options.dislog, objdumpFunc, "objdump")
+    insnsF = cachedOrTmpExec(options.dislog, objdumpFunc, "objdump")
 
     # Get symbols too
     symsF = getSyms(kernel)
 
     for (mTy, mAddr) in results:
-        dumpIsnsAround(mAddr, isnsF)
         sym = getSymbolFor(mAddr, symsF)
+        dumpInsnsAround(mAddr, insnsF, sym)
 
     # Cleanup
-    isnsF.close()
+    insnsF.close()
     symsF.close()
 
 
