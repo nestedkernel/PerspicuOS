@@ -13,6 +13,15 @@ parser.add_option("-s","--scanner-script",action="store",type="string",dest="sca
 parser.add_option("-r","--scanner-log",action="store",type="string",dest="scanlog",default=None)
 parser.add_option("-d","--dis-log",action="store",type="string",dest="dislog",default=None)
 
+def checkWhitelist(sym):
+    symName = sym[0]
+
+    if symName.startswith("sva_"):
+        return True
+    if symName.startswith("X"):
+        return True
+    return False
+
 def cachedOrTmpExec(cachefile, f, name):
     if cachefile:
         if not os.path.isfile(cachefile):
@@ -106,12 +115,13 @@ def dumpInsnsAround(idx, addr, ty, kernel, symInfo):
                 if last:
                     print "  %s" % last.strip()
                 print "  %s" % line.strip()
-                try:
-                    print "  %s" % insnsF.next().strip()
-                    print "  %s" % insnsF.next().strip()
-                    print "  %s" % insnsF.next().strip()
-                except StopIteration:
-                    pass
+                for line in insnsF:
+                    vals = line.split()
+                    start = int(vals[0][:-1], 16)
+                    if start < dAddr + 0x10:
+                        print "  %s" % line.strip()
+                    else:
+                        break
                 return
 
         print "Symbol %s for match %s not found in disasm!" % (symName, addr)
@@ -180,9 +190,12 @@ def main():
     symsF = getSyms(kernel)
 
     print "Instructions for matches reported by scanner:"
-    for idx,(mTy, mAddr) in enumerate(results):
+    idx = 0
+    for (mTy, mAddr) in results:
         sym = getSymbolFor(mAddr, symsF)
-        dumpInsnsAround(idx, mAddr, mTy, kernel, sym)
+        if not checkWhitelist(sym):
+            idx += 1
+            dumpInsnsAround(idx, mAddr, mTy, kernel, sym)
 
     # Cleanup
     symsF.close()
