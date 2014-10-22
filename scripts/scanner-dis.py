@@ -20,6 +20,10 @@ def checkWhitelist(sym):
         return True
     if symName.startswith("X"):
         return True
+    if symName == "mapSecurePage" or \
+       symName == "unmapSecurePage" or \
+       symName == "remap_internal_memory":
+        return True
     return False
 
 def cachedOrTmpExec(cachefile, f, name):
