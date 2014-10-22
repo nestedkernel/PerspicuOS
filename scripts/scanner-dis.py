@@ -71,7 +71,7 @@ def dumpRange(filename, start, end):
     subprocess.check_call(cmd, stdout=tmpFile)
     return tmpFile
 
-def dumpInsnsAround(addr, kernel, symInfo):
+def dumpInsnsAround(addr, ty, kernel, symInfo):
     symName,symStart,symEnd = symInfo
 
     symPattern=re.compile("<%s>" % symName)
@@ -102,11 +102,11 @@ def dumpInsnsAround(addr, kernel, symInfo):
                 if start < dAddr:
                     last = line
                     continue
-                print "%s in %s:" % (addr, symName)
+                print "** {:<5} @ {} in '{}':".format(ty, addr, symName)
                 if last:
-                    print "\t%s" % last.strip()
-                print "\t%s" % line.strip()
-                print "\t%s" % insnsF.next().strip()
+                    print "  %s" % last.strip()
+                print "  %s" % line.strip()
+                print "  %s" % insnsF.next().strip()
                 return
 
         print "Symbol %s for match %s not found in disasm!" % (symName, addr)
@@ -174,9 +174,10 @@ def main():
     # Get symbols too
     symsF = getSyms(kernel)
 
+    print "Instructions for matches reported by scanner:"
     for (mTy, mAddr) in results:
         sym = getSymbolFor(mAddr, symsF)
-        dumpInsnsAround(mAddr, kernel, sym)
+        dumpInsnsAround(mAddr, mTy, kernel, sym)
 
     # Cleanup
     symsF.close()
