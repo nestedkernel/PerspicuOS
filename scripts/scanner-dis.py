@@ -106,7 +106,12 @@ def dumpInsnsAround(idx, addr, ty, kernel, symInfo):
                 if last:
                     print "  %s" % last.strip()
                 print "  %s" % line.strip()
-                print "  %s" % insnsF.next().strip()
+                try:
+                    print "  %s" % insnsF.next().strip()
+                    print "  %s" % insnsF.next().strip()
+                    print "  %s" % insnsF.next().strip()
+                except StopIteration:
+                    pass
                 return
 
         print "Symbol %s for match %s not found in disasm!" % (symName, addr)
