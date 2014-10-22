@@ -64,40 +64,53 @@ def applyObjdump(filename):
     subprocess.check_call(cmd, stdout=tmpFile)
     return tmpFile
 
-def dumpInsnsAround(addr, insnsF, symInfo):
-    # Not actually sure this is useful...
+# Only dump bits that are needed!
+def dumpRange(filename, start, end):
+    cmd = ["objdump","-z","-d","-j",".text",filename,"--start-address=%d" % start,"--stop-address=%d" % end]
+    tmpFile = os.tmpfile()
+    subprocess.check_call(cmd, stdout=tmpFile)
+    return tmpFile
+
+def dumpInsnsAround(addr, kernel, symInfo):
     symName,symStart,symEnd = symInfo
 
     symPattern=re.compile("<%s>" % symName)
     dAddr = int(addr, 16)
 
-    # TODO: Smarter searching!!
-    # (Or ask objdump to gen dis for just this)
-    insnsF.seek(0)
-    for line in insnsF:
-        symMatch = symPattern.search(line)
-        if not symMatch:
-            continue
+    start = symStart
+    if symEnd != symStart:
+        endplus = symEnd
+    else:
+        INSN_LEN_MAX = 64 # No idea, should be plenty
+        endplus = dAddr + INSN_LEN_MAX
 
-        # Okay, now let's scan up to our addr
-        last = "??"
+    with dumpRange(kernel, start, endplus) as insnsF:
+        insnsF.seek(0)
         for line in insnsF:
-            vals = line.split()
-            if len(vals) < 2:
+            symMatch = symPattern.search(line)
+            if not symMatch:
                 continue
 
-            start = int(vals[0][:-1], 16)
-            if start < dAddr:
-                last = line
-                continue
-            print "Insns for match at 0x%s:" % addr
-            print "\t%s" % last.strip()
-            print "\t%s" % line.strip()
-            print "\t%s" % insnsF.next().strip()
-            return
+            # Okay, now let's scan up to our addr
+            last = None
+            for line in insnsF:
+                vals = line.split()
+                if len(vals) < 2:
+                    continue
 
-    print "Symbol %s not found in disassembly?!" % symName
-    raise Exception("Symbol not found")
+                start = int(vals[0][:-1], 16)
+                if start < dAddr:
+                    last = line
+                    continue
+                print "%s in %s:" % (addr, symName)
+                if last:
+                    print "\t%s" % last.strip()
+                print "\t%s" % line.strip()
+                print "\t%s" % insnsF.next().strip()
+                return
+
+        print "Symbol %s for match %s not found in disasm!" % (symName, addr)
+        raise Exception("Symbol not found")
 
 
 
@@ -121,6 +134,9 @@ def getSymbolFor(addr, symsF):
         start = int(start ,16)
         size = int(size, 16)
         end = start+size
+
+        if symName == "start_exceptions":
+            continue
 
         if start > hAddr:
             if lastend > hAddr and laststart <= hAddr:
@@ -155,19 +171,14 @@ def main():
     # Run scanner and gather results
     results = scanKernel(scanner, kernel, options.scanlog)
 
-    # Get dis for matching
-    objdumpFunc = lambda: applyObjdump(kernel)
-    insnsF = cachedOrTmpExec(options.dislog, objdumpFunc, "objdump")
-
     # Get symbols too
     symsF = getSyms(kernel)
 
     for (mTy, mAddr) in results:
         sym = getSymbolFor(mAddr, symsF)
-        dumpInsnsAround(mAddr, insnsF, sym)
+        dumpInsnsAround(mAddr, kernel, sym)
 
     # Cleanup
-    insnsF.close()
     symsF.close()
 
 
