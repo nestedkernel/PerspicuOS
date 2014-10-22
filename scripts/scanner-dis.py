@@ -71,7 +71,7 @@ def dumpRange(filename, start, end):
     subprocess.check_call(cmd, stdout=tmpFile)
     return tmpFile
 
-def dumpInsnsAround(addr, ty, kernel, symInfo):
+def dumpInsnsAround(idx, addr, ty, kernel, symInfo):
     symName,symStart,symEnd = symInfo
 
     symPattern=re.compile("<%s>" % symName)
@@ -102,7 +102,7 @@ def dumpInsnsAround(addr, ty, kernel, symInfo):
                 if start < dAddr:
                     last = line
                     continue
-                print "** {:<5} @ {} in '{}':".format(ty, addr, symName)
+                print "[{:3}] {:<5} @ {} in '{}':".format(idx, ty, addr, symName)
                 if last:
                     print "  %s" % last.strip()
                 print "  %s" % line.strip()
@@ -175,9 +175,9 @@ def main():
     symsF = getSyms(kernel)
 
     print "Instructions for matches reported by scanner:"
-    for (mTy, mAddr) in results:
+    for idx,(mTy, mAddr) in enumerate(results):
         sym = getSymbolFor(mAddr, symsF)
-        dumpInsnsAround(mAddr, mTy, kernel, sym)
+        dumpInsnsAround(idx, mAddr, mTy, kernel, sym)
 
     # Cleanup
     symsF.close()
