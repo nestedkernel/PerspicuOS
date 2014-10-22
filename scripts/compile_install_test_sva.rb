@@ -16,6 +16,7 @@ llvmSourceDir = svaBaseDir+"/llvm-obj"
 svaSourceDir = svaBaseDir+"/SVA"
 kernCompileOpts = ""
 qemuGDBOpt = ""
+$kernconf = "SVA"
 $instKernName = "perspicuos"
 
 optparse = OptionParser.new do|opts|
@@ -39,6 +40,11 @@ optparse = OptionParser.new do|opts|
     end
     opts.on("-k", "--buildKernel", "Build the SVA kernel") do 
        options[:buildKernel] = true
+    end
+    opts.on("-K", "--kernelConf=confName", 
+            "Configuration file name for kernel build <default: #{$kernconf}>") do |confName|
+       options[:kernconf] = true
+       $kernconf = confName
     end
     opts.on("-s", "--buildSVA", "Build SVA") do
        options[:buildSVA] = true
@@ -212,15 +218,15 @@ end
 # Args: FreeBSD source dir and boolean clean directive
 #
 def buildKernel(kernelSourceDir, extraOpts, debug=false)
-    puts "Compiling Kernel with SVA..."
+    puts "Compiling Kernel with #{$kernconf}..."
 
     # CD to source dir, once block completes the function auto CDs back to orig
     puts extraOpts
     Dir.chdir(kernelSourceDir) do
         if(debug)
-            system("make buildkernel KERNCONF=SVA #{extraOpts}")
+            system("make buildkernel KERNCONF=#{$kernconf} #{extraOpts}")
         else
-            system("make -j15 buildkernel KERNCONF=SVA #{extraOpts}")
+            system("make -j15 buildkernel KERNCONF=#{$kernconf} #{extraOpts}")
         end
         unless($?.success?)
             puts "Error: Make failed!"
@@ -265,7 +271,7 @@ end
 # ------------------------------------------------------------------------------
 if (options[:instKernToMachDisk]) then
     Dir.chdir(kernelSourceDir) do
-        system("sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=#{$instKernName}")
+        system("sudo make -j15 installkernel KERNCONF=#{$kernconf} INSTKERNNAME=#{$instKernName}")
     end
 end
 
@@ -283,7 +289,7 @@ if (options[:instKernToQemuDisk]) then
     puts "Changing to kernel source dir, compiling, and installing into disk image."
     Dir.chdir(kernelSourceDir) do
         puts "Executing install command from kernel build dir"
-        cmd = "sudo make -j15 installkernel KERNCONF=SVA INSTKERNNAME=#{$instKernName} DESTDIR=#{$mountDir}"
+        cmd = "sudo make -j15 installkernel KERNCONF=#{$kernconf} INSTKERNNAME=#{$instKernName} DESTDIR=#{$mountDir}"
         system(cmd)
     end
 

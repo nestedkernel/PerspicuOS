@@ -66,7 +66,7 @@ static inline uintptr_t get_pdePaddr (pdpte_t * pdpte, uintptr_t vaddr);
 static inline uintptr_t get_ptePaddr (pde_t * pde, uintptr_t vaddr);
 
 /*
- * Mapping update function prototypes.
+ * Private local mapping update function prototypes.
  */
 static inline void __update_mapping (pte_t * pageEntryPtr, page_entry_t val);
 
