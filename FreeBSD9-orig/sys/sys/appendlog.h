@@ -45,6 +45,5 @@ int persp_log_full(void);
 int persp_log_empty(void);
 void persp_log_syscallenter(unsigned short code, struct thread *td, int overwrite);
 void persp_log_syscallexit(int error, struct thread *td, int overwrite);
-void persp_log_remove(struct persp_log_record *plr);
 
 #endif /* _PERSPICUOS_APPENDLOG_H */

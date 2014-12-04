@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include <sys/appendlog.h>
+#define LOG_CHECKS 0
 
 /*
  * Lock that should be obtained for reading or writing the log
@@ -38,12 +39,14 @@ static struct persp_log_record plog[PERSP_LOG_SIZE];
  */
 static int log_next = 0;
 
+#ifdef LOG_CHECKS
 /*
  * Index of the oldest entry in the log
  *
  * If the log is empty, this is negative
  */
 static int log_first = -1;
+#endif
 
 /* 
  * Helper function that is called in system initialization to init the
@@ -89,6 +92,7 @@ static void update_log_entry(int i, pid_t pid, char *comm, size_t comm_len,
     plog[i].event = event;
 }
 
+#ifdef LOG_CHECKS
 /*
  * Function: persp_log_full
  *
@@ -110,6 +114,7 @@ inline int persp_log_empty(void)
 {
     return log_first < 0;
 }
+#endif
 
 /*
  * Function: persp_log_syscallenter
@@ -130,7 +135,7 @@ persp_log_syscallenter(unsigned short code, struct thread *td, int overwrite)
     // Get information about the system call
     pid = td->td_proc->p_pid;
     comm = &td->td_proc->p_comm[0];
-
+#ifdef LOG_CHECKS
     // Check if the log is full
     if (persp_log_full()) {
         if (overwrite) {
@@ -143,13 +148,15 @@ persp_log_syscallenter(unsigned short code, struct thread *td, int overwrite)
         else
             panic("persp_logsyscallenter: Attempted to insert in a full log");
     }
-
+#endif
     // Append an entry to the log
     update_log_entry(log_next, pid, comm, MAXCOMLEN + 1, code, 0, PLE_ENTERED);
 
     // Update the log indices
+#ifdef LOG_CHECKS
     if (persp_log_empty())
         log_first = log_next;
+#endif
     log_next = (log_next + 1) % PERSP_LOG_SIZE;
 
     printf("persp_log_syscallenter: Process %s (pid %d) entered "
@@ -174,7 +181,7 @@ persp_log_syscallexit(int error, struct thread *td, int overwrite)
     // Get information about the system call
     pid = td->td_proc->p_pid;
     comm = &td->td_proc->p_comm[0];
-
+#ifdef LOG_CHECKS
     // Assert that the log is not full
     if (persp_log_full()) {
         if (overwrite) {
@@ -187,46 +194,18 @@ persp_log_syscallexit(int error, struct thread *td, int overwrite)
         else
             panic("persp_logsyscallexit: Attempted to insert in a full log");
     }
-
+#endif
     // Append an entry to the log
     update_log_entry(log_next, pid, comm, MAXCOMLEN + 1, 0, error, PLE_EXITED);
 
     // Update the log indices
+#ifdef LOG_CHECKS
     if (persp_log_empty())
         log_first = log_next;
+#endif
     log_next = (log_next + 1) % PERSP_LOG_SIZE;
 
     printf("persp_log_syscallexit: Process %s (pid %d) exited "
            "with return value %d\n", comm, pid, error);
 }
 
-/*
- * Function: persp_log_remove
- *
- * Description:
- *   This function will remove a log entry from the start of the block
- *
- * Outputs:
- *   plr : pointer to a persp_log_record object that will be updated
- *         with the information of the removed record
- */
-void persp_log_remove(struct persp_log_record *plr)
-{
-    pid_t pid;
-    char *comm;
-
-    // Assert that the log is not empty
-    if (persp_log_empty())
-        panic("persp_logsyscallexit: Attempted to remove from an empty log");
-
-    // Copy the first log entry to the given record
-    plr->p_pid = plog[log_first].p_pid;
-    simple_memcpy(&plr->p_comm[0], &plog[log_first].p_comm[0], MAXCOMLEN);
-    plr->code = plog[log_first].code;
-    plr->event = plog[log_first].event;
-
-    // Update the log indices
-    log_first = (log_first + 1) % PERSP_LOG_SIZE;
-    if (log_first == log_next) // the log becomes empty
-        log_first = -1;
-}
