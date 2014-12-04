@@ -159,8 +159,10 @@ persp_log_syscallenter(unsigned short code, struct thread *td, int overwrite)
 #endif
     log_next = (log_next + 1) % PERSP_LOG_SIZE;
 
+/*
     printf("persp_log_syscallenter: Process %s (pid %d) entered "
            "system call %u\n", comm, pid, code);
+*/
 }
 
 /*
@@ -205,7 +207,9 @@ persp_log_syscallexit(int error, struct thread *td, int overwrite)
 #endif
     log_next = (log_next + 1) % PERSP_LOG_SIZE;
 
+/*
     printf("persp_log_syscallexit: Process %s (pid %d) exited "
            "with return value %d\n", comm, pid, error);
+*/
 }
 
