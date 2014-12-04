@@ -21,12 +21,13 @@
 cpu		HAMMER
 ident		GENERIC
 
-makeoptions	DEBUG=-g		# Build kernel with gdb(1) debug symbols
+#makeoptions	DEBUG=-g		# Build kernel with gdb(1) debug symbols
 
 #******************
 # SVA Related Flags
 #******************
 #options     SVA_MMU
+options     BASELINE_APPENDLOG
 
 options 	SCHED_ULE		# ULE scheduler
 #options   SCHED_4BSD
