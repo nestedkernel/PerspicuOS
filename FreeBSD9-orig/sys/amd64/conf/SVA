@@ -27,7 +27,7 @@ ident		GENERIC
 # SVA Related Flags
 #******************
 #options     SVA_MMU
-options     BASELINE_APPENDLOG
+options     BASELINE_LOGGING
 
 options 	SCHED_ULE		# ULE scheduler
 #options   SCHED_4BSD

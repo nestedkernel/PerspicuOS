@@ -2283,6 +2283,7 @@ fs/cd9660/cd9660_util.c	optional cd9660
 fs/cd9660/cd9660_vfsops.c	optional cd9660
 fs/cd9660/cd9660_vnops.c	optional cd9660
 fs/cd9660/cd9660_iconv.c	optional cd9660_iconv
+kern/appendlog.c        optional baseline_logging
 kern/bus_if.m			standard
 kern/clock_if.m			standard
 kern/cpufreq_if.m		standard

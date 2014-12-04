@@ -12,6 +12,8 @@
  *===------------------------------------------------------------------------===
  */
 
+__FBSDID("$FreeBSD: release/9.0.0/sys/kern/appendlog.c 226248 2011-10-11 13:18:44Z kib $");
+
 #include <sys/param.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
