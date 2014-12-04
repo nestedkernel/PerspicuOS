@@ -52,6 +52,11 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/kern/subr_syscall.c 226248 2011-10-11 13:1
 #endif
 #include <security/audit/audit.h>
 
+#include "opt_baseline_logging.h"
+#ifdef BASELINE_LOGGING
+#include <sys/appendlog.h>
+#endif
+
 static inline int
 syscallenter(struct thread *td, struct syscall_args *sa)
 {
@@ -127,9 +132,21 @@ syscallenter(struct thread *td, struct syscall_args *sa)
 			    sa->callp, sa->args, 0);
 #endif
 
+#ifdef BASELINE_LOGGING
+        mtx_lock(&persp_log_mtx);
+        persp_log_syscallenter(sa->code, td, 1);
+        mtx_unlock(&persp_log_mtx);
+#endif
+
 		AUDIT_SYSCALL_ENTER(sa->code, td);
 		error = (sa->callp->sy_call)(td, sa->args);
 		AUDIT_SYSCALL_EXIT(error, td);
+
+#ifdef BASELINE_LOGGING
+        mtx_lock(&persp_log_mtx);
+        persp_log_syscallexit(error, td, 1);
+        mtx_unlock(&persp_log_mtx);
+#endif
 
 		/* Save the latest error return value. */
 		td->td_errno = error;

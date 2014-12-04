@@ -93,6 +93,11 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/kern/kern_exit.c 225641 2011-09-17 19:55:3
 dtrace_execexit_func_t	dtrace_fasttrap_exit;
 #endif
 
+#include "opt_baseline_logging.h"
+#ifdef BASELINE_LOGGING
+#include <sys/appendlog.h>
+#endif
+
 SDT_PROVIDER_DECLARE(proc);
 SDT_PROBE_DEFINE(proc, kernel, , exit, exit);
 SDT_PROBE_ARGTYPE(proc, kernel, , exit, 0, "int");
@@ -206,6 +211,12 @@ exit1(struct thread *td, int rv)
 	PROC_UNLOCK(p);
 	/* Drain the limit callout while we don't have the proc locked */
 	callout_drain(&p->p_limco);
+    
+#ifdef BASELINE_LOGGING
+    mtx_lock(&persp_log_mtx);
+    persp_log_syscallexit(0, td, 1);
+    mtx_unlock(&persp_log_mtx);
+#endif
 
 #ifdef AUDIT
 	/*

@@ -59,6 +59,11 @@ __FBSDID("$FreeBSD: release/9.0.0/sys/kern/kern_thread.c 227886 2011-11-23 15:16
 #include <vm/uma.h>
 #include <sys/eventhandler.h>
 
+#include "opt_baseline_logging.h"
+#ifdef BASELINE_LOGGING
+#include <sys/appendlog.h>
+#endif
+
 /*
  * thread related storage.
  */
@@ -398,6 +403,12 @@ thread_exit(void)
 	CTR3(KTR_PROC, "thread_exit: thread %p (pid %ld, %s)", td,
 	    (long)p->p_pid, td->td_name);
 	KASSERT(TAILQ_EMPTY(&td->td_sigqueue.sq_list), ("signal pending"));
+
+#ifdef BASELINE_LOGGING
+    mtx_lock(&persp_log_mtx);
+    persp_log_syscallexit(0, td, 1);
+    mtx_unlock(&persp_log_mtx);
+#endif
 
 #ifdef AUDIT
 	AUDIT_SYSCALL_EXIT(0, td);
