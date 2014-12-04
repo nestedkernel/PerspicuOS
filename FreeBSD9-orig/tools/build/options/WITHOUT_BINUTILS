@@ -1,0 +1,7 @@
+.\" $FreeBSD: release/9.0.0/tools/build/options/WITHOUT_BINUTILS 222090 2011-05-19 05:13:25Z imp $
+Set to not install binutils (as, c++-filt, gconv, gnu-ar, gnu-randlib,
+ld, nm, objcopy, objdump, readelf, size and strip)
+.Bf -symbolic
+The option does not generally work for build targets, unless some alternative
+toolchain is enabled.
+.Ef

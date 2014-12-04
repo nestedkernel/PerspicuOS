@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/hostapd 180563 2008-07-16 19:22:48Z dougb $
+#
+
+# PROVIDE: hostapd
+# REQUIRE: mountcritremote
+# KEYWORD: nojail shutdown
+
+. /etc/rc.subr
+
+name="hostapd"
+command="/usr/sbin/${name}"
+rcvar=`set_rcvar`
+
+conf_file="/etc/${name}.conf"
+pidfile="/var/run/${name}.pid"
+
+command_args="-P ${pidfile} -B ${conf_file}"
+required_files="${conf_file}"
+required_modules="wlan_xauth wlan_wep wlan_tkip wlan_ccmp"
+extra_commands="reload"
+
+load_rc_config ${name}
+run_rc_command "$1"

@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/powerd 180564 2008-07-16 19:50:29Z dougb $
+#
+
+# PROVIDE: powerd
+# REQUIRE: DAEMON
+# BEFORE: LOGIN
+# KEYWORD: nojail shutdown
+
+. /etc/rc.subr
+
+name="powerd"
+rcvar=`set_rcvar`
+command="/usr/sbin/${name}"
+stop_postcmd=powerd_poststop
+
+powerd_poststop()
+{
+	sysctl dev.cpu.0.freq=`sysctl -n dev.cpu.0.freq_levels |
+	    sed -e 's:/.*::'` > /dev/null
+}
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,19 @@
+/*
+ * $FreeBSD: release/9.0.0/lib/libc/gdtoa/Symbol.map 174681 2007-12-16 21:15:57Z das $
+ */
+
+FBSD_1.0 {
+	/*
+	 * Standard functions from contrib/gdtoa
+	 */
+	strtod;
+	strtof;
+
+	/* FreeBSD additions */
+	strtold;
+};
+
+FBSDprivate_1.0 {
+	/* used in libm */
+	__hexnan_D2A;
+};

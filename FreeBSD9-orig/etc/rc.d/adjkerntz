@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/adjkerntz 180563 2008-07-16 19:22:48Z dougb $
+#
+
+# PROVIDE: adjkerntz
+# REQUIRE: FILESYSTEMS random
+# BEFORE: netif
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+name="adjkerntz"
+start_cmd="adjkerntz -i"
+stop_cmd=":"
+
+load_rc_config $name
+run_rc_command "$1"

@@ -1,0 +1,26 @@
+# $FreeBSD: release/9.0.0/etc/ftpusers 218119 2011-01-31 07:47:28Z maxim $
+#
+# list of users disallowed any ftp access.
+# read by ftpd(8).
+root
+toor
+daemon
+operator
+bin
+tty
+kmem
+games
+news
+man
+sshd
+bind
+proxy
+_pflogd
+_dhcp
+uucp
+pop
+www
+hast
+nobody
+mailnull
+smmsp

@@ -1,0 +1,115 @@
+<!DOCTYPE article PUBLIC "-//FreeBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % articles.ent PUBLIC "-//FreeBSD//ENTITIES DocBook FreeBSD Articles Entity Set//EN">
+%articles.ent;
+<!ENTITY % release PUBLIC "-//FreeBSD//ENTITIES Release Specification//EN">
+%release;
+]>
+
+<article>
+<articleinfo>
+  <title>&os; &release.current; Release Notes</title>
+
+  <corpauthor>The &os; Project</corpauthor>
+
+  <pubdate>$FreeBSD: release/9.0.0/release/doc/en_US.ISO8859-1/relnotes/article.sgml 229044 2011-12-30 22:50:16Z hrs $</pubdate>
+
+  <copyright>
+    <year>2000</year>
+    <year>2001</year>
+    <year>2002</year>
+    <year>2003</year>
+    <year>2004</year>
+    <year>2005</year>
+    <year>2006</year>
+    <year>2007</year>
+    <year>2008</year>
+    <year>2009</year>
+    <year>2010</year>
+    <year>2011</year>
+    <holder role="mailto:doc@FreeBSD.org">The &os; Documentation Project</holder>
+  </copyright>
+
+  <legalnotice id="trademarks" role="trademarks">
+    &tm-attrib.freebsd;
+    &tm-attrib.ibm;
+    &tm-attrib.ieee;
+    &tm-attrib.intel;
+    &tm-attrib.sparc;
+    &tm-attrib.general;
+  </legalnotice>
+
+  <abstract>
+    <para>The release notes for &os; &release.current; contain a summary
+      of the changes made to the &os; base system on the
+      &release.branch; development line.
+      This document lists applicable security advisories that were issued since
+      the last release, as well as significant changes to the &os;
+      kernel and userland.
+      Some brief remarks on upgrading are also presented.</para>
+  </abstract>
+</articleinfo>
+
+<sect1 id="intro">
+  <title>Introduction</title>
+
+  <para>This document contains the release notes for &os;
+    &release.current;.  The latest version can be found at <ulink
+    url="http://www.FreeBSD.org/releases/9.0R/relnotes.html"></ulink>.</para>
+
+  <para>This distribution of &os; &release.current; is a
+    &release.type; distribution.  It can be found at <ulink
+    url="&release.url;"></ulink> or any of its mirrors.  More
+    information on obtaining this (or other) &release.type;
+    distributions of &os; can be found in the <ulink
+    url="&url.books.handbook;/mirrors.html"><quote>Obtaining
+    &os;</quote> appendix</ulink> to the <ulink
+    url="&url.books.handbook;/">&os;
+    Handbook</ulink>.</para>
+
+  <para>All users are encouraged to consult the release errata before
+    installing &os;.  The errata document is updated with
+    <quote>late-breaking</quote> information discovered late in the
+    release cycle or after the release.  Typically, it contains
+    information on known bugs, security advisories, and corrections to
+    documentation.  An up-to-date copy of the errata for &os;
+    &release.current; can be found on the &os; Web site.</para>
+</sect1>
+
+<sect1 id="new">
+  <title>What's New</title>
+
+  <para>The most user-visible new or changed features in &os; since
+    8.0-RELEASE can be found at <ulink
+    url="http://www.FreeBSD.org/releases/9.0R/relnotes.html"></ulink></para>
+</sect1>
+
+<sect1 id="upgrade">
+  <title>Upgrading from previous releases of &os;</title>
+
+  <para arch="amd64,i386">Beginning with &os; 6.2-RELEASE,
+    binary upgrades between RELEASE versions (and snapshots of the
+    various security branches) are supported using the
+    &man.freebsd-update.8; utility.  The binary upgrade procedure will
+    update unmodified userland utilities, as well as unmodified GENERIC or
+    SMP kernels distributed as a part of an official &os; release.
+    The &man.freebsd-update.8; utility requires that the host being
+    upgraded have Internet connectivity.</para>
+
+  <para>An older form of binary upgrade is supported through the
+    <command>Upgrade</command> option from the main &man.sysinstall.8;
+    menu on CDROM distribution media.  This type of binary upgrade
+    may be useful on non-&arch.i386;, non-&arch.amd64; machines
+    or on systems with no Internet connectivity.</para>
+
+  <para>Source-based upgrades (those based on recompiling the &os;
+    base system from source code) from previous versions are
+    supported, according to the instructions in
+    <filename>/usr/src/UPDATING</filename>.</para>
+
+  <important>
+    <para>Upgrading &os; should, of course, only be attempted after
+      backing up <emphasis>all</emphasis> data and configuration
+      files.</para>
+  </important>
+</sect1>
+</article>

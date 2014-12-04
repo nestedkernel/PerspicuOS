@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/mroute6d 197139 2009-09-12 22:13:41Z hrs $
+#
+
+# PROVIDE: mroute6d
+# REQUIRE: netif routing
+# BEFORE: NETWORKING
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+name="mroute6d"
+rcvar=`set_rcvar`
+command="/usr/local/sbin/pim6dd"
+
+load_rc_config $name
+run_rc_command "$1"

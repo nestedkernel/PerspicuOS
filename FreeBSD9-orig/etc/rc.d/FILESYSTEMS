@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/FILESYSTEMS 180563 2008-07-16 19:22:48Z dougb $
+#
+
+# PROVIDE: FILESYSTEMS
+# REQUIRE: root mountcritlocal zfs
+
+#	This is a dummy dependency, for services which require file systems
+#	to be mounted before starting.  It also serves as the default early /
+#	late divider; after this point, rc.d directories are rescanned to
+#	catch scripts from other file systems than /.

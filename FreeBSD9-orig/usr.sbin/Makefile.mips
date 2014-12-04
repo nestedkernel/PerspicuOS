@@ -1,0 +1,7 @@
+# $FreeBSD: release/9.0.0/usr.sbin/Makefile.mips 217942 2011-01-27 14:16:12Z jchandra $
+
+SUBDIR:=	${SUBDIR:Nsysinstall}
+# uathload broken for n32 and n64 due to toolchain issues
+.if ${MACHINE_ARCH:Mmipse[lb]} == ""
+SUBDIR:=	${SUBDIR:Nuathload}
+.endif

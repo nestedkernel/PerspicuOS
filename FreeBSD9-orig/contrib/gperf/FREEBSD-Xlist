@@ -1,0 +1,8 @@
+$FreeBSD: release/9.0.0/contrib/gperf/FREEBSD-Xlist 125914 2004-02-17 01:51:07Z ache $
+*/*.dvi
+*/*.html
+*/*.info
+*/*.ps
+*/texinfo.tex
+*/tests
+*/getopt*

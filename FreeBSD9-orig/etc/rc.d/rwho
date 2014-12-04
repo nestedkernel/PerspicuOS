@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/rwho 180564 2008-07-16 19:50:29Z dougb $
+#
+
+# PROVIDE: rwho
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="rwhod"
+rcvar="`set_rcvar`"
+command="/usr/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"

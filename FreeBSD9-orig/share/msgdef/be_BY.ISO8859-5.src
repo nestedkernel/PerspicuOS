@@ -1,0 +1,13 @@
+# $FreeBSD: release/9.0.0/share/msgdef/be_BY.ISO8859-5.src 123682 2003-12-20 11:18:43Z ache $
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# yesexpr
+^[âÂyY].*
+# noexpr
+^[Ý½nN].*
+# yesstr
+âÐÚ
+# nostr
+ÝÕ
+# EOF

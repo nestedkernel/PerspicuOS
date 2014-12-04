@@ -1,0 +1,31 @@
+/*
+ * $FreeBSD: release/9.0.0/lib/libc/compat-43/Symbol.map 199827 2009-11-26 13:49:37Z kib $
+ */
+
+FBSD_1.0 {
+	creat;
+	gethostid;
+	getwd;
+	killpg;
+	sethostid;
+	setpgrp;
+	setrgid;
+	setruid;
+	sigblock;
+	sigpause;
+	sigsetmask;
+	sigvec;
+};
+
+FBSD_1.2 {
+	sighold;
+	sigignore;
+	sigrelse;
+	sigset;
+	xsi_sigpause;
+};
+
+FBSDprivate_1.0 {
+	__creat;
+	_creat;
+};

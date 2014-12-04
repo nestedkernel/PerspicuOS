@@ -1,0 +1,12 @@
+/*
+ *  hrvatski calendar
+ *
+ * $FreeBSD: release/9.0.0/usr.bin/calendar/calendars/hr_HR.ISO8859-2/calendar.all 78047 2001-06-11 03:08:46Z ache $
+ */
+
+#ifndef _hr_HR_ISO8859_2_all
+#define _hr_HR_ISO8859_2_all
+
+#include <hr_HR.ISO8859-2/calendar.praznici>
+
+#endif /* !_hr_HR_ISO8859_2_all */
