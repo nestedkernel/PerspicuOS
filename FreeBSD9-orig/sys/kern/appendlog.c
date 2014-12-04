@@ -12,16 +12,14 @@
  *===------------------------------------------------------------------------===
  */
 
-__FBSDID("$FreeBSD: release/9.0.0/sys/kern/appendlog.c 226248 2011-10-11 13:18:44Z kib $");
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-
-#include <stdio.h>
-
 #include <sys/appendlog.h>
 #define LOG_CHECKS 0
 
