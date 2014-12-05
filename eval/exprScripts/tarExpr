@@ -1,0 +1,4 @@
+#!/bin/sh
+
+tar -c -z -f src.tar.gz $1/src ;
+tar -x -C temp -f src.tar.gz
