@@ -124,8 +124,8 @@ extern const uintptr_t SecureStackBase;
 
 #ifdef __MODULAR_AND_READABLE
 #define SECURE_ENTRY                                                           \
-  DISABLE_INTERRUPTS                                                           \
   DISABLE_WP_BIT                                                               \
+  DISABLE_INTERRUPTS                                                           \
   SWITCH_TO_SECURE_STACK
 
 #define SECURE_EXIT                                                            \
