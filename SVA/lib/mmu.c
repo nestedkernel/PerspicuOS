@@ -1470,8 +1470,8 @@ sva_load_cr0, unsigned long val) {
     // No need to obtain MMU Lock
     val |= CR0_WP;
     _load_cr0(val);
-    if (!(val & CR0_WP))
-      panic("SVA: attempt to clear the CR0.WP bit: %x.", val);
+    NK_ASSERT_PERF ((val & CR0_WP), "SVA: attempt to clear the CR0.WP bit: %x.",
+        val);
 }
 
 /*
@@ -1483,10 +1483,10 @@ sva_load_cr0, unsigned long val) {
  */
 void 
 sva_load_cr4 (unsigned long val) {
-    //val |= CR4_SMEP;
+    val |= CR4_SMEP;
     _load_cr4(val);
-    //if (!(val & CR4_SMEP))
-    //  panic("SVA: attempt to clear the CR4.SMEP bit: %x.", val);
+    NK_ASSERT_PERF(val & CR4_SMEP, 
+        "attempt to clear the CR4.SMEP bit: %x.", val);
 }
 
 /*
@@ -1498,7 +1498,9 @@ sva_load_cr4 (unsigned long val) {
  */
 void
 sva_load_msr(u_int msr, uint64_t val) {
-    //val |= EFER_NXE;
+    if(msr == MSR_REG_EFER) {
+        val |= EFER_NXE;
+    }
     _wrmsr(msr, val);
     if ((msr == MSR_REG_EFER) && !(val & EFER_NXE))
       panic("SVA: attempt to clear the EFER.NXE bit: %x.", val);
