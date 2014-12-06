@@ -104,9 +104,18 @@ static const uintptr_t ZERO_MAPPING = 0;
  * performance numbers.
  */
 static inline void
-SVA_NOOP_ASSERT (int res, char * st) {
-  if (!res) res++;
+SVA_NOOP_ASSERT (int res, char * str) {
+  if (!res) {
+      res++;
+  }
 }
+
+#define NK_ASSERT_PERF(truth, fmt, args...)                 \
+    if(!truth) {\
+        printf("___Nested Kernel Check Failure___ ");      \
+        printf(fmt, ## args);                               \
+        printf("\n"); \
+    } 
 
 /*
  * Function: SVA_ASSERT()
