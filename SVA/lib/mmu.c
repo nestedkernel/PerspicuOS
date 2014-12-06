@@ -47,10 +47,9 @@
 /* Temporary debug macro */
 #undef NKDEBUG             /* undef it, just in case */
 #define NKDEBUG(fname, fmt, args...)                 \
-      printf("___Nested Kernel___ <%s> ", #fname);      \
-      printf(fmt, ## args);                               \
-      printf("\n")
-
+    printf("___Nested Kernel___ <%s> ", #fname);      \
+    printf(fmt, ## args);                               \
+    printf("\n")
 
 #undef NKDEBUGG
 #define NKDEBUGG(fname, fmt, args...) /* nothing: it's a placeholder */
@@ -286,8 +285,11 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    *       up the direct map before starting the kernel.  As a result, we get
    *       page table addresses that don't fall into the direct map.
    */
+#if OBSOLETE // nk doesn't require DMAP only aliases
   SVA_NOOP_ASSERT (isDirectMap (page_entry), "SVA: MMU: Not direct map\n");
+#endif
 
+#if OBSOLETE
   /*
    * Verify that we're not trying to modify the PML4E entry that controls the
    * ghost address space.
@@ -307,6 +309,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   if (vg) {
     SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
   }
+#endif
 
   /*
    * Add check that the direct map is not being modified.
@@ -335,8 +338,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     /* If the new mapping references a secure memory page fail */
     if (vg) SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
 
+#if OBSOLETE
     /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+#endif
 
     /*
      * New mappings to code pages are permitted as long as they are either
@@ -1434,12 +1439,7 @@ fini:
                         "movl %0, %%cr0\n"
                         : "=r" (cr0)
           : "r" (pg) : "memory");
-    
-  /*
-   * Ensure that the secure memory region is still mapped within the current
-   * set of page tables.
-   */
-  /*TODO:!PERSP*/
+
   struct SVAThread * threadp = getCPUState()->currentThread;
   if (vg && threadp->secmemSize) {
     /*
@@ -2122,8 +2122,6 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
   /* Walk the kernel page tables and initialize the sva page_desc */
   declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
 
-  /* TODO: Set page_desc pages as SVA pages */
-
   /* Identify kernel code pages and intialize the descriptors */
   declare_kernel_code_pages(btext, etext);
     
@@ -2131,6 +2129,12 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
   extern char _svastart[];
   extern char _svaend[];
   init_protected_pages((uintptr_t)_svastart, (uintptr_t)_svaend, PG_SVA);
+  
+  /* Configure all pages as NX */
+  // TODO: init_nx_pages();
+
+  /* Set system XD */
+  /*TODO TURN IT ON */
 
   /* Now load the initial value of the cr3 to complete kernel init */
   _load_cr3(*kpml4Mapping & PG_FRAME);
