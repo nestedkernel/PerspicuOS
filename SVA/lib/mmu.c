@@ -1452,6 +1452,7 @@ fini:
      */
     *secmemp = threadp->secmemPML4e;
   }
+#endif
   
   MMULock_Release();
   return;
