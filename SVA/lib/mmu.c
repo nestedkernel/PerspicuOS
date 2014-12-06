@@ -1368,6 +1368,11 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
  * Description:
  *  Set the current page table.  This implementation will also enable paging.
  *
+ *  To protect against direct abuse by the outer kernel, we leave the actual
+ *  instruction to write to cr3 unmapped. Then when called the function
+ *  disables paging, inserts the mapping to the code page for cr3, jumps to
+ *  execution there, and upon return removes the mapping and flushes the TLB.
+ *
  * Inputs:
  *  pg - The physical address of the top-level page table page.
  */
@@ -1378,11 +1383,47 @@ sva_mm_load_pgtable, void *pg) {
   unsigned int cr0;
 
   /*
+   * TODO fully implement this. right now it is just a simulation for
+   * performance numbers 
+   */
+
+  /* read a PTE, and store it to simulate obtaining the load_cr3 mapping */
+  page_entry_t * page_entry = get_pgeVaddr (pg);
+  page_entry_store(page_entry, *page_entry);
+  sva_mm_flush_tlb (pg);
+
+  /* simulate the branch */
+  goto DOCHECK;
+  
+  //==-- Code residing on another set of pages --==//
+  //
+  /*
    * Check that the new page table is an L4 page table page.
    */
+DOCHECK: 
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
     panic ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
+
+  _load_cr3(pg);
+
+  /* Simulate return instruction */
+  goto fini;
+
+fini: 
+  //==-- Simulate removing the mapping and then flush the TLB --==//
+  page_entry = get_pgeVaddr (pg);
+  page_entry_store(page_entry, *page_entry);
+  sva_mm_flush_tlb (pg);
+
+  /*
+   * Ensure that the secure memory region is still mapped within the current
+   * set of page tables.
+   */
+  /*TODO:!PERSP*/
+#if OBSOLETE
+  /* Control Register 0 Value (which is used to enable paging) */
+  unsigned int cr0;
 
   /*
    * Load the new page table and enable paging in the CR0 register.
@@ -1823,8 +1864,8 @@ init_protected_pages (uintptr_t startVA, uintptr_t endVA, enum page_type_t
     uintptr_t startPA = getPhysicalAddr(startVA) & PG_FRAME;
     uintptr_t endPA = getPhysicalAddr(endVA) & PG_FRAME;
 
-    NKDEBUG(init_prot_pages,"\nDeclaring pages for range: %p -- %p\n", (void *)
-        startVA, (void *) endVA);
+    //NKDEBUG(init_prot_pages,"\nDeclaring pages for range: %p -- %p\n", (void *)
+        //startVA, (void *) endVA);
 
     /*
      * Scan through each page in the text segment.  Note that it is a pgType
@@ -1844,11 +1885,11 @@ init_protected_pages (uintptr_t startVA, uintptr_t endVA, enum page_type_t
             (void*) page_entry, 
             (void*) *page_entry
             ); 
-    }
 #endif
+    }
 
-    NKDEBUG(init_prot_pages,"\nFinished decl pages for range: %p -- %p\n",
-        (void *)startVA, (void *)endVA); 
+    //NKDEBUG(init_prot_pages,"\nFinished decl pages for range: %p -- %p\n",
+        //(void *)startVA, (void *)endVA); 
 }
 
 /*
@@ -2087,13 +2128,12 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
   declare_kernel_code_pages(btext, etext);
     
   /* Make all SuperSpace pages read-only */
-  /* TODO:F*/
   extern char _svastart[];
   extern char _svaend[];
   init_protected_pages((uintptr_t)_svastart, (uintptr_t)_svaend, PG_SVA);
 
   /* Now load the initial value of the cr3 to complete kernel init */
-  load_cr3(*kpml4Mapping & PG_FRAME);
+  _load_cr3(*kpml4Mapping & PG_FRAME);
 
   /* Make existing page table pages read-only */
   makePTReadOnly();

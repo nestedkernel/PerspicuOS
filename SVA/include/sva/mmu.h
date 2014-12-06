@@ -381,7 +381,7 @@ _wrmsr(u_int msr, uint64_t newval)
  * Description: 
  *  Load the cr3 with the given value passed in.
  */
-static inline void load_cr3(unsigned long data)
+static inline void _load_cr3(unsigned long data)
 { 
     __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
 }
