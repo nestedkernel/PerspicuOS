@@ -43,6 +43,18 @@
 /* Define whether or not the mmu_init code assumes virtual addresses */
 #define USE_VIRT            0
 
+
+/* Temporary debug macro */
+#undef NKDEBUG             /* undef it, just in case */
+#define NKDEBUG(fname, fmt, args...)                 \
+    printf("___Nested Kernel___ <%s> ", #fname);      \
+    printf(fmt, ## args);                               \
+    printf("\n")
+
+#undef NKDEBUGG
+#define NKDEBUGG(fname, fmt, args...) /* nothing: it's a placeholder */
+
+
 /*
  *****************************************************************************
  * Function prototype declarations.
@@ -176,8 +188,6 @@ init_mmu () {
   /* Initialize the page descriptor array */
   memset (page_desc, 0, sizeof (struct page_desc_t) * numPageDescEntries);
 
-  init_MMULock();
-
   return;
 }
 
@@ -275,8 +285,11 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
    *       up the direct map before starting the kernel.  As a result, we get
    *       page table addresses that don't fall into the direct map.
    */
+#if OBSOLETE // nk doesn't require DMAP only aliases
   SVA_NOOP_ASSERT (isDirectMap (page_entry), "SVA: MMU: Not direct map\n");
+#endif
 
+#if OBSOLETE
   /*
    * Verify that we're not trying to modify the PML4E entry that controls the
    * ghost address space.
@@ -296,6 +309,7 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
   if (vg) {
     SVA_ASSERT (!isGhostPTP(ptePG), "SVA: MMU: Kernel modifying ghost memory!\n");
   }
+#endif
 
   /*
    * Add check that the direct map is not being modified.
@@ -324,8 +338,10 @@ pt_update_is_valid (page_entry_t *page_entry, page_entry_t newVal) {
     /* If the new mapping references a secure memory page fail */
     if (vg) SVA_ASSERT (!isGhostPTP(newPG), "MMU: Kernel mapping a ghost PTP");
 
+#if OBSOLETE
     /* If the mapping is to an SVA page then fail */
     SVA_ASSERT (!isSVAPg(newPG), "Kernel attempted to map an SVA page");
+#endif
 
     /*
      * New mappings to code pages are permitted as long as they are either
@@ -1357,6 +1373,11 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
  * Description:
  *  Set the current page table.  This implementation will also enable paging.
  *
+ *  To protect against direct abuse by the outer kernel, we leave the actual
+ *  instruction to write to cr3 unmapped. Then when called the function
+ *  disables paging, inserts the mapping to the code page for cr3, jumps to
+ *  execution there, and upon return removes the mapping and flushes the TLB.
+ *
  * Inputs:
  *  pg - The physical address of the top-level page table page.
  */
@@ -1367,11 +1388,47 @@ sva_mm_load_pgtable, void *pg) {
   unsigned int cr0;
 
   /*
+   * TODO fully implement this. right now it is just a simulation for
+   * performance numbers 
+   */
+
+  /* read a PTE, and store it to simulate obtaining the load_cr3 mapping */
+  page_entry_t * page_entry = get_pgeVaddr (pg);
+  page_entry_store(page_entry, *page_entry);
+  sva_mm_flush_tlb (pg);
+
+  /* simulate the branch */
+  goto DOCHECK;
+  
+  //==-- Code residing on another set of pages --==//
+  //
+  /*
    * Check that the new page table is an L4 page table page.
    */
+DOCHECK: 
   if ((mmuIsInitialized) && (getPageDescPtr(pg)->type != PG_L4)) {
     panic ("SVA: Loading non-L4 page into CR3: %lx %x\n", pg, getPageDescPtr (pg)->type);
   }
+
+  _load_cr3(pg);
+
+  /* Simulate return instruction */
+  goto fini;
+
+fini: 
+  //==-- Simulate removing the mapping and then flush the TLB --==//
+  page_entry = get_pgeVaddr (pg);
+  page_entry_store(page_entry, *page_entry);
+  sva_mm_flush_tlb (pg);
+
+  /*
+   * Ensure that the secure memory region is still mapped within the current
+   * set of page tables.
+   */
+  /*TODO:!PERSP*/
+#if OBSOLETE
+  /* Control Register 0 Value (which is used to enable paging) */
+  unsigned int cr0;
 
   /*
    * Load the new page table and enable paging in the CR0 register.
@@ -1382,12 +1439,7 @@ sva_mm_load_pgtable, void *pg) {
                         "movl %0, %%cr0\n"
                         : "=r" (cr0)
           : "r" (pg) : "memory");
-    
-  /*
-   * Ensure that the secure memory region is still mapped within the current
-   * set of page tables.
-   */
-  /*TODO:!PERSP*/
+
   struct SVAThread * threadp = getCPUState()->currentThread;
   if (vg && threadp->secmemSize) {
     /*
@@ -1400,6 +1452,7 @@ sva_mm_load_pgtable, void *pg) {
      */
     *secmemp = threadp->secmemPML4e;
   }
+#endif
   
   MMULock_Release();
   return;
@@ -1417,8 +1470,8 @@ sva_load_cr0, unsigned long val) {
     // No need to obtain MMU Lock
     val |= CR0_WP;
     _load_cr0(val);
-    if (!(val & CR0_WP))
-      panic("SVA: attempt to clear the CR0.WP bit: %x.", val);
+    NK_ASSERT_PERF ((val & CR0_WP), "SVA: attempt to clear the CR0.WP bit: %x.",
+        val);
 }
 
 /*
@@ -1430,10 +1483,10 @@ sva_load_cr0, unsigned long val) {
  */
 void 
 sva_load_cr4 (unsigned long val) {
-    //val |= CR4_SMEP;
+    val |= CR4_SMEP;
     _load_cr4(val);
-    //if (!(val & CR4_SMEP))
-    //  panic("SVA: attempt to clear the CR4.SMEP bit: %x.", val);
+    NK_ASSERT_PERF(val & CR4_SMEP, 
+        "attempt to clear the CR4.SMEP bit: %x.", val);
 }
 
 /*
@@ -1445,7 +1498,9 @@ sva_load_cr4 (unsigned long val) {
  */
 void
 sva_load_msr(u_int msr, uint64_t val) {
-    //val |= EFER_NXE;
+    if(msr == MSR_REG_EFER) {
+        val |= EFER_NXE;
+    }
     _wrmsr(msr, val);
     if ((msr == MSR_REG_EFER) && !(val & EFER_NXE))
       panic("SVA: attempt to clear the EFER.NXE bit: %x.", val);
@@ -1793,6 +1848,54 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
 }
 
 /*
+ * Function: declare_kernel_code_pages()
+ *
+ * Description:
+ *  Mark all kernel code pages as code pages.
+ *
+ * Inputs: 
+ *  startVA    - The first virtual address of the memory region.
+ *  endVA      - The last virtual address of the memory region.
+ *  pgType     - The nested kernel page type 
+ */
+static inline void
+init_protected_pages (uintptr_t startVA, uintptr_t endVA, enum page_type_t
+        pgType) 
+{
+    /* Get pointers for the pages */
+    uintptr_t page;
+    uintptr_t startPA = getPhysicalAddr(startVA) & PG_FRAME;
+    uintptr_t endPA = getPhysicalAddr(endVA) & PG_FRAME;
+
+    //NKDEBUG(init_prot_pages,"\nDeclaring pages for range: %p -- %p\n", (void *)
+        //startVA, (void *) endVA);
+
+    /*
+     * Scan through each page in the text segment.  Note that it is a pgType
+     * page, and make the page read-only within the page table.
+     */
+    for (page = startPA; page < endPA; page += pageSize) {
+        page_desc[page / pageSize].type = pgType;
+        page_desc[page / pageSize].user = 0;
+
+        /* Configure the MMU so that the page is read-only */
+        page_entry_t * page_entry = get_pgeVaddr (startVA + (page - startPA));
+        page_entry_store(page_entry, setMappingReadOnly(*page_entry));
+#if 0
+        NKDEBUG(init_prot_pages, "\nVA of Page being mapped: %p, PA of Page being mapped: %p, PTP Vaddr: %p -- Value: %p\n", 
+            (void*) (startVA + (page-startPA)), 
+            (void*) page,
+            (void*) page_entry, 
+            (void*) *page_entry
+            ); 
+#endif
+    }
+
+    //NKDEBUG(init_prot_pages,"\nFinished decl pages for range: %p -- %p\n",
+        //(void *)startVA, (void *)endVA); 
+}
+
+/*
  * Function: makePTReadOnly()
  *
  * Description:
@@ -1997,6 +2100,9 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
               uintptr_t * firstpaddr,
               uintptr_t btext,
               uintptr_t etext) {
+  
+  init_MMULock();
+
   MMULock_Acquire();
   /* Get the virtual address of the pml4e mapping */
 #if USE_VIRT
@@ -2019,13 +2125,22 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
   /* Walk the kernel page tables and initialize the sva page_desc */
   declare_ptp_and_walk_pt_entries(kpml4eVA, nkpml4e, PG_L4);
 
-  /* TODO: Set page_desc pages as SVA pages */
-
   /* Identify kernel code pages and intialize the descriptors */
   declare_kernel_code_pages(btext, etext);
+    
+  /* Make all SuperSpace pages read-only */
+  extern char _svastart[];
+  extern char _svaend[];
+  init_protected_pages((uintptr_t)_svastart, (uintptr_t)_svaend, PG_SVA);
+  
+  /* Configure all pages as NX */
+  // TODO: init_nx_pages();
+
+  /* Set system XD */
+  /*TODO TURN IT ON */
 
   /* Now load the initial value of the cr3 to complete kernel init */
-  load_cr3(*kpml4Mapping & PG_FRAME);
+  _load_cr3(*kpml4Mapping & PG_FRAME);
 
   /* Make existing page table pages read-only */
   makePTReadOnly();

@@ -104,9 +104,18 @@ static const uintptr_t ZERO_MAPPING = 0;
  * performance numbers.
  */
 static inline void
-SVA_NOOP_ASSERT (int res, char * st) {
-  if (!res) res++;
+SVA_NOOP_ASSERT (int res, char * str) {
+  if (!res) {
+      res++;
+  }
 }
+
+#define NK_ASSERT_PERF(truth, fmt, args...)                 \
+    if(!truth) {\
+        printf("___Nested Kernel Check Failure___ ");      \
+        printf(fmt, ## args);                               \
+        printf("\n"); \
+    } 
 
 /*
  * Function: SVA_ASSERT()
@@ -372,7 +381,7 @@ _wrmsr(u_int msr, uint64_t newval)
  * Description: 
  *  Load the cr3 with the given value passed in.
  */
-static inline void load_cr3(unsigned long data)
+static inline void _load_cr3(unsigned long data)
 { 
     __asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory"); 
 }
