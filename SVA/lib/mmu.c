@@ -176,8 +176,6 @@ init_mmu () {
   /* Initialize the page descriptor array */
   memset (page_desc, 0, sizeof (struct page_desc_t) * numPageDescEntries);
 
-  init_MMULock();
-
   return;
 }
 
@@ -2037,6 +2035,9 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
               uintptr_t * firstpaddr,
               uintptr_t btext,
               uintptr_t etext) {
+  
+  init_MMULock();
+
   MMULock_Acquire();
   /* Get the virtual address of the pml4e mapping */
 #if USE_VIRT
