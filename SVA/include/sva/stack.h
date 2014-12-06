@@ -151,6 +151,8 @@ extern const uintptr_t SecureStackBase;
   "andq $0xfffffffffffeffff, %rax\n"                                           \
   /* Replace cr0 with updated value */                                         \
   "movq %rax, %cr0\n"                                                          \
+  /* Disable interrupts */                                                     \
+  "cli\n"                                                                      \
   /* Switch to secure stack! */                                                \
   "movq SecureStackBase, %rsp\n"                                               \
   /* Save original stack pointer for later restoration */                      \
