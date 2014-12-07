@@ -1,0 +1,8 @@
+#!/bin/sh 
+
+# Stupid script to print the averages for make results
+# Pass the dir containing the raw result files as argument
+
+echo `grep real $1/times | awk '{ if ($2 > max) max = $2 } END { print "real : " max }'`;
+echo `grep user $1/times | awk '{ if ($2 > max) max = $2 } END { print "user : " max }'`;
+echo `grep sys $1/times | awk '{ if ($2 > max) max = $2 } END { print "sys : " max }'`;

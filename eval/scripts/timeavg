@@ -1,8 +1,0 @@
-#!/bin/sh 
-
-# Stupid script to print the averages for make results
-# Pass the dir containing the raw result files as argument
-
-echo `grep real $1/times | awk '{ sum += $2; cnt +=1 } END { print "real : " sum / cnt }'`;
-echo `grep user $1/times | awk '{ sum += $2; cnt +=1 } END { print "user : " sum / cnt }'`;
-echo `grep sys $1/times | awk '{ sum += $2; cnt +=1 } END { print "sys : " sum / cnt }'`;
