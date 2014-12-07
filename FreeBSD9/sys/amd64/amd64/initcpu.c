@@ -144,7 +144,7 @@ initializecpu(void)
 #endif
 
 	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
-#ifdef SVA_MMU
+#if 0//SVA_MMU --- can't set SMEP yet TODO:
 		sva_load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
 #else
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
