@@ -1,0 +1,10 @@
+# $FreeBSD: release/9.0.0/share/i18n/esdb/CP/CP949.src 219019 2011-02-25 00:04:39Z gabor $ 
+# $NetBSD: CP949.src,v 1.1 2003/06/27 08:40:52 tshiozak Exp $
+
+NAME		"CP949"
+ENCODING	"GBK2K"
+VARIABLE	"2byte"
+DEFCSID		"ISO646-US"		0
+DEFCSID		"KSC5601"		1
+DEFCSID		"CP949EXT"		2
+INVALID		0x3F	# '?'

@@ -1,0 +1,8 @@
+# $FreeBSD: release/9.0.0/usr.sbin/Makefile.sparc64 212525 2010-09-13 02:21:07Z imp $
+
+SUBDIR+=	eeprom
+SUBDIR+=	mount_smbfs
+SUBDIR+=	ofwdump
+.if ${MK_SYSINSTALL} != "no"
+SUBDIR+=	sade
+.endif

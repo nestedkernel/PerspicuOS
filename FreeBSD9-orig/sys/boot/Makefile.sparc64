@@ -1,0 +1,3 @@
+# $FreeBSD: release/9.0.0/sys/boot/Makefile.sparc64 211679 2010-08-23 01:48:07Z imp $
+
+SUBDIR+=		ofw

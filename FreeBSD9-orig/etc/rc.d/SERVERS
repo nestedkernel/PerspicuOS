@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/SERVERS 208307 2010-05-19 19:03:19Z dougb $
+#
+
+# PROVIDE: SERVERS
+# REQUIRE: mountcritremote abi ldconfig savecore
+
+#	This is a dummy dependency, for early-start servers relying on
+#	some basic configuration.

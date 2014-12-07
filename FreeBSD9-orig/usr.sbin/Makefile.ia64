@@ -1,0 +1,9 @@
+# $FreeBSD: release/9.0.0/usr.sbin/Makefile.ia64 212525 2010-09-13 02:21:07Z imp $
+
+.if ${MK_ACPI} != "no"
+SUBDIR+=	acpi
+.endif
+SUBDIR+=	kgmon
+SUBDIR+=	mount_smbfs
+SUBDIR:=	${SUBDIR:Nuathload}
+SUBDIR+=	zzz

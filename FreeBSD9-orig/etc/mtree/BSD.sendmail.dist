@@ -1,0 +1,14 @@
+# $FreeBSD: release/9.0.0/etc/mtree/BSD.sendmail.dist 123051 2003-11-29 18:22:01Z ru $
+#
+# Please see the file src/etc/mtree/README before making changes to this file.
+#
+
+/set type=dir uname=root gname=wheel mode=0755
+.               nochange
+    var             nochange
+        spool           nochange
+            clientmqueue    uname=smmsp gname=smmsp mode=0770
+            ..
+        ..
+    ..
+..

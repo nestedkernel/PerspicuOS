@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# $FreeBSD: release/9.0.0/etc/rc.d/ipxrouted 180563 2008-07-16 19:22:48Z dougb $
+#
+
+# PROVIDE: ipxrouted
+# REQUIRE: SERVERS
+# BEFORE: DAEMON
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+name="ipxrouted"
+rcvar=`set_rcvar`
+command="/usr/sbin/IPXrouted"
+command_args="> /dev/null 2>&1"
+
+load_rc_config $name
+run_rc_command "$1"

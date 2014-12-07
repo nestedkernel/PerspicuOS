@@ -1,0 +1,5 @@
+# $FreeBSD: release/9.0.0/Makefile.mips 217123 2011-01-07 20:26:33Z imp $
+
+.if ${MACHINE_ARCH} != "mipsel" && ${MACHINE_ARCH} != "mipseb"
+MK_RESCUE=no
+.endif

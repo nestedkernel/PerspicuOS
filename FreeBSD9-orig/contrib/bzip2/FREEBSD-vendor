@@ -1,0 +1,5 @@
+# $FreeBSD: release/9.0.0/contrib/bzip2/FREEBSD-vendor 196164 2009-08-13 06:07:38Z des $
+Project:	bzip2
+ProjectURL:	http://www.bzip.org/
+Version:	1.0.5
+License:	BSD

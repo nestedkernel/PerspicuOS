@@ -1,0 +1,16 @@
+#
+# $FreeBSD: release/9.0.0/tools/regression/environ/Makefile.envctl 199983 2009-12-01 05:04:31Z green $
+#
+SRCS=	envctl.c
+PROG=	envctl
+
+CFLAGS+=-Wall -I../../../include
+
+CLEANFILES=	${PROG}.core
+
+NO_MAN=	yes
+
+.include <bsd.prog.mk>
+
+test: ${PROG}
+	@env -i sh envtest.t

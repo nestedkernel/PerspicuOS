@@ -5,22 +5,22 @@
 
 # Pass the dir containing the raw result files as argument
 
-echo `awk '{ sum += $3 } END { print sum / NR }' $1/nullSyscall`;
-echo `awk '{ sum += $3 } END { print sum / NR }' $1/openSyscall`;
-echo `awk '{ sum += $2 } END { print sum / NR }' $1/mmapSyscall`;
-echo `awk '{ sum += $4 } END { print sum / NR }' $1/pgSyscall`;
-echo `awk '{ sum += $4 } END { print sum / NR }' $1/installSig`;
-echo `awk '{ sum += $4 } END { print sum / NR }' $1/catchSig`;
-echo `awk '{ sum += $3 } END { print sum / NR }' $1/forkSyscall`;
-echo `awk '{ sum += $3 } END { print sum / NR }' $1/execSyscall`;
+echo `awk '{ sum += $3; cnt +=1 } END { print sum / cnt }' $1/nullSyscall`;
+echo `awk '{ sum += $3; cnt +=1 } END { print sum / cnt }' $1/openSyscall`;
+echo `awk '{ sum += $2; cnt +=1 } END { print sum / cnt }' $1/mmapSyscall`;
+echo `awk '{ sum += $4; cnt +=1 } END { print sum / cnt }' $1/pgSyscall`;
+echo `awk '{ sum += $4; cnt +=1 } END { print sum / cnt }' $1/installSig`;
+echo `awk '{ sum += $4; cnt +=1 } END { print sum / cnt }' $1/catchSig`;
+echo `awk '{ sum += $3; cnt +=1 } END { print sum / cnt }' $1/forkSyscall`;
+echo `awk '{ sum += $3; cnt +=1 } END { print sum / cnt }' $1/execSyscall`;
 
-echo `grep "^0k" $1/fsSyscall | awk '{ sum += $3 } END { print sum / NR }'`;
-echo `grep 1k $1/fsSyscall | awk '{ sum += $3 } END { print sum / NR }'`;
-echo `grep 4k $1/fsSyscall | awk '{ sum += $3 } END { print sum / NR }'`;
-echo `grep 10k $1/fsSyscall | awk '{ sum += $3 } END { print sum / NR }'`;
+echo `grep "^0k" $1/fsSyscall | awk '{ sum += $3; cnt +=1 } END { print sum / cnt }'`;
+echo `grep 1k $1/fsSyscall | awk '{ sum += $3; cnt +=1 } END { print sum / cnt }'`;
+echo `grep 4k $1/fsSyscall | awk '{ sum += $3; cnt +=1 } END { print sum / cnt }'`;
+echo `grep 10k $1/fsSyscall | awk '{ sum += $3; cnt +=1 } END { print sum / cnt }'`;
 
-echo `grep "^0k" $1/fsSyscall | awk '{ sum += $4 } END { print sum / NR }'`;
-echo `grep 1k $1/fsSyscall | awk '{ sum += $4 } END { print sum / NR }'`;
-echo `grep 4k $1/fsSyscall | awk '{ sum += $4 } END { print sum / NR }'`;
-echo `grep 10k $1/fsSyscall | awk '{ sum += $4 } END { print sum / NR }'`;
+echo `grep "^0k" $1/fsSyscall | awk '{ sum += $4; cnt +=1 } END { print sum / NR }'`;
+echo `grep 1k $1/fsSyscall | awk '{ sum += $4; cnt +=1 } END { print sum / cnt }'`;
+echo `grep 4k $1/fsSyscall | awk '{ sum += $4; cnt +=1 } END { print sum / cnt }'`;
+echo `grep 10k $1/fsSyscall | awk '{ sum += $4; cnt +=1 } END { print sum / cnt }'`;
 
