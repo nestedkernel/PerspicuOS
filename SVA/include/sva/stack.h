@@ -45,7 +45,7 @@
 
 // Points to top of secure stack
 // XXX: Whoever defines this should ensure the region is write-protected!
-extern uintptr_t SecureStackBase;
+extern const uintptr_t SecureStackBase;
 
 // TODO: Manage stack per-cpu, do lookup here
 // Use only RAX/RCX registers to accomplish this.

@@ -129,7 +129,8 @@ static void init_dispatcher ();
  *   calls to SuperSpace or SuperSpace calls.
  */
 char SecureStack[1<<12] SVAMEM;
-uintptr_t SecureStackBase SVAMEM = (uintptr_t) SecureStack + sizeof(SecureStack) ;
+// TODO: Important this value can't be changed from outside the nested kernel!
+const uintptr_t SecureStackBase = (uintptr_t) SecureStack + sizeof(SecureStack);
 
 /*
  * Taken from FreeBSD: amd64/segments.h
