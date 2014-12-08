@@ -25,10 +25,11 @@
 #include <sys/types.h>
 
 #include "sva/config.h"
-#include "sva/mmu_intrinsics.h"
 #include "sva/keys.h"
+#include "sva/mmu_intrinsics.h"
 #include "sva/stack.h"
 #include "sva/state.h"
+#include "sva/svamem.h"
 
 #define DEBUG               1
 #define INCOMPLETE_ON       1
@@ -101,7 +102,7 @@ getThreadSecret (void) {
 }
 
 /* Array of cached translations */
-struct translation translations [MAX_TRANSLATIONS] __attribute__ ((section ("svamem")));
+struct translation translations [MAX_TRANSLATIONS] SVAMEM;
 
 /*
  * Function: sva_translate()

@@ -82,9 +82,10 @@
  */
 
 #include "sva/config.h"
-#include "sva/state.h"
-#include "sva/stack.h"
 #include "sva/interrupt.h"
+#include "sva/stack.h"
+#include "sva/state.h"
+#include "sva/svamem.h"
 
 #include <string.h>
 #include <limits.h>
@@ -127,8 +128,8 @@ static void init_dispatcher ();
  *   This is a pointer to the PerspicuOS SuperSpace stack, which is used on
  *   calls to SuperSpace or SuperSpace calls.
  */
-char SecureStack[1<<12] __attribute__ ((section ("svamem")));
-uintptr_t SecureStackBase __attribute__ ((section ("svamem"))) = (uintptr_t) SecureStack + sizeof(SecureStack) ;
+char SecureStack[1<<12] SVAMEM;
+uintptr_t SecureStackBase SVAMEM = (uintptr_t) SecureStack + sizeof(SecureStack) ;
 
 /*
  * Taken from FreeBSD: amd64/segments.h
@@ -161,8 +162,7 @@ struct  gate_descriptor {
  *
  *  Note that we need one of these per processor.
  */
-static struct gate_descriptor sva_idt[256]
-__attribute__ ((section ("svamem")));
+static struct gate_descriptor sva_idt[256] SVAMEM;
 
 /* Taken from segments.h in FreeBSD */
 static const unsigned int SDT_SYSIGT=14;  /* system 64 bit interrupt gate */
