@@ -667,7 +667,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	create_pagetables(firstaddr);
 
-#if 1
+#ifdef SVA_MMU
   /* 
    * Set the static address locations in the struct here to aid in kernel MMU
    * initialization. Note that we pass in the page mapping for the pml4 page.
@@ -1655,7 +1655,7 @@ pmap_add_delayed_free_list(vm_page_t m, vm_page_t *free, boolean_t set_PG_ZERO)
 	else
 		m->flags &= ~PG_ZERO;
 	m->right = *free;
-#if 1
+#ifdef SVA_MMU
   /* Remove this page if it is a page table page */
 	sva_remove_page (VM_PAGE_TO_PHYS(m));
 #endif
