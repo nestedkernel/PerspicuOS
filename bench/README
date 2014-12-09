@@ -1,0 +1,17 @@
+Measure cost of crossing protection boundaries:
+1) NK call
+  \ Kernel calling NestedKernel function
+2) Syscall
+  \ Userspace calling kernel function
+3) VM hypercall
+  \ Kernel calling into hypervisor
+
+
+For '1', I've added code to the NK that
+self-benchmarks a dummy NK function during kernel boot.
+See "nk_bench.c".
+
+For '2', dummy syscall benchmarked using userspace application.
+
+For '3', same kernel benchmarking code as '1' but
+calling dummy hypervisor function instead.
