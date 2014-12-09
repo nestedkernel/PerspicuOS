@@ -1733,6 +1733,9 @@ struct posix_fallocate_args {
 	char offset_l_[PADL_(off_t)]; off_t offset; char offset_r_[PADR_(off_t)];
 	char len_l_[PADL_(off_t)]; off_t len; char len_r_[PADR_(off_t)];
 };
+struct nk_dummy_gettime_args {
+	char tv_l_[PADL_(struct timeval *)]; struct timeval * tv; char tv_r_[PADR_(struct timeval *)];
+};
 struct nk_dummy_args {
 	register_t dummy;
 };
@@ -2112,6 +2115,7 @@ int	sys_rctl_get_limits(struct thread *, struct rctl_get_limits_args *);
 int	sys_rctl_add_rule(struct thread *, struct rctl_add_rule_args *);
 int	sys_rctl_remove_rule(struct thread *, struct rctl_remove_rule_args *);
 int	sys_posix_fallocate(struct thread *, struct posix_fallocate_args *);
+int	sys_nk_dummy_gettime(struct thread *, struct nk_dummy_gettime_args *);
 int	sys_nk_dummy(struct thread *, struct nk_dummy_args *);
 
 #ifdef COMPAT_43
@@ -2803,6 +2807,7 @@ int	freebsd7_shmctl(struct thread *, struct freebsd7_shmctl_args *);
 #define	SYS_AUE_rctl_add_rule	AUE_NULL
 #define	SYS_AUE_rctl_remove_rule	AUE_NULL
 #define	SYS_AUE_posix_fallocate	AUE_NULL
+#define	SYS_AUE_nk_dummy_gettime	AUE_NULL
 #define	SYS_AUE_nk_dummy	AUE_NULL
 
 #undef PAD_

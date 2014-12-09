@@ -395,4 +395,5 @@ MIASM =  \
 	rctl_add_rule.o \
 	rctl_remove_rule.o \
 	posix_fallocate.o \
+	nk_dummy_gettime.o \
 	nk_dummy.o

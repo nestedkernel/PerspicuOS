@@ -446,5 +446,6 @@
 #define	SYS_rctl_add_rule	528
 #define	SYS_rctl_remove_rule	529
 #define	SYS_posix_fallocate	530
-#define	SYS_nk_dummy	532
-#define	SYS_MAXSYSCALL	533
+#define	SYS_nk_dummy_gettime	532
+#define	SYS_nk_dummy	533
+#define	SYS_MAXSYSCALL	534

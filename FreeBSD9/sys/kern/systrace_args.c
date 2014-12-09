@@ -3234,8 +3234,15 @@ systrace_args(int sysnum, void *params, uint64_t *uarg, int *n_args)
 		*n_args = 3;
 		break;
 	}
-	/* nk_dummy */
+	/* nk_dummy_gettime */
 	case 532: {
+		struct nk_dummy_gettime_args *p = params;
+		uarg[0] = (intptr_t) p->tv; /* struct timeval * */
+		*n_args = 1;
+		break;
+	}
+	/* nk_dummy */
+	case 533: {
 		*n_args = 0;
 		break;
 	}
@@ -8608,8 +8615,18 @@ systrace_setargdesc(int sysnum, int ndx, char *desc, size_t descsz)
 			break;
 		};
 		break;
-	/* nk_dummy */
+	/* nk_dummy_gettime */
 	case 532:
+		switch(ndx) {
+		case 0:
+			p = "struct timeval *";
+			break;
+		default:
+			break;
+		};
+		break;
+	/* nk_dummy */
+	case 533:
 		break;
 	default:
 		break;
