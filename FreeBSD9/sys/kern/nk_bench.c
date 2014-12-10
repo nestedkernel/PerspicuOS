@@ -7,10 +7,12 @@
 
 #include "sva/dummy.h"
 #include "opt_sva_mmu.h"
+#include "opt_nk_bench.h"
 
+#ifdef SVA_MMU
+#ifdef NK_BENCH
 void sva_nk_bench(void *unused);
 void sva_nk_bench(void *unused) {
-#ifdef SVA_MMU
     // Attempt to determine average cost of invoking a NK function!
     struct timeval before, after;
     const unsigned ITERS = 1000000;
@@ -25,7 +27,9 @@ void sva_nk_bench(void *unused) {
             (after.tv_sec - before.tv_sec)*1000000ULL;
         printf("Calling 'sva_dummy()' %u times took %llu usecs!\n", ITERS, usecs);
     }
-#endif // SVA_MMU
 }
+
 SYSINIT(nkbench, SI_SUB_CLOCKS+1, SI_ORDER_ANY, sva_nk_bench, NULL);
+#endif // NK_BENCH
+#endif // SVA_MMU
 

@@ -1,0 +1,8 @@
+#
+# NKBENCH - Protection-boundary benchmarking features enabled.
+
+include NK
+cpu 		HAMMER
+ident		NKBENCH
+
+options NK_BENCH

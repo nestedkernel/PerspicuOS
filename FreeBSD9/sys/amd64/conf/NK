@@ -1,0 +1,9 @@
+#
+# NK -- Nested Kernel config.
+#
+
+# Same as NKSTOCK, only with SVA_MMU set.
+include NKSTOCK
+ident		NK
+
+options SVA_MMU

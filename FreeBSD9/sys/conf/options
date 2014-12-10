@@ -32,6 +32,7 @@
 
 # SVA options
 SVA_MMU         opt_sva_mmu.h
+NK_BENCH        opt_nk_bench.h
 
 AAC_DEBUG		opt_aac.h
 AHC_ALLOW_MEMIO		opt_aic7xxx.h
