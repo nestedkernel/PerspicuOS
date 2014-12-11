@@ -5,6 +5,9 @@ Measure cost of crossing protection boundaries:
   \ Userspace calling kernel function
 3) VM hypercall
   \ Kernel calling into hypervisor
+  -- TODO: Document how this experiment was performed!!
+  Used custom bhyve, modified bhyveloader, custom 'kernel'
+  for issuing VMCALL's, all need to be shared.
 
 
 For '1', I've added code to the NK that
