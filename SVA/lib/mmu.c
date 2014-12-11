@@ -22,10 +22,11 @@
 #include "sva/config.h"
 #include "sva/mmu.h"
 #include "sva/mmu_intrinsics.h"
-#include "sva/x86.h"
 #include "sva/stack.h"
 #include "sva/state.h"
+#include "sva/svamem.h"
 #include "sva/util.h"
+#include "sva/x86.h"
 
 /* 
  * Defines for #if #endif blocks for commenting out lines of code
@@ -109,11 +110,11 @@ struct PTInfo {
  *  This table records information on pages fetched from the operating system
  *  that the SVA VM will use for its own purposes.
  */
-struct PTInfo PTPages[1024] __attribute__ ((section ("svamem")));
+struct PTInfo PTPages[1024] SVAMEM; 
 
 /* Array describing the physical pages */
 /* The index is the physical page number */
-static page_desc_t page_desc[numPageDescEntries] __attribute__ ((section ("svamem")));
+static page_desc_t page_desc[numPageDescEntries] SVAMEM;
 
 /*
  * Description:
@@ -887,7 +888,7 @@ getPhysicalAddr (void * v) {
 
 /* Cache of page table pages */
 extern unsigned char
-SVAPTPages[1024][X86_PAGE_SIZE] __attribute__ ((section ("svamem")));
+SVAPTPages[1024][X86_PAGE_SIZE] SVAMEM;
 
 /*
  * Function: allocPTPage()

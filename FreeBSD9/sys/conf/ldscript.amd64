@@ -69,15 +69,6 @@ SECTIONS
   PROVIDE (_etext = .);
   PROVIDE (etext = .);
 
-  /* Create the SVA data section */
-  _svastart = ALIGN(0x1000);
-  .svamem ALIGN(0x1000) : {
-    SVAPTPages = .;
-    . = . + 4194304;
-    *(svamem)
-    _svaend = .;
-  }
-
   .rodata         : { *(.rodata .rodata.* .gnu.linkonce.r.*) }
   .rodata1        : { *(.rodata1) }
   .eh_frame_hdr : { *(.eh_frame_hdr) }
@@ -162,6 +153,16 @@ SECTIONS
 
   .data1          : { *(.data1) }
   _edata = .; PROVIDE (edata = .);
+
+  /* Create the SVA data section */
+  _svastart = ALIGN(0x1000);
+  .svamem ALIGN(0x1000) : {
+    SVAPTPages = .;
+    . = . + 4194304;
+    *(svamem)
+    _svaend = .;
+  }
+
   __bss_start = .;
   .bss            :
   {
