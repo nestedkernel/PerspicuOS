@@ -14,10 +14,16 @@
   pushq %rax; \
   /* Get current cr0 value */ \
   movq %cr0, %rax; \
+  /* Start by seeing if WP is already set */ \
+  jmp 2f; \
+1: \
   /* Set WP bit in copy */ \
   orq $0x10000, %rax; \
   /* Replace cr0 with updated value */ \
   movq %rax, %cr0; \
+2: \
+  test $0x10000, %eax; \
+  je 1b; \
   /* Restore clobbered register */ \
   popq %rax;
 
