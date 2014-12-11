@@ -116,6 +116,31 @@ struct PTInfo PTPages[1024] SVAMEM;
 /* The index is the physical page number */
 static page_desc_t page_desc[numPageDescEntries] SVAMEM;
 
+typedef unsigned lock_t;
+static lock_t MMULock SVAMEM;
+
+static inline void init_MMULock() {
+    MMULock = 0;
+}
+
+static inline char MMULock_Try() {
+    return __sync_lock_test_and_set(&MMULock, 1) == 0;
+}
+
+static inline void MMULock_Acquire() {
+    while (!MMULock_Try()) {
+        panic("MMULock contended!");
+        while(MMULock) {
+            // yield
+        }
+    }
+}
+
+static inline void MMULock_Release() {
+    SVA_ASSERT(MMULock != 0, "Attempt to unlock unheld MMU lock!");
+    __sync_lock_release(&MMULock);
+}
+
 /*
  * Description:
  *  Given a page table entry value, return the page description associate with
@@ -150,6 +175,9 @@ void
 init_mmu () {
   /* Initialize the page descriptor array */
   memset (page_desc, 0, sizeof (struct page_desc_t) * numPageDescEntries);
+
+  init_MMULock();
+
   return;
 }
 
@@ -1334,6 +1362,7 @@ unmapSecurePage (unsigned char * cr3, unsigned char * v) {
  */
 SECURE_WRAPPER(void,
 sva_mm_load_pgtable, void *pg) {
+  MMULock_Acquire();
   /* Control Register 0 Value (which is used to enable paging) */
   unsigned int cr0;
 
@@ -1372,6 +1401,7 @@ sva_mm_load_pgtable, void *pg) {
     *secmemp = threadp->secmemPML4e;
   }
   
+  MMULock_Release();
   return;
 }
 
@@ -1384,6 +1414,7 @@ sva_mm_load_pgtable, void *pg) {
  */
 SECURE_WRAPPER(void,
 sva_load_cr0, unsigned long val) {
+    // No need to obtain MMU Lock
     val |= CR0_WP;
     _load_cr0(val);
     if (!(val & CR0_WP))
@@ -1966,6 +1997,7 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
               uintptr_t * firstpaddr,
               uintptr_t btext,
               uintptr_t etext) {
+  MMULock_Acquire();
   /* Get the virtual address of the pml4e mapping */
 #if USE_VIRT
   pml4e_t * kpml4eVA = (pml4e_t *) getVirtual( (uintptr_t) kpml4Mapping);
@@ -2002,6 +2034,8 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
    * Note that the MMU is now initialized.
    */
   mmuIsInitialized = 1;
+
+  MMULock_Release();
 }
 
 /*
@@ -2018,6 +2052,7 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
  */
 SECURE_WRAPPER(void,
 sva_declare_l1_page, uintptr_t frameAddr) {
+  MMULock_Acquire();
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2062,6 +2097,7 @@ sva_declare_l1_page, uintptr_t frameAddr) {
     // panic ("SVA: declare L1: type = %x\n", pgDesc->type);
   }
 
+  MMULock_Release();
   return;
 }
 
@@ -2079,6 +2115,7 @@ sva_declare_l1_page, uintptr_t frameAddr) {
  */
 SECURE_WRAPPER(void, 
 sva_declare_l2_page, uintptr_t frameAddr) {
+  MMULock_Acquire();
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2119,6 +2156,7 @@ sva_declare_l2_page, uintptr_t frameAddr) {
     initDeclaredPage(frameAddr);
   }
 
+  MMULock_Release();
   return;
 }
 
@@ -2136,6 +2174,7 @@ sva_declare_l2_page, uintptr_t frameAddr) {
  */
 SECURE_WRAPPER(void,
 sva_declare_l3_page, uintptr_t frameAddr) {
+  MMULock_Acquire();
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
@@ -2176,6 +2215,7 @@ sva_declare_l3_page, uintptr_t frameAddr) {
     initDeclaredPage(frameAddr);
   }
 
+  MMULock_Release();
   return;
 }
 
@@ -2193,7 +2233,7 @@ sva_declare_l3_page, uintptr_t frameAddr) {
  */
 SECURE_WRAPPER(void,
 sva_declare_l4_page, uintptr_t frameAddr) {
-
+  MMULock_Acquire();
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(frameAddr);
 
@@ -2240,6 +2280,7 @@ sva_declare_l4_page, uintptr_t frameAddr) {
      */
     initDeclaredPage(frameAddr);
   }
+  MMULock_Release();
 }
 
 static inline page_entry_t * 
@@ -2302,6 +2343,7 @@ printPTES (uintptr_t vaddr) {
  */
 SECURE_WRAPPER(void,
 sva_remove_page, uintptr_t paddr) {
+  MMULock_Acquire();
 
   /* Get the entry controlling the permissions for this pte PTP */
   page_entry_t *pte = get_pgeVaddr(getVirtual (paddr));
@@ -2323,6 +2365,7 @@ sva_remove_page, uintptr_t paddr) {
     default:
       /* Restore interrupts */
       panic ("SVA: undeclare bad page type: %lx %lx\n", paddr, pgDesc->type);
+      MMULock_Release();
       return;
       break;
   }
@@ -2351,7 +2394,8 @@ sva_remove_page, uintptr_t paddr) {
   } else {
     printf ("SVA: remove_page: type=%x count %x\n", pgDesc->type, pgDesc->count);
   }
-
+ 
+  MMULock_Release();
   return;
 }
 
@@ -2371,6 +2415,7 @@ sva_remove_page, uintptr_t paddr) {
  */
 SECURE_WRAPPER(void,
 sva_remove_mapping, page_entry_t *pteptr) {
+  MMULock_Acquire();
 
   /* Get the page_desc for the newly declared l4 page frame */
   page_desc_t *pgDesc = getPageDescPtr(*pteptr);
@@ -2378,6 +2423,7 @@ sva_remove_mapping, page_entry_t *pteptr) {
   /* Update the page table mapping to zero */
   __update_mapping (pteptr, ZERO_MAPPING);
 
+  MMULock_Release();
 }
 
 /* 
@@ -2397,6 +2443,7 @@ sva_remove_mapping, page_entry_t *pteptr) {
  */
 SECURE_WRAPPER(void,
 sva_update_l1_mapping, pte_t *pteptr, page_entry_t val) {
+  MMULock_Acquire();
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2409,8 +2456,10 @@ sva_update_l1_mapping, pte_t *pteptr, page_entry_t val) {
   /*
    * Update the page table with the new mapping.
    */
+  // printf("[NK] update_l1: pteptr=%p\n", pteptr);
   __update_mapping(pteptr, val);
 
+  MMULock_Release();
   return;
 }
 
@@ -2423,6 +2472,7 @@ sva_update_l1_mapping, pte_t *pteptr, page_entry_t val) {
  */
 SECURE_WRAPPER(void,
 sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
+  MMULock_Acquire();
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2435,8 +2485,10 @@ sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
   /*
    * Update the page mapping.
    */
+  // printf("[NK] update_l2: pdeptr=%p\n", pdePtr);
   __update_mapping(pdePtr, val);
 
+  MMULock_Release();
   return;
 }
 
@@ -2444,6 +2496,7 @@ sva_update_l2_mapping, pde_t *pdePtr, page_entry_t val) {
  * Updates a level3 mapping 
  */
 SECURE_WRAPPER(void, sva_update_l3_mapping, pdpte_t * pdptePtr, page_entry_t val) {
+  MMULock_Acquire();
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2453,8 +2506,10 @@ SECURE_WRAPPER(void, sva_update_l3_mapping, pdpte_t * pdptePtr, page_entry_t val
     panic ("SVA: MMU: update_l3 not an L3: %lx %lx: %lx\n", pdptePtr, val, ptDesc->type);
   }
 
+  // printf("[NK] update_l3: pdpteptr=%p\n", pdptePtr);
   __update_mapping(pdptePtr, val);
 
+  MMULock_Release();
   return;
 }
 
@@ -2462,6 +2517,7 @@ SECURE_WRAPPER(void, sva_update_l3_mapping, pdpte_t * pdptePtr, page_entry_t val
  * Updates a level4 mapping 
  */
 SECURE_WRAPPER( void, sva_update_l4_mapping ,pml4e_t * pml4ePtr, page_entry_t val) {
+  MMULock_Acquire();
   /*
    * Ensure that the PTE pointer points to an L1 page table.  If it does not,
    * then report an error.
@@ -2471,8 +2527,10 @@ SECURE_WRAPPER( void, sva_update_l4_mapping ,pml4e_t * pml4ePtr, page_entry_t va
     panic ("SVA: MMU: update_l4 not an L4: %lx %lx: %lx\n", pml4ePtr, val, ptDesc->type);
   }
 
+  // printf("[NK] update_l4: pml4ePtr=%p\n", pml4ePtr);
   __update_mapping(pml4ePtr, val);
 
+  MMULock_Release();
   return;
 }
 
