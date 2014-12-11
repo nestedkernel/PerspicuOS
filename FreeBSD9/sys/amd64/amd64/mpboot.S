@@ -105,7 +105,7 @@ protmode:
 	rdmsr
 	orl	$EFER_LME | EFER_SCE, %eax
 #ifdef SVA_MMU
-    callq sva_wrmsr
+    call sva_wrmsr
 #else
 	wrmsr
 #endif

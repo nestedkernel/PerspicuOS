@@ -114,7 +114,7 @@ clflush(u_long addr)
 static __inline void
 disable_intr(void)
 {
-#if 0
+#ifndef SVA_MMU
 	__asm __volatile("cli" : : : "memory");
 #else
   sva_load_lif (0);
@@ -140,7 +140,7 @@ cpuid_count(u_int ax, u_int cx, u_int *p)
 static __inline void
 enable_intr(void)
 {
-#if 0
+#ifndef SVA_MMU
 	__asm __volatile("sti");
 #else
   sva_load_lif (1);
@@ -395,7 +395,7 @@ static __inline void
 load_cr3(u_long data)
 {
 
-#if 0
+#ifndef SVA_MMU
 	__asm __volatile("movq %0,%%cr3" : : "r" (data) : "memory");
 #else
   /* SVA: Use the intrinsic */

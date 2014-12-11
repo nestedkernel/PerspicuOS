@@ -111,7 +111,7 @@ MCOUNT_LABEL(btrap)
 
 /* Traps that we leave interrupts disabled for.. */
 #define	TRAP_NOEN(a)	\
-    SECURE_TRAP_ENTRY \
+	SECURE_TRAP_ENTRY \
 	subq $TF_RIP,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -128,7 +128,7 @@ IDTVEC(dtrace_ret)
 
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
-    SECURE_TRAP_ENTRY \
+	SECURE_TRAP_ENTRY \
 	subq $TF_RIP,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -157,7 +157,7 @@ IDTVEC(xmm)
 
 /* This group of traps have tf_err already pushed by the cpu */
 #define	TRAP_ERR(a)	\
-    SECURE_TRAP_ENTRY \
+	SECURE_TRAP_ENTRY \
 	subq $TF_ERR,%rsp; \
 	movl $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
@@ -267,6 +267,7 @@ alltraps_noen:
 	jmp	alltraps_pushregs_no_rdi
 
 IDTVEC(dblfault)
+	SECURE_TRAP_ENTRY
 	subq	$TF_ERR,%rsp
 	movl	$T_DOUBLEFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
@@ -304,6 +305,7 @@ IDTVEC(dblfault)
 	jmp	2b
 
 IDTVEC(page)
+	SECURE_TRAP_ENTRY
 	subq	$TF_ERR,%rsp
 	movl	$T_PAGEFLT,TF_TRAPNO(%rsp)
 	movq	%rdi,TF_RDI(%rsp)	/* free up a GP register */
@@ -330,6 +332,7 @@ IDTVEC(page)
 	 * XXX linux has a trap handler for their equivalent of load_gs().
 	 */
 IDTVEC(prot)
+	SECURE_TRAP_ENTRY
 	subq	$TF_ERR,%rsp
 	movl	$T_PROTFLT,TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
@@ -361,14 +364,14 @@ IDTVEC(prot)
  * entries from an LDT).
  */
 IDTVEC(fast_syscall)
-  SECURE_TRAP_ENTRY
+	SECURE_TRAP_ENTRY
 #if 0
-  /*
-   * Determine if this is an SVA system call or an original system call.  If
-   * it is an SVA system call (the upper bit in the system call number is set),
-   * let SVA handle it.
-   */
-  jmp SVAsyscall
+	/*
+	 * Determine if this is an SVA system call or an original system call.  If
+	 * it is an SVA system call (the upper bit in the system call number is set),
+	 * let SVA handle it.
+	 */
+	jmp SVAsyscall
 #endif
 	swapgs
 	movq	%rsp,PCPU(SCRATCH_RSP)
@@ -483,6 +486,7 @@ IDTVEC(fast_syscall32)
  */
 
 IDTVEC(nmi)
+	SECURE_TRAP_ENTRY
 	subq	$TF_RIP,%rsp
 	movl	$(T_NMI),TF_TRAPNO(%rsp)
 	movq	$0,TF_ADDR(%rsp)
@@ -524,7 +528,7 @@ IDTVEC(nmi)
 	movl	%edx,%eax
 	shrq	$32,%rdx
 #ifdef SVA_MMU
-    callq sva_wrmsr
+	callq sva_wrmsr
 #else
 	wrmsr
 #endif
@@ -616,7 +620,7 @@ nmi_kernelexit:
 	movl	%edx,%eax
 	shrq	$32,%rdx
 #ifdef SVA_MMU
-    callq sva_wrmsr
+	callq sva_wrmsr
 #else
 	wrmsr
 #endif
@@ -758,7 +762,7 @@ ld_fs:
 	.globl	ld_fsbase
 ld_fsbase:
 #ifdef SVA_MMU
-    callq sva_wrmsr
+	callq sva_wrmsr
 #else
 	wrmsr
 #endif
@@ -773,7 +777,7 @@ ld_fsbase:
 ld_gs:
 	movw	%si,%gs
 #ifdef SVA_MMU
-    callq sva_wrmsr
+	callq sva_wrmsr
 #else
 	wrmsr
 #endif
@@ -786,7 +790,7 @@ ld_gs:
 	.globl	ld_gsbase
 ld_gsbase:
 #ifdef SVA_MMU
-    callq sva_wrmsr
+	callq sva_wrmsr
 #else
 	wrmsr
 #endif

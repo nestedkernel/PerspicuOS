@@ -1,6 +1,10 @@
 #ifndef _TRAP_ENTRY_H_
 #define _TRAP_ENTRY_H_
 
+// For better or for worse, 'SVA_MMU'
+// kernel option is used to determine
+// if we're running as NK or normal FreeBSD.
+#ifdef SVA_MMU
 #define DISABLE_INTERRUPTS \
   /* ENSURE that interrupts are disabled */ \
   cli;
@@ -21,5 +25,11 @@
   /* And that WP is enabled! */ \
   DISABLE_INTERRUPTS \
   ENABLE_WP_BIT
+
+#else // !SVA_MMU
+
+#define SECURE_TRAP_ENTRY /* Nothing */
+
+#endif // SVA_MMU
 
 #endif // _TRAP_ENTRY_H_

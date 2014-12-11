@@ -667,7 +667,7 @@ pmap_bootstrap(vm_paddr_t *firstaddr)
 	 */
 	create_pagetables(firstaddr);
 
-#if 1
+#ifdef SVA_MMU
   /* 
    * Set the static address locations in the struct here to aid in kernel MMU
    * initialization. Note that we pass in the page mapping for the pml4 page.
@@ -1655,7 +1655,7 @@ pmap_add_delayed_free_list(vm_page_t m, vm_page_t *free, boolean_t set_PG_ZERO)
 	else
 		m->flags &= ~PG_ZERO;
 	m->right = *free;
-#if 1
+#ifdef SVA_MMU
   /* Remove this page if it is a page table page */
 	sva_remove_page (VM_PAGE_TO_PHYS(m));
 #endif
@@ -3486,11 +3486,11 @@ retry:
 	if ((prot & VM_PROT_EXECUTE) == 0)
 		newpde |= pg_nx;
 	if (newpde != oldpde) {
-#if 0
+#ifdef SVA_MMU
+        sva_update_l2_mapping (pde, newpde);
+#else
 		if (!atomic_cmpset_long(pde, oldpde, newpde))
 			goto retry;
-#else
-    sva_update_l2_mapping (pde, newpde);
 #endif
 		if (oldpde & PG_G)
 			pmap_invalidate_page(pmap, sva);
@@ -3605,11 +3605,11 @@ retry:
 				pbits |= pg_nx;
 
 			if (pbits != obits) {
-#if 0
+#ifdef SVA_MMU
+				sva_update_l1_mapping (pte, pbits);
+#else
 				if (!atomic_cmpset_long(pte, obits, pbits))
 					goto retry;
-#else
-				sva_update_l1_mapping (pte, pbits);
 #endif
 				if (obits & PG_G)
 					pmap_invalidate_page(pmap, sva);
@@ -3660,11 +3660,11 @@ setpde:
 		 * When PG_M is already clear, PG_RW can be cleared without
 		 * a TLB invalidation.
 		 */
-#if 0
+#ifdef SVA_MMU
+		sva_update_l1_mapping (firstpte, newpde & ~PG_RW);
+#else
 		if (!atomic_cmpset_long(firstpte, newpde, newpde & ~PG_RW))
 			goto setpde;
-#else
-		sva_update_l1_mapping (firstpte, newpde & ~PG_RW);
 #endif
 		newpde &= ~PG_RW;
 	}
@@ -3689,11 +3689,11 @@ setpte:
 			 * When PG_M is already clear, PG_RW can be cleared
 			 * without a TLB invalidation.
 			 */
-#if 0
+#ifdef SVA_MMU
+			sva_update_l1_mapping (pte, oldpte & ~PG_RW);
+#else
 			if (!atomic_cmpset_long(pte, oldpte, oldpte & ~PG_RW))
 				goto setpte;
-#else
-			sva_update_l1_mapping (pte, oldpte & ~PG_RW);
 #endif
 			oldpte &= ~PG_RW;
 			oldpteva = (oldpte & PG_FRAME & PDRMASK) |
@@ -3917,11 +3917,11 @@ validate:
 		if (origpte & PG_V) {
 			invlva = FALSE;
             /* SVA TODO Figure out what the heck this does */
-#if 0
-			origpte = pte_load_store(pte, newpte);
-#else
-      origpte = *pte;
+#ifdef SVA_MMU
+            origpte = *pte;
 			sva_update_l1_mapping(pte, newpte);
+#else
+			origpte = pte_load_store(pte, newpte);
 #endif
 			if (origpte & PG_A) {
 				if (origpte & PG_MANAGED)
@@ -4370,17 +4370,17 @@ retry:
 	pte = pmap_pde_to_pte(pde, va);
 	if (wired && (*pte & PG_W) == 0) {
 		pmap->pm_stats.wired_count++;
-#if 0
-		atomic_set_long(pte, PG_W);
+#ifdef SVA_MMU
+        sva_update_l1_mapping (pte, *pte | PG_W);
 #else
-    sva_update_l1_mapping (pte, *pte | PG_W);
+		atomic_set_long(pte, PG_W);
 #endif
 	} else if (!wired && (*pte & PG_W) != 0) {
 		pmap->pm_stats.wired_count--;
-#if 0
-		atomic_clear_long(pte, PG_W);
+#ifdef SVA_MMU
+        sva_update_l1_mapping (pte, *pte & (~PG_W));
 #else
-    sva_update_l1_mapping (pte, *pte & (~PG_W));
+		atomic_clear_long(pte, PG_W);
 #endif
 	}
 out:
@@ -5020,12 +5020,12 @@ pmap_remove_write(vm_page_t m)
 retry:
 		oldpte = *pte;
 		if (oldpte & PG_RW) {
-#if 0
+#ifdef SVA_MMU
+			sva_update_l1_mapping (pte, oldpte & ~(PG_RW | PG_M));
+#else
 			if (!atomic_cmpset_long(pte, oldpte, oldpte &
 			    ~(PG_RW | PG_M)))
 				goto retry;
-#else
-			sva_update_l1_mapping (pte, oldpte & ~(PG_RW | PG_M));
 #endif
 			if ((oldpte & PG_M) != 0)
 				vm_page_dirty(m);
@@ -5107,10 +5107,10 @@ pmap_ts_referenced(vm_page_t m)
 			    " found a 2mpage in page %p's pv list", m));
 			pte = pmap_pde_to_pte(pde, pv->pv_va);
 			if ((*pte & PG_A) != 0) {
-#if 0
-				atomic_clear_long(pte, PG_A);
+#ifdef SVA_MMU
+                sva_update_l1_mapping(pte, *pte & (~PG_A));
 #else
-        sva_update_l1_mapping(pte, *pte & (~PG_A));
+				atomic_clear_long(pte, PG_A);
 #endif
 				pmap_invalidate_page(pmap, pv->pv_va);
 				rtval++;
@@ -5172,13 +5172,13 @@ pmap_clear_modify(vm_page_t m)
 					pte = pmap_pde_to_pte(pde, va);
 					oldpte = *pte;
 					if ((oldpte & PG_V) != 0) {
-#if 0
+#ifdef SVA_MMU
+                        sva_update_l1_mapping (pte, oldpte & ~(PG_M | PG_RW));
+#else
 						while (!atomic_cmpset_long(pte,
 						    oldpte,
 						    oldpte & ~(PG_M | PG_RW)))
 							oldpte = *pte;
-#else
-            sva_update_l1_mapping (pte, oldpte & ~(PG_M | PG_RW));
 #endif
 						vm_page_dirty(m);
 						pmap_invalidate_page(pmap, va);
@@ -5196,10 +5196,10 @@ pmap_clear_modify(vm_page_t m)
 		    " a 2mpage in page %p's pv list", m));
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
 		if ((*pte & (PG_M | PG_RW)) == (PG_M | PG_RW)) {
-#if 0
-			atomic_clear_long(pte, PG_M);
+#ifdef SVA_MMU
+            sva_update_l1_mapping (pte, *pte & (~PG_M));
 #else
-      sva_update_l1_mapping (pte, *pte & (~PG_M));
+			atomic_clear_long(pte, PG_M);
 #endif
 			pmap_invalidate_page(pmap, pv->pv_va);
 		}
@@ -5257,10 +5257,10 @@ pmap_clear_reference(vm_page_t m)
 		    " a 2mpage in page %p's pv list", m));
 		pte = pmap_pde_to_pte(pde, pv->pv_va);
 		if (*pte & PG_A) {
-#if 0
-			atomic_clear_long(pte, PG_A);
-#else
+#ifdef SVA_MMU
 			sva_update_l1_mapping(pte, *pte & (~PG_A));
+#else
+			atomic_clear_long(pte, PG_A);
 #endif
 			pmap_invalidate_page(pmap, pv->pv_va);
 		}
@@ -5283,19 +5283,19 @@ pmap_pte_attr(pt_entry_t *pte, int cache_bits)
 	 * The cache mode bits are all in the low 32-bits of the
 	 * PTE, so we can just spin on updating the low 32-bits.
 	 */
-#if 0
-	do {
-		opte = *(u_int *)pte;
-		npte = opte & ~PG_PTE_CACHE;
-		npte |= cache_bits;
-	} while (npte != opte && !atomic_cmpset_int((u_int *)pte, opte, npte));
-#else
+#ifdef SVA_MMU
 	do {
 		opte = *(u_int *)pte;
 		npte = opte & ~PG_PTE_CACHE;
 		npte |= cache_bits;
     sva_update_l1_mapping (pte, npte);
 	} while (npte != opte);
+#else
+	do {
+		opte = *(u_int *)pte;
+		npte = opte & ~PG_PTE_CACHE;
+		npte |= cache_bits;
+	} while (npte != opte && !atomic_cmpset_int((u_int *)pte, opte, npte));
 #endif
 }
 
@@ -5309,13 +5309,7 @@ pmap_pde_attr(pd_entry_t *pde, int cache_bits)
 	 * The cache mode bits are all in the low 32-bits of the
 	 * PDE, so we can just spin on updating the low 32-bits.
 	 */
-#if 0
-	do {
-		opde = *(u_int *)pde;
-		npde = opde & ~PG_PDE_CACHE;
-		npde |= cache_bits;
-	} while (npde != opde && !atomic_cmpset_int((u_int *)pde, opde, npde));
-#else
+#ifdef SVA_MMU
   /* SVA: SVA requires the use of intrinsics to update PDEs */
 	do {
 		opde = *(u_int *)pde;
@@ -5323,6 +5317,12 @@ pmap_pde_attr(pd_entry_t *pde, int cache_bits)
 		npde |= cache_bits;
     sva_update_l2_mapping (pde, npde);
 	} while (npde != opde);
+#else
+	do {
+		opde = *(u_int *)pde;
+		npde = opde & ~PG_PDE_CACHE;
+		npde |= cache_bits;
+	} while (npde != opde && !atomic_cmpset_int((u_int *)pde, opde, npde));
 #endif
 }
 

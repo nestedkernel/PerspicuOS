@@ -733,11 +733,11 @@ init_secondary(void)
 #else
 	wrmsr(MSR_EFER, msr);
 #endif
-#endif
 #ifdef SVA_MMU
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
 #else
 	wrmsr(MSR_LSTAR, (u_int64_t)IDTVEC(fast_syscall));
+#endif
 #ifdef SVA_MMU
 	wrmsr(MSR_CSTAR, (u_int64_t)IDTVEC(fast_syscall32));
 #else

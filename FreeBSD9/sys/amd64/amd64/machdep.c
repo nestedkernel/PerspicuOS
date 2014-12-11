@@ -1835,7 +1835,7 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	mtx_init(&icu_lock, "icu", NULL, MTX_SPIN | MTX_NOWITNESS);
 	mtx_init(&dt_lock, "descriptor tables", NULL, MTX_DEF);
 
-#if 1
+#ifdef SVA_MMU
   /*
    * Initialize the SVA virtual machine on the primary processor.
    */
