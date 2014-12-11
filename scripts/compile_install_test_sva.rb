@@ -16,7 +16,7 @@ llvmSourceDir = svaBaseDir+"/llvm-obj"
 svaSourceDir = svaBaseDir+"/SVA"
 kernCompileOpts = ""
 qemuGDBOpt = ""
-$kernconf = "SVA"
+$kernconf = "NK"
 $instKernName = "perspicuos"
 
 optparse = OptionParser.new do|opts|
