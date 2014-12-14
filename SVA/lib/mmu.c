@@ -1793,6 +1793,46 @@ declare_kernel_code_pages (uintptr_t btext, uintptr_t etext) {
 }
 
 /*
+ * Function: declare_kernel_code_pages()
+ *
+ * Description:
+ *  Mark all kernel code pages as code pages.
+ *
+ * Inputs: 
+ *  startVA    - The first virtual address of the memory region.
+ *  endVA      - The last virtual address of the memory region.
+ *  pgType     - The nested kernel page type 
+ */
+static inline void
+init_protected_pages (uintptr_t startVA, uintptr_t endVA, enum page_type_t
+        pgType) 
+{
+    /* Get pointers for the pages */
+    uintptr_t page;
+    uintptr_t startPA = getPhysicalAddr(startVA) & PG_FRAME;
+    uintptr_t endPA = getPhysicalAddr(endVA) & PG_FRAME;
+
+    //NKDEBUG(init_prot_pages,"\nDeclaring pages for range: %p -- %p\n",
+     //       (void *) startVA, (void *) endVA);
+
+    /*
+     * Scan through each page in the text segment.  Note that it is a pgType
+     * page, and make the page read-only within the page table.
+     */
+    for (page = startPA; page < endPA; page += pageSize) {
+        page_desc[page / pageSize].type = pgType;
+        page_desc[page / pageSize].user = 0;
+
+        /* Configure the MMU so that the page is read-only */
+        page_entry_t * page_entry = get_pgeVaddr (startVA + (page - startPA));
+        page_entry_store(page_entry, setMappingReadOnly(*page_entry));
+    }
+
+    //NKDEBUG(init_prot_pages,"\nFinished decl pages for range: %p -- %p\n",
+     //       (void *)startVA, (void *)endVA);
+}
+
+/*
  * Function: makePTReadOnly()
  *
  * Description:
@@ -2023,6 +2063,12 @@ sva_mmu_init, pml4e_t * kpml4Mapping,
 
   /* Identify kernel code pages and intialize the descriptors */
   declare_kernel_code_pages(btext, etext);
+    
+  /* Make all SuperSpace pages read-only */
+  /* TODO:F
+  //extern char _svastart[];
+  //extern char _svaend[];
+  //init_protected_pages((uintptr_t)_svastart, (uintptr_t)_svaend, PG_SVA);
 
   /* Now load the initial value of the cr3 to complete kernel init */
   load_cr3(*kpml4Mapping & PG_FRAME);
