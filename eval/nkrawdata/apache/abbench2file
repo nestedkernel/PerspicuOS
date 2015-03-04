@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Stupid script to create dat files with the average bandwidths for abbench resutls
+# Pass the dir containing the folders with the raw data results as argument. This dir
+# should one folder for each kernel in the kernels var.
+
+
+kernels="baseline baseline-log perspicuos perspicuos-appendlog perspicuos-wp perspicuos-writelog";
+filesizes="1 4 16 64 256 1024 4096 16384 65536 262144 1048576";
+
+for kernel in $kernels; do
+  resfile=$kernel.apache.dat;
+  rm -f $resfile;
+  for size in $filesizes; do
+    file=$1/$kernel/results.$size.1;
+    echo $size `awk '/Transfer rate/ {sum += $3; cnt += 1 } END {print sum / cnt}' $file` >> $resfile;
+  done;
+done;

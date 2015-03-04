@@ -1,0 +1,1140 @@
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sending file modes: C0644 335544320 file-16384
+Sink: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4380.2, received 17403310.9
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4378.3, received 17395726.6
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874192 bytes, in 19.2 seconds
+Bytes per second: sent 4401.5, received 17488017.2
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sending file modes: C0644 335544320 file-16384
+Sink: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4383.4, received 17415938.3
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sending file modes: C0644 335544320 file-16384
+Sink: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.2 seconds
+Bytes per second: sent 4398.9, received 17477486.4
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.2 seconds
+Bytes per second: sent 4403.6, received 17496054.5
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4379.7, received 17401150.4
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4380.4, received 17403793.1
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4380.3, received 17403622.6
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sending file modes: C0644 335544320 file-16384
+Sink: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4378.3, received 17395641.2
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4383.1, received 17414870.0
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4372.4, received 17372141.7
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.2 seconds
+Bytes per second: sent 4398.2, received 17474883.1
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4379.5, received 17400427.4
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4380.0, received 17402515.5
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.2 seconds
+Bytes per second: sent 4395.3, received 17463293.1
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4375.5, received 17384552.9
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.2 seconds
+Bytes per second: sent 4394.0, received 17457888.9
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sending file modes: C0644 335544320 file-16384
+Sink: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874256 bytes, in 19.3 seconds
+Bytes per second: sent 4376.8, received 17389637.4
+debug1: Exit status 0
+Executing: program /usr/bin/ssh host 192.0.0.11, user (unspecified), command scp -v -f -- /usr/sshfiles/file-16384
+OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503, OpenSSL 0.9.8q 2 Dec 2010
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: Connecting to 192.0.0.11 [192.0.0.11] port 22.
+debug1: Connection established.
+debug1: identity file /home/kasampa2/.ssh/id_rsa type 1
+debug1: identity file /home/kasampa2/.ssh/id_rsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_dsa-cert type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa type -1
+debug1: identity file /home/kasampa2/.ssh/id_ecdsa-cert type -1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: match: OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503 pat OpenSSH*
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_5.8p2_hpn13v11 FreeBSD-20110503
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: server->client aes128-ctr hmac-md5 none
+debug1: kex: client->server aes128-ctr hmac-md5 none
+debug1: sending SSH2_MSG_KEX_ECDH_INIT
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ECDSA 24:00:28:14:96:0e:8d:57:92:b7:b2:69:68:2f:e2:60
+debug1: Host '192.0.0.11' is known and matches the ECDSA host key.
+debug1: Found key in /home/kasampa2/.ssh/known_hosts:3
+debug1: ssh_ecdsa_verify: signature correct
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: Roaming not allowed by server
+debug1: SSH2_MSG_SERVICE_REQUEST sent
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering RSA public key: /home/kasampa2/.ssh/id_rsa
+debug1: Server accepts key: pkalg ssh-rsa blen 279
+debug1: read PEM private key done: type RSA
+debug1: Authentication succeeded (publickey).
+Authenticated to 192.0.0.11 ([192.0.0.11]:22).
+debug1: Final hpn_buffer_size = 2097152
+debug1: HPN Disabled: 0, HPN Buffer Size: 2097152
+debug1: channel 0: new [client-session]
+debug1: Enabled Dynamic Window Scaling
+
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: Sending command: scp -v -f -- /usr/sshfiles/file-16384
+Sink: C0644 335544320 file-16384
+Sending file modes: C0644 335544320 file-16384
+debug1: client_input_channel_req: channel 0 rtype exit-status reply 0
+debug1: client_input_channel_req: channel 0 rtype eow@openssh.com reply 0
+debug1: channel 0: free: client-session, nchannels 1
+debug1: fd 0 clearing O_NONBLOCK
+debug1: fd 1 clearing O_NONBLOCK
+debug1: fd 2 clearing O_NONBLOCK
+Transferred: sent 84536, received 335874224 bytes, in 19.3 seconds
+Bytes per second: sent 4377.3, received 17391858.2
+debug1: Exit status 0
