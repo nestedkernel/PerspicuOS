@@ -37,6 +37,7 @@ http://prezi.com/in6qr3l92ffc/?utm_campaign=share&utm_medium=copy
 Our current nested kernel implementation for x86-64 FreeBSD is called
 PerspicuOS. 
 
+...
 1. Install FreeBSD 9.0:
     http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/
 1. In FreeBSD 9.0 System, clone the repo
