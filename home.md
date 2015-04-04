@@ -38,21 +38,21 @@ Our current nested kernel implementation for x86-64 FreeBSD is called
 PerspicuOS. 
 
 1. Install FreeBSD 9.0:
-http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/
+    http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/
 1. In FreeBSD 9.0 System, clone the repo
-$ clone git@github.com:nestedkernel/nestedkernel.git nestedkernel
+    $ clone git@github.com:nestedkernel/nestedkernel.git nestedkernel
 2. Build the nested kernel
-$ cd nestedkernel
-$ make 
+    $ cd nestedkernel
+    $ make 
 3. Configure FreeBSD /etc/src.conf
-# This setting to build world without -Werror:
-NO_WERROR=
-# This setting to build kernel without -Werror:
-WERROR=
-# Set the library path to the nested kernel lib
-CFLAGS+=-I/PATH/TO/NESTEDKERNEL/include
+    \# This setting to build world without -Werror:
+    NO_WERROR=
+    \# This setting to build kernel without -Werror:
+    WERROR=
+    \# Set the library path to the nested kernel lib
+    CFLAGS+=-I/PATH/TO/NESTEDKERNEL/include
 4. Make PerspicuOS: Use FreeBSD building instructions
-selecting the NK kernel configuration
+    selecting the NK kernel configuration
 5. Install and Boot (you can use either the base harddrive or
         a VM tool Like Qemu, VirtualBox, or VMWare)
 
