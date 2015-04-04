@@ -1,3 +1,8 @@
+---
+title: This is my title
+layout: post
+---
+
 ### Welcome to the Nested Kernel.
 Monolithic operating system designs undermine the security of computing systems
 by allowing single exploits anywhere in the kernel to enjoy full supervisor
