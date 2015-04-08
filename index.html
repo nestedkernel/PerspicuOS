@@ -66,15 +66,20 @@ PerspicuOS.</h3>
     hardware), and denies execution of user mode code and data pages while in
     supervisor mode (using supervisor mode execution prevention).
 
-    </p>
+</p>
 
-    <p>
+<p>
 
     By design PerspicuOS defends against a large class of attacks in code
     injection because of it's code integrity properties.  We also use
     PerspicuOS to explore protection of the system call vector table, recording
     modifications of the allproc processor list data structure, and to invoke a
-    security monitor that records audit records to a protected log.
+    security monitor that records audit records to a protected log. For more
+    details on the design of PerspicuOS please read our recent ASPLOS
+    publication <a
+        href="http://nathandautenhahn.com/downloads/publications/asplos200-dautenhahn.pdf">here</a>.
+    
+</p>
     
 </p>
 
