@@ -57,14 +57,14 @@ PerspicuOS.</h3>
     protections for Page Tables and CPU protections for control register
     isolation. PerspicuOS protects the page tables by intializing all mappings
     in the system so that Page Table Pages are mapped as read-only, and then
-    introduces a technique we call de-privileging to ensure those privileges
-    are never bypasses at runtime. PerspicuOS de-previleges the untrusted
-    portion of the kernel by removing all MMU modifying instructions from the
-    untrusted code's source, which statically reduces its privilege. Then
-    PerspicuOS enforces lifetime kernel code integrity (mapping all code pages
-    as read-only), denies execution of kernel data (using no-execute hardware),
-    and denies execution of user mode code and data pages while in supervisor
-    mode (using supervisor mode execution prevention).
+    introduces a technique that we call de-privileging to ensure those
+    privileges are never bypassed at runtime. PerspicuOS de-previleges the
+    untrusted portion of the kernel by removing all MMU modifying instructions
+    from the untrusted code's source, which statically reduces its privilege.
+    Then PerspicuOS enforces lifetime kernel code integrity (mapping all code
+    pages as read-only), denies execution of kernel data (using no-execute
+    hardware), and denies execution of user mode code and data pages while in
+    supervisor mode (using supervisor mode execution prevention).
 
     </p>
 
