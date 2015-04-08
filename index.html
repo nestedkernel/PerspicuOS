@@ -60,17 +60,28 @@ PerspicuOS.</p>
 <a href="http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/">http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/</a>
 </li>
 <li>In FreeBSD 9.0 System, clone the repo
+<br/>
 $ clone <a href="mailto:git@github.com">git@github.com</a>:nestedkernel/nestedkernel.git nestedkernel</li>
 <li>Build the nested kernel
+<br/>
 $ cd nestedkernel
+<br/>
 $ make</li>
+<br/>
 <li>Configure FreeBSD /etc/src.conf
+<br/>
 # This setting to build world without -Werror:
+<br/>
 NO_WERROR=
+<br/>
 # This setting to build kernel without -Werror:
+<br/>
 WERROR=
+<br/>
 # Set the library path to the nested kernel lib
+<br/>
 CFLAGS+=-I/PATH/TO/NESTEDKERNEL/include</li>
+<br/>
 <li>Make PerspicuOS: Use FreeBSD building instructions
 selecting the NK kernel configuration</li>
 <li>Install and Boot (you can use either the base harddrive or
