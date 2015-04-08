@@ -36,6 +36,48 @@
     aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to
 PerspicuOS.</h3>
 
+<p>
+
+    PerspicuOS is a prototype operating system that realizes the <a
+        href="nestedkernel.org">Nested Kernel</a>, a new operating architecture
+    that restricts access to a devices memory management unit so that it can
+    then perform memory isolation within the kernel. The key challenge that
+    PerspicuOS addresses is how to virtualize the MMU on real hardware, AMD64,
+    in a real operating system, FreeBSD 9.0, while not assuming any hardware
+    privilege separation or kernel integrity properties such as control flow
+    integrity. PerspicuOS presents a technique that allows both trusted and
+    untrusted code to operate at the same hardware privilege level, thereby
+    virtualizing Ring 0 supervisor privilege.  
+
+</p>
+
+<p>
+
+    PerspicuOS does this by virtualizing the MMU, which requires memory
+    protections for Page Tables and CPU protections for control register
+    isolation. PerspicuOS protects the page tables by intializing all mappings
+    in the system so that Page Table Pages are mapped as read-only, and then
+    introduces a technique we call de-privileging to ensure those privileges
+    are never bypasses at runtime. PerspicuOS de-previleges the untrusted
+    portion of the kernel by removing all MMU modifying instructions from the
+    untrusted code's source, which statically reduces its privilege. Then
+    PerspicuOS enforces lifetime kernel code integrity (mapping all code pages
+    as read-only), denies execution of kernel data (using no-execute hardware),
+    and denies execution of user mode code and data pages while in supervisor
+    mode (using supervisor mode execution prevention).
+
+    </p>
+
+    <p>
+
+    By design PerspicuOS defends against a large class of attacks in code
+    injection because of it's code integrity properties.  We also use
+    PerspicuOS to explore protection of the system call vector table, recording
+    modifications of the allproc processor list data structure, and to invoke a
+    security monitor that records audit records to a protected log.
+    
+</p>
+
 <h3>
 <a id="authors-and-contributors" class="anchor" href="#authors-and-contributors" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
 
