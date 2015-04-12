@@ -90,7 +90,7 @@ gdbinit:
 .endif
 .endif
 
-SCANNER_SCRIPT=${SVA_HOME}/scripts/scanner-objdump.py
+SCANNER_SCRIPT=${NK_HOME}/scripts/scanner-objdump.py
 
 # TODO: Run in parallel, but don't know bsd make well enough
 scan-report: ${SYSTEM_DEP} ${SCANNER_SCRIPT}
@@ -112,10 +112,10 @@ SCANNER_DEP=print-scan-report
 SCANNER_DEP=${SYSTEM_DEP}
 .endif
 
-${FULLKERNEL}: ${SCANNER_DEP} vers.o ${SVA_HOME}/SVA/lib/libsva.a
+${FULLKERNEL}: ${SCANNER_DEP} vers.o ${NK_HOME}/nk/lib/libnk.a
 	@rm -f ${.TARGET}
-	@echo linking SVA ${.TARGET}
-	${SYSTEM_LD} -L${SVA_HOME}/SVA/lib -lsva
+	@echo linking the Nested Kernel ${.TARGET}
+	${SYSTEM_LD} -L${NK_HOME}/nk/lib -lnk
 	@${SYSTEM_CTFMERGE}
 .if !defined(DEBUG)
 	${OBJCOPY} --strip-debug ${.TARGET}

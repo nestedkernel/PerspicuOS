@@ -13,7 +13,7 @@ kernelSourceDir = svaBaseDir+"/FreeBSD9"
 imageDir = svaBaseDir+"/images"
 imagePath = imageDir+"/sva_ndd.img"
 llvmSourceDir = svaBaseDir+"/llvm-obj"
-svaSourceDir = svaBaseDir+"/SVA"
+svaSourceDir = svaBaseDir+"/nk"
 kernCompileOpts = ""
 qemuGDBOpt = ""
 $kernconf = "NK"
@@ -82,7 +82,7 @@ optparse = OptionParser.new do|opts|
     opts.on("-e", "--debug-make", "Build with j=1 to get the error.") do
        options[:debugMake] = true
     end
-    opts.on("-n", "--instType=type", "The type of security instrumentation to use <cfi,cfi+sfi,none> [default: #{$instKernName}].") do |name|
+    opts.on("-n", "--instType=type", "Kernel install name for boot directory <perspicuos,stock> [default: #{$instKernName}].") do |name|
        options[:instName] = name
        $instKernName = name
     end
@@ -138,6 +138,10 @@ end
 $mountDir = "/mnt/sva_qemu_image"
 def mountImage(pathToImg)
     puts "Mounting disk image #{pathToImg} to #{$mountDir}"
+    unless(File.directory?($mountDir))
+        puts "Mount directory for qemu image does not exist. Creating..."
+	system("sudo mkdir #{$mountDir}")
+    end
     system("sudo mdconfig -a -t vnode -f #{pathToImg} -u 1")
     system("sudo mount /dev/md1p2 #{$mountDir}")
     unless($?.success?)
