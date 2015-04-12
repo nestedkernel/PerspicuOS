@@ -13,8 +13,8 @@ data
 # llvm build director 
 llvm-obj
 
-# SVA Build files
-libsva.a
+# NK Build files
+*nk.a
 
 # C build files
 *.o
