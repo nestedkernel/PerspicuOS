@@ -100,8 +100,6 @@ PerspicuOS.</h3>
 <h3>
 <a id="build-instructions" class="anchor" href="#build-instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Build Instructions</h3>
 
-<p>!!!!!! These Are Under Construction and Require Testing !!!!!!</p>
-
 <p>Our current nested kernel implementation for x86-64 FreeBSD is called
 PerspicuOS.</p>
 
@@ -109,15 +107,14 @@ PerspicuOS.</p>
 <li>Install FreeBSD 9.0:
 <a href="http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/">http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/</a>
 </li>
-<li>In FreeBSD 9.0 System, clone the repo
+<li>In FreeBSD 9.0 System, obtain the repo:
+  <a href="https://github.com/nestedkernel/PerspicuOS">PerspicuOS on GitHub</a>
+<li>Build the nested kernel (assumes clang is in /usr/bin/clang)
 <br/>
-$ clone <a href="mailto:git@github.com">git@github.com</a>:nestedkernel/nestedkernel.git nestedkernel</li>
-<li>Build the nested kernel
+$ cd REPO_DIR/nk
 <br/>
-$ cd nestedkernel
-<br/>
-$ make</li>
-<br/>
+$ make
+</li>
 <li>Configure FreeBSD /etc/src.conf
 <br/>
 # This setting to build world without -Werror:
@@ -128,15 +125,31 @@ NO_WERROR=
 <br/>
 WERROR=
 <br/>
+# Configure the system to use clang
+<br/>
+CC=/PATH/TO/CLANG
+<br/>
+CXX=/PATH/TO/CLANG
+<br/>
+CPP=/PATH/TO/CLANG
+<br/>
+# Export the nested kernel library directory for the linker script in FreeBSD. 
+<br/>
+NK_HOME=/PATH/TO/REPO_DIR
+<br/>
 # Set the library path to the nested kernel lib
 <br/>
-CFLAGS+=-I/PATH/TO/NESTEDKERNEL/include</li>
-<br/>
-<li>Make PerspicuOS: Use FreeBSD building instructions
-selecting the NK kernel configuration</li>
+CFLAGS+=-I/PATH/TO/REPO_DIR/nk/include</li>
+<li>Make PerspicuOS using FreeBSD building process selecting the NK kernel
+configuration.</li>
 <li>Install and Boot (you can use either the base harddrive or
     a VM tool Like Qemu, VirtualBox, or VMWare)</li>
 </ol>
+
+<br/>
+We have a tool that automates the kernel compile and install process in
+"REPO_DIR/scripts/compile_install_test_sva.rb". You can use this, but make sure
+to read the code to understand how it operates.
 
 <h3>
   <a id="comment-on-code" class="anchor" href="#comment-on-code" aria-hidden="true">
