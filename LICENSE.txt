@@ -1,10 +1,9 @@
 The source code for PerspicuOS is licensed as follows, unless otherwise noted
 (such as in the case of third-party components and libraries):
 
-<=--- Academic Use ---=>
+<=--- Academic License ---=>
 
-    The source code is released for academic research as specified in
-    CRAPL-LICENSE.txt.
+    The source code is released for research as specified in CRAPL-LICENSE.txt.
 
 <=--- Open Source License ---=>
 
