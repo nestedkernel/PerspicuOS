@@ -40,16 +40,18 @@ group under the supervision of Vikram Adve.
 
 ##Build Instructions
 
-Our current nested kernel implementation for x86-64 FreeBSD is called PerspicuOS.
+Our current nested kernel implementation is for x86-64 FreeBSD is called
+PerspicuOS.
 
 1. Install FreeBSD 9.0: http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/ISO-IMAGES/9.0/
 
-2. In FreeBSD 9.0 System, clone the repo 
-	$ clone git@github.com:nestedkernel/nestedkernel.git nestedkernel
+2. In FreeBSD 9.0 System, clone Nested Kernel PerspicuOS from GitHub
 
-3. Build the nested kernel 
-	$ cd nestedkernel 
+3. Build the nested kernel (assumes clang is in /usr/bin/clang) 
+	```
+	$ cd REPO_DIR/nk 
 	$ make
+	```
 
 4. Configure FreeBSD /etc/src.conf 
 	```
@@ -57,8 +59,14 @@ Our current nested kernel implementation for x86-64 FreeBSD is called PerspicuOS
 	NO_WERROR= 
 	# This setting to build kernel without -Werror: 
 	WERROR= 
+	# Configure the system to use clang 
+	CC=/PATH/TO/CLANG 
+	CXX=/PATH/TO/CLANG 
+	CPP=/PATH/TO/CLANG 
+	# Export the nested kernel library directory for the linker script in FreeBSD. 
+	NK_HOME=/PATH/TO/REPO_DIR 
 	# Set the library path to the nested kernel lib 
-	CFLAGS+=-I/PATH/TO/NESTEDKERNEL/include
+	CFLAGS+=-I/PATH/TO/REPO_DIR/nk/include
 	```
 
 5. Make PerspicuOS: Use FreeBSD building instructions selecting the NK kernel
@@ -66,6 +74,10 @@ configuration
 
 6. Install and Boot (you can use either the base harddrive or a VM
 tool Like Qemu, VirtualBox, or VMWare)
+
+We have a tool that automates the kernel compile and install process in
+"REPO_DIR/scripts/compile_install_test_sva.rb". You can use this, but make sure
+to read the code to understand how it operates.
 
 ##Comment on PerspicuOS Repo
 
