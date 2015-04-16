@@ -79,6 +79,16 @@ We have a tool that automates the kernel compile and install process in
 "REPO_DIR/scripts/compile_install_test_sva.rb". You can use this, but make sure
 to read the code to understand how it operates.
 
+##Implementation Needs
+
+  PerspicuOS does not implement the full nested kernel design. Make sure to
+  review the paper to see a list of currently implemented features.  
+
+  A few key features requiring further development include: 
+    - SMP functionality
+    - Complete NX configuration for non-code pages
+    - Finish IDT, SMM, IOMMU
+
 ##Comment on PerspicuOS Repo
 
 PerspicuOS was derived from a few other research projects and as such reflects
