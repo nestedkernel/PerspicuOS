@@ -1,6 +1,6 @@
-#PerspicuOS
+# PerspicuOS
 
-##Introduction:
+## Introduction:
 
 PerspicuOS is a prototype operating system that realizes the Nested Kernel, a
 new operating architecture that restricts access to a device's memory
@@ -31,14 +31,14 @@ allproc processor list data structure, and to invoke a security monitor that
 records audit records to a protected log. For more details on the design of
 PerspicuOS please read our recent ASPLOS publication here.
 
-##Authors and Contributors
+## Authors and Contributors
 
 PerspicuOS has several contributors: Nathan Dautenhahn, Theodoras Kasampalis,
 Will Dietz, John Criswell, and Vikram Adve. This work was accomplished while
 working at the University of Illinois at Urbana-Champaign in the LLVM research
 group under the supervision of Vikram Adve.
 
-##Build Instructions
+## Build Instructions
 
 Our current nested kernel implementation is for x86-64 FreeBSD is called
 PerspicuOS.
@@ -79,7 +79,7 @@ We have a tool that automates the kernel compile and install process in
 "REPO_DIR/scripts/compile_install_test_sva.rb". You can use this, but make sure
 to read the code to understand how it operates.
 
-##Implementation Needs
+## Implementation Needs
 
   PerspicuOS does not implement the full nested kernel design. Make sure to
   review the paper to see a list of currently implemented features.  
@@ -89,7 +89,7 @@ to read the code to understand how it operates.
     - Complete NX configuration for non-code pages
     - Finish IDT, SMM, IOMMU
 
-##Comment on PerspicuOS Repo
+## Comment on PerspicuOS Repo
 
 PerspicuOS was derived from a few other research projects and as such reflects
 an odd arangement of naming conventions and unused functionality. The nested
@@ -98,7 +98,7 @@ virtual machine (SVA Github), but only includes a small subset of the entire
 interface, namely the MMU, and modifies the functionality of the internal
 policies for page-translation updates.
 
-##Support or Contact
+## Support or Contact
 
 Having trouble with PerspicuOS? We are currently setting up a suitable method
 for contact. Otherwise, submit a pull request to start some code specific
